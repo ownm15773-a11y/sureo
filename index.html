@@ -518,6 +518,12 @@ body{overflow-x:clip;max-width:100%}
 .adm-empty{color:var(--muted);font-size:13.5px;padding:10px 0}
 .adm-id{display:block;max-width:100%;border-radius:12px;margin:0 0 10px;border:1px solid var(--border)}
 #adminBtn{display:none;margin-top:12px;padding:10px 16px;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;font-size:13.5px}
+.my-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--border);flex-wrap:wrap}
+.my-info{min-width:0;flex:1 1 180px}.my-info b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.my-info span{font-size:12px;color:var(--muted)}
+.my-st{font-style:normal;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.4px}.my-st.active{color:var(--primary)}.my-st.sold{color:var(--accent)}
+.my-btns{display:flex;gap:6px}.my-btns button{font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;background:var(--primary-light);color:var(--primary)}.my-btns .danger{background:#fef2f2;color:var(--red)}
+.chat-body .empty,.conv-list .empty{text-align:center}
 </style>
 </head>
 <body>
@@ -525,7 +531,7 @@ body{overflow-x:clip;max-width:100%}
 /* If a saved login exists, skip the landing page flash on refresh */
 (function(){try{
   var has=false;
-  for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^sb-.*-auth-token$/.test(k)){has=true;break;}}
+  [localStorage,sessionStorage].forEach(function(st){for(var i=0;i<st.length;i++){var k=st.key(i);if(/^sb-.*-auth-token$/.test(k)){has=true;break;}}});
   if(has){document.body.classList.add('authed','restoring');
     setTimeout(function(){document.body.classList.remove('restoring');},6000);}
 }catch(e){}})();
@@ -706,8 +712,8 @@ body{overflow-x:clip;max-width:100%}
         <div class="conv-list" id="convList"></div>
         <div class="chat-pane">
           <div class="chat-head">
-            <div class="conv-av" id="chatAv">🍛<span class="on"></span></div>
-            <div><div class="chat-name" id="chatName">Mama Nkeki Bukaan</div><div class="chat-status">● Online · Verified ✓</div></div>
+            <div class="conv-av" id="chatAv">💬</div>
+            <div><div class="chat-name" id="chatName">Messages</div><div class="chat-status" id="chatSub"></div></div>
           </div>
           <div class="wa-strip">Prefer WhatsApp? <button id="waJump">Open in WhatsApp ↗</button></div>
           <div class="chat-body" id="chatBody"></div>
@@ -774,11 +780,17 @@ body{overflow-x:clip;max-width:100%}
         <div class="kyc-row"><div class="kyc-ic">🎓</div><div class="kyc-info"><b>Student ID upload <em style="color:var(--muted);font-style:normal">(optional)</em></b><span id="kycIdMeta">Adds an extra trust layer to your profile</span></div><span class="kyc-status opt" id="kycIdStatus"><button id="uploadIdBtn">Upload ID</button></span></div>
       </div>
       <div class="kyc-card">
+        <h3>My listings</h3>
+        <p class="kyc-sub">Edit, mark as sold, or remove what you have posted.</p>
+        <div id="myList"><div class="mono">Loading…</div></div>
+      </div>
+      <div class="kyc-card">
         <h3>Account actions</h3>
         <p class="kyc-sub">Manage your presence on Sureo.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn-primary" id="editProfile">Edit profile</button>
           <button class="btn-ghost" style="width:auto;padding:12px 20px" id="logoutBtn">Log out</button>
+          <button class="btn-ghost" style="width:auto;padding:12px 20px;color:var(--red)" id="deleteAcctBtn">Delete account</button>
         </div>
         <div class="acct-legal"><button type="button" data-legal="terms">Terms of Service</button><button type="button" data-legal="privacy">Privacy Policy</button></div>
       </div>
@@ -791,8 +803,8 @@ body{overflow-x:clip;max-width:100%}
   <div class="bn-inner">
     <span class="bn-ind"></span>
     <button class="bn-item" data-view="market"><span class="bn-ic"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Market</button>
-    <button class="bn-item" data-view="messages"><span class="bn-ic"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.7 8.7 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z"/></svg><span class="bn-badge" id="navUnread">2</span></span>Messages</button>
-    <button class="bn-item" data-view="notifications"><span class="bn-ic"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="bn-badge" id="notifBadge">3</span></span>Notifications</button>
+    <button class="bn-item" data-view="messages"><span class="bn-ic"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.7 8.7 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z"/></svg><span class="bn-badge" id="navUnread" style="display:none">0</span></span>Messages</button>
+    <button class="bn-item" data-view="notifications"><span class="bn-ic"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="bn-badge" id="notifBadge" style="display:none">0</span></span>Notifications</button>
     <button class="bn-item" data-view="profile"><span class="bn-ic"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Profile</button>
   </div>
 </nav>
@@ -823,11 +835,21 @@ body{overflow-x:clip;max-width:100%}
       <h2>Welcome back 👋</h2><p class="auth-sub">Sign in to your verified campus market.</p>
       <div class="field"><label>Email address</label><input type="email" id="siEmail" placeholder="you@gmail.com"></div>
       <div class="field"><label>Password</label><input type="password" id="siPass" placeholder="••••••••"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:-4px 0 12px;font-size:13px"><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="siRemember" checked> Remember me</label><button type="button" id="forgotBtn" style="color:var(--primary);font-weight:600;font-size:13px">Forgot password?</button></div>
       <p class="form-err" id="siErr">Please fill in both fields.</p>
+      <button type="button" id="resendBtn" style="display:none;color:var(--primary);font-weight:600;font-size:13px;margin-bottom:10px">Resend confirmation email</button>
       <button class="btn-auth" id="siBtn"><span class="spin"></span><span>Sign In</span><span class="arr">→</span></button>
       <div class="auth-div">or</div>
       <button class="btn-ghost" id="toSignup">Create a free account</button>
       <p class="auth-note">By signing in you agree to our <button type="button" class="legal-link" data-legal="terms">Terms</button> &amp; <button type="button" class="legal-link" data-legal="privacy">Privacy Policy</button>.</p>
+    </div>
+
+    <!-- RESET PASSWORD -->
+    <div id="stepReset" style="display:none">
+      <h2>Set a new password 🔐</h2><p class="auth-sub">Choose a new password for your account.</p>
+      <div class="field"><label>New password</label><input type="password" id="rsPass" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <p class="form-err" id="rsErr"></p>
+      <button class="btn-auth" id="rsBtn"><span>Update password</span></button>
     </div>
 
     <!-- KYC WIZARD -->
@@ -862,6 +884,7 @@ body{overflow-x:clip;max-width:100%}
       </div>
 
       <p class="form-err" id="wzErr">Please fill in all fields correctly.</p>
+      <button type="button" id="wzResend" style="display:none;color:var(--primary);font-weight:600;font-size:13px;margin-bottom:10px">Resend confirmation email</button>
       <button class="btn-auth" id="wizNext" style="margin-top:14px"><span class="spin"></span><span id="wizNextText">Continue</span><span class="arr">→</span></button>
       <div class="auth-div">or</div>
       <button class="btn-ghost" id="toSignin">I already have an account</button>
@@ -987,8 +1010,7 @@ body{overflow-x:clip;max-width:100%}
       <div><b id="payItem" style="font-size:14px">Item</b><div class="mono" id="payVendor">Vendor</div></div>
       <b id="payAmount" style="color:var(--primary);font-size:17px">₦0</b>
     </div>
-    <div class="pay-opt sel" data-pay="card"><span class="rad"></span><span class="em">💳</span><div><b>Pay online — Card (Paystack)</b><span>Instant · buyer protection included</span></div></div>
-    <div class="pay-opt" data-pay="transfer"><span class="rad"></span><span class="em">🏦</span><div><b>Bank transfer / USSD</b><span>Confirmed automatically in-app</span></div></div>
+        <div class="pay-opt sel" data-pay="transfer"><span class="rad"></span><span class="em">🏦</span><div><b>Bank transfer to seller</b><span>Seller shares account details in your chat</span></div></div>
     <div class="pay-opt" data-pay="offline"><span class="rad"></span><span class="em">🤝</span><div><b>Pay on delivery (offline)</b><span>Cash or POS at a meetup safety hub</span></div></div>
     <button class="btn-auth" id="payConfirm" style="margin-top:8px"><span class="spin"></span><span id="payConfirmText">Confirm & Pay</span></button>
   </div>
@@ -1018,12 +1040,19 @@ body{overflow-x:clip;max-width:100%}
 <!-- ================= REPORT MODAL ================= -->
 <div class="modal" id="repModal"><div class="modal-card sheet">
   <div class="modal-head"><h3>Report listing</h3><button class="modal-close" data-close="repModal">×</button></div>
-  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Reports are anonymous. Moderation reviews within 24 hours.</p>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Your report is private. The seller won't see who sent it.</p>
   <div class="rep-opt" data-r="scam">🚨 Suspected scam or fraud</div>
   <div class="rep-opt" data-r="prohibited">⛔ Prohibited item</div>
   <div class="rep-opt" data-r="spam">📢 Spam or duplicate listing</div>
   <div class="rep-opt" data-r="other">❓ Other issue</div>
   <button class="btn-auth" id="repSubmit" style="background:var(--red)"><span>Submit report</span></button>
+</div></div>
+
+<div class="modal" id="editModal"><div class="modal-card sheet">
+  <div class="modal-head"><h3>Edit listing</h3><button class="modal-close" data-close="editModal">×</button></div>
+  <div class="field"><label>Title</label><input type="text" id="eName" maxlength="120"></div>
+  <div class="field"><label>Price (₦)</label><input type="number" id="ePrice" min="0"></div>
+  <button class="btn-auth" id="eSave"><span class="spin"></span><span>Save changes</span></button>
 </div></div>
 
 <div id="toast"></div>
@@ -1117,11 +1146,7 @@ lost:[
  {e:'🍶',bg:'linear-gradient(135deg,#fef2f2,#fee2e2)',n:'Lost: Blue water bottle with stickers',m:'Dave · left in MT1 after 9am class',p:'SENTIMENTAL',st:'lost'},
  {e:'🧥',bg:'linear-gradient(135deg,#f0fdf4,#dcfce7)',n:'Found: Black hoodie in LT1',m:'Chidi · pickup after verification chat',p:'WITH FINDER',st:'found'}]
 };
-const CONVS=[
- {n:'Mama Nkeki Bukaan',e:'🍛',un:1,t:'12:42',prev:'Your jollof order is on the way! 🍛',msgs:[{o:0,x:'Good afternoon! Welcome to Mama Nkeki Bukaan 😊'},{o:1,x:'Hi! Is the special jollof still available?'},{o:0,x:'Yes o! Only 4 plates left today.'},{o:1,x:'Please reserve one for me, I\'ll pay now on Sureo.'},{o:0,x:'Your jollof order is on the way! 🍛'}]},
- {n:'Tolu · 400Lvl',e:'📚',un:1,t:'11:15',prev:'I can meet at the Library front desk',msgs:[{o:1,x:'Hi Tolu! Is the MTH211 textbook still available?'},{o:0,x:'Yes! Like new, no highlights at all.'},{o:0,x:'I can meet at the Library front desk'}]},
- {n:'Dave · Comp Sci',e:'💻',un:0,t:'Yesterday',prev:'Final price is ₦115k, check the battery health',msgs:[{o:1,x:'Dave, does the EliteBook battery last long?'},{o:0,x:'4+ hours on normal use. I\'ll show you battery health.'},{o:0,x:'Final price is ₦115k, check the battery health'}]}
-];
+const CONVS=[];
 const CAT_TAB={food:'eats',books:'market',gadgets:'market',fashion:'market',services:'market'};
 const state={tab:'eats',cat:'all',ty:'all',query:'',board:'housing',conv:0,stars:0,payItem:null,repReason:null};
 const $=id=>document.getElementById(id);
@@ -1131,18 +1156,28 @@ const SB_URL='https://dgzltdkaumkprxijuoqv.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnemx0ZGthdW1rcHJ4aWp1b3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4OTc2OTksImV4cCI6MjEwOTQ3MzY5OX0.rDMF7Dwp3QddBoXzhBFDn_QWI5k-j2o9sRAqtHmntuQ'; /* public anon key: safe in browser, protected by database rules */
 const SHOW_DEMO=true; /* set to false at launch to hide the sample listings */
 const TERMS_V='2026-11-05',PRIV_V='2026-11-05';
-const sb=window.supabase.createClient(SB_URL,SB_KEY);
-let me=null,kycRow=null;
+const IDLE_MS=20*60*1000;
+const rememberOn=()=>{try{return localStorage.getItem('sureoRemember')!=='0';}catch(e){return true;}};
+function setRemember(v){try{localStorage.setItem('sureoRemember',v?'1':'0');}catch(e){}}
+const authStorage={
+  getItem:k=>{try{return sessionStorage.getItem(k)||localStorage.getItem(k);}catch(e){return null;}},
+  setItem:(k,v)=>{try{const keep=rememberOn();(keep?localStorage:sessionStorage).setItem(k,v);(keep?sessionStorage:localStorage).removeItem(k);}catch(e){}},
+  removeItem:k=>{try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch(e){}}
+};
+const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{storage:authStorage,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+let lastAct=Date.now(),recovering=/type=recovery/.test(location.hash),pendingEmail='';
+let me=null,kycRow=null,loadErr=false;
 if(!SHOW_DEMO)ITEMS.length=0;
 const MIME_EXT={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','video/mp4':'mp4'};
 async function loadListings(){
-  const {data,error}=await sb.from('listings').select('id,type,category,title,price_kobo,condition,course_code,whatsapp,profiles(full_name,is_seller_verified,rating_avg,rating_count),listing_media(url,kind,position)').eq('status','active').order('created_at',{ascending:false}).limit(100);
-  if(error){console.error(error);return;}
+  const {data,error}=await sb.from('listings').select('id,seller_id,type,category,title,price_kobo,condition,course_code,whatsapp,profiles(full_name,is_seller_verified,rating_avg,rating_count),listing_media(url,kind,position)').eq('status','active').order('created_at',{ascending:false}).limit(100);
+  if(error){console.error(error);loadErr=true;render();return;}
+  loadErr=false;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
   const emo={food:'🍽️',books:'📚',gadgets:'🔌',fashion:'👔',services:'🛠️'};
   ITEMS.unshift(...data.map(l=>{
     const ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),im=ms.find(m=>m.kind==='image'),pr=l.profiles||{};
-    return {r:1,id:l.id,t:CAT_TAB[l.category],c:l.category,e:emo[l.category],n:l.title,v:pr.full_name||'Student',vf:pr.is_seller_verified?1:0,ph:waNum(l.whatsapp),p:Math.round(l.price_kobo/100),ty:l.type,rt:+pr.rating_avg||0,rv:pr.rating_count||0,md:ms.length,cd:l.condition||undefined,code:l.course_code||undefined,img:im&&im.url};
+    return {r:1,id:l.id,t:CAT_TAB[l.category],c:l.category,e:emo[l.category],n:l.title,v:pr.full_name||'Student',vf:pr.is_seller_verified?1:0,ph:waNum(l.whatsapp),sid:l.seller_id,p:Math.round(l.price_kobo/100),ty:l.type,rt:+pr.rating_avg||0,rv:pr.rating_count||0,md:ms.length,cd:l.condition||undefined,code:l.course_code||undefined,img:im&&im.url};
   }));
   render();
 }
@@ -1166,6 +1201,7 @@ async function onSignedIn(user,restored){
   else if(k&&k.status==='pending')showPending();
   loadListings();
   loadProfileStats(user.id,p);
+  loadMyListings();loadConvs();loadNotifs();startRealtime();
 }
 async function loadProfileStats(uid,p){
   try{
@@ -1177,11 +1213,12 @@ async function loadProfileStats(uid,p){
   }catch(e){}
 }
 async function doSignup(name,email,pass){
+  setRemember(true);
   const {data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}});
   if(error){$('wzErr').textContent=error.message;$('wzErr').classList.add('show');return;}
   try{localStorage.setItem('sureoConsent',JSON.stringify({t:TERMS_V,p:PRIV_V}));}catch(e){}
   if(data.session){await onSignedIn(data.session.user);}
-  else{$('wzErr').textContent='Almost done! Check your email to confirm your account, then sign in.';$('wzErr').classList.add('show');}
+  else{pendingEmail=email;$('wzResend').style.display='block';$('wzErr').textContent='Almost done! Check your email to confirm your account, then sign in.';$('wzErr').classList.add('show');}
 }
 function showPending(){
   const st=document.querySelectorAll('#view-profile .kyc-row')[1].querySelector('.kyc-status');
@@ -1227,12 +1264,12 @@ function render(){
   const q=state.query.trim().toLowerCase();
   const list=ITEMS.filter(i=>i.t===state.tab&&(state.cat==='all'||i.c===state.cat)&&((state.ty==='all')||((i.ty||'sell')===state.ty))&&(!q||(i.n+' '+i.v+' '+(i.code||'')).toLowerCase().includes(q)));
   $('countBadge').textContent=list.length+' listing'+(list.length===1?'':'s');
-  if(!list.length){grid.innerHTML='<div class="empty">No items match. Try another category, type or search term.</div>';return;}
+  if(!list.length){grid.innerHTML=loadErr?'<div class="empty">Couldn\'t load listings. Check your connection.<br><button class="btn-primary" id="retryBtn" style="margin-top:12px">Retry</button></div>':'<div class="empty">No items match. Try another category, type or search term.</div>';if(loadErr)$('retryBtn').addEventListener('click',loadListings);return;}
   grid.innerHTML=list.map((i0,idx)=>{const i=Object.assign({},i0,{n:esc(i0.n),v:esc(i0.v),cd:i0.cd?esc(i0.cd):i0.cd,code:i0.code?esc(i0.code):i0.code});
     const ty=i.ty||'sell',msg=encodeURIComponent('Hi! I saw "'+i0.n+'" by '+i0.v+' on Sureo. Is it still available?');
     const price=i.p===0?(ty==='free'?'FREE':(ty==='trade'?'TRADE':'₦0')):'₦'+i.p.toLocaleString();
     return '<article class="card" data-d="'+((idx%10)*50)+'ms">'
-    +'<div class="thumb" style="background:'+BG[i.c]+'">'+(i0.img?'<img src="'+esc(i0.img)+'" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">':'')+'<span class="badge">'+i.c+'</span>'
+    +'<div class="thumb" style="background:'+BG[i.c]+'">'+(i0.img?'<img src="'+esc(i0.img)+'" alt="'+i.n+'" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">':'')+'<span class="badge">'+i.c+'</span>'
     +(ty!=='sell'?'<span class="type-tag '+ty+'">'+ty+'</span>':'')
     +(i.vf?'<span class="verified" title="Student-verified seller">✓</span>':'')
     +(i.md?'<span class="media-count">📷 '+i.md+(i.md>3?' · 🎬':'')+'</span>':'')
@@ -1241,13 +1278,15 @@ function render(){
     +(i.cd?'<div class="tag-row"><span class="cond-tag">'+i.cd+'</span>'+(i.code?'<span class="cond-tag mono" style="font-family:ui-monospace,monospace">'+i.code+'</span>':'')+'</div>':'')
     +'<div class="card-vendor">'+i.v+(i.vf?' <span class="tick">✓</span>':'')+' · <span class="rate">★ '+i.rt.toFixed(1)+' <span>('+i.rv+')</span></span></div>'
     +'<div class="card-foot"><span class="price'+(i.p===0?' freeprice':'')+'">'+price+(i.u?'<small>'+i.u+'</small>':'')+'</span>'
-    +'<span class="foot-btns"><button class="icon-btn" title="Report listing" data-rep="'+i.n.replace(/"/g,'')+'">⚑</button>'
-    +'<a class="btn-wa" target="_blank" rel="noopener" href="https://wa.me/'+(i0.ph||WA_DEFAULT)+'?text='+msg+'">💬</a>'
+    +'<span class="foot-btns"><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
+    +'<button class="icon-btn" title="Message seller" aria-label="Message seller" data-msg="'+idx+'">✉</button>'
+    +'<a class="btn-wa" aria-label="Chat on WhatsApp" target="_blank" rel="noopener" href="https://wa.me/'+(i0.ph||WA_DEFAULT)+'?text='+msg+'">💬</a>'
     +'<button class="btn-buy" data-buy="'+idx+'" data-name="'+i.n.replace(/"/g,'')+'" data-vendor="'+i.v.replace(/"/g,'')+'" data-price="'+i.p+'">'+(i.t==='eats'?'Order':'Buy')+'</button></span></div></div></article>';
   }).join('');
   grid.querySelectorAll('.card').forEach(c=>io.observe(c));
-  grid.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>openPay(b.dataset.name,b.dataset.vendor,+b.dataset.price)));
-  grid.querySelectorAll('[data-rep]').forEach(b=>b.addEventListener('click',()=>{state.repItem=b.dataset.rep;$('repModal').classList.add('open');}));
+  grid.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>openPay(b.dataset.name,b.dataset.vendor,+b.dataset.price,list[+b.dataset.buy])));
+  grid.querySelectorAll('[data-msg]').forEach(b=>b.addEventListener('click',()=>openChatFor(list[+b.dataset.msg])));
+  grid.querySelectorAll('[data-ri]').forEach(b=>b.addEventListener('click',()=>{state.repObj=list[+b.dataset.ri];$('repModal').classList.add('open');}));
 }
 function refreshGrid(){grid.classList.add('leaving');setTimeout(()=>{render();requestAnimationFrame(()=>grid.classList.remove('leaving'));},220);}
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab-btn');if(!b||b.dataset.tab===state.tab)return;state.tab=b.dataset.tab;document.querySelectorAll('.tab-btn').forEach(x=>x.classList.toggle('active',x===b));refreshGrid();});
@@ -1269,51 +1308,166 @@ function renderBoard(){
 }
 $('boardTabs').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#boardTabs .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.board=c.dataset.board;renderBoard();});
 
-/* ---------- MESSAGES ---------- */
-function renderConvs(){
-  $('convList').innerHTML='<div class="conv-head">Inbox <span style="font-size:11px;color:var(--muted);font-weight:600">Real-time ✓</span></div>'
-  +CONVS.map((c,i)=>'<div class="conv'+(i===state.conv?' active':'')+'" data-c="'+i+'"><div class="conv-av">'+c.e+'<span class="on"></span></div><div class="conv-body"><div class="conv-name"><span>'+c.n+'</span><time>'+c.t+'</time></div><div class="conv-prev">'+esc(c.prev)+'</div></div>'+(c.un?'<span class="unread">'+c.un+'</span>':'')+'</div>').join('');
-  $('convList').querySelectorAll('.conv').forEach(el=>el.addEventListener('click',()=>{state.conv=+el.dataset.c;CONVS[state.conv].un=0;updateUnread();renderConvs();renderChat();}));
-}
-function updateUnread(){const n=CONVS.reduce((a,c)=>a+c.un,0);const b=$('navUnread');b.style.display=n?'flex':'none';b.textContent=n;
-  const m=NOTIFS.filter(x=>x.un).length,nb=$('notifBadge');nb.style.display=m?'flex':'none';nb.textContent=m;}
-/* ---------- NOTIFICATIONS ---------- */
+/* ---------- MESSAGES & NOTIFICATIONS (live from Supabase) ---------- */
 const NI={
  msg:'<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.7 8.7 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z"/></svg>',
  ok:'<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>',
  tag:'<svg viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.2"/></svg>',
  pin:'<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
  star:'<svg viewBox="0 0 24 24"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L7 14.2 2 9.3l6.9-1z"/></svg>'};
-const NOTIFS=[
- {i:'msg',c:'#2563eb',t:'New message from Mama Nkeki Bukaan',d:'Your jollof order is on the way!',w:'2 min ago',un:1,v:'messages'},
- {i:'ok',c:'#0d4a3a',t:'Your account is verified',d:'You can now buy and message sellers safely on campus.',w:'1 hr ago',un:1,v:'profile'},
- {i:'tag',c:'#FF6B35',t:'Flash deal ending soon',d:'Prices just dropped on items you viewed recently.',w:'3 hrs ago',un:1,v:'market'},
- {i:'pin',c:'#7c3aed',t:'Safety tip',d:'Always meet at a campus Safety Hub for pickups.',w:'Yesterday',un:0,v:'safety'},
- {i:'star',c:'#f59e0b',t:'Rate your last deal',d:'Tell the community how your last transaction went.',w:'2 days ago',un:0,v:'profile'}
-];
-function renderNotifs(){
-  const L=$('notifList');
-  if(!NOTIFS.length){L.innerHTML='<div class="notif-empty"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><br>You\'re all caught up</div>';return;}
-  const card=(n,i)=>'<div class="notif'+(n.un?' is-new':'')+'" data-n="'+i+'" style="--i:'+i+';--c:'+n.c+'"><div class="notif-ic">'+NI[n.i]+'</div><div class="notif-body"><b>'+n.t+'</b><p>'+n.d+'</p><time>'+n.w+'</time></div>'+(n.un?'<span class="notif-dot"></span>':'')+'</div>';
-  const fresh=NOTIFS.map((n,i)=>n.un?card(n,i):'').join(''),old=NOTIFS.map((n,i)=>n.un?'':card(n,i)).join('');
-  L.innerHTML=(fresh?'<div class="notif-group">New</div>'+fresh:'')+(old?'<div class="notif-group">Earlier</div>'+old:'');
-  L.querySelectorAll('.notif').forEach(el=>el.addEventListener('click',()=>{const n=NOTIFS[+el.dataset.n];n.un=0;updateUnread();setView(n.v);}));
+const NTYPE={message:{i:'msg',c:'#2563eb',v:'messages'},order:{i:'tag',c:'#FF6B35',v:'messages'},system:{i:'ok',c:'#0d4a3a',v:'profile'},safety:{i:'pin',c:'#7c3aed',v:'safety'}};
+const NOTIFS=[];
+let msgChan=null,notifChan=null,rtOK=false,sending=false;
+const viewOn=v=>$('view-'+v).classList.contains('active');
+const clock=ts=>new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+function ago(ts){const s=Math.max(0,(Date.now()-new Date(ts))/1000);if(s<60)return 'Just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' hr ago';if(s<172800)return 'Yesterday';return Math.floor(s/86400)+' days ago';}
+function convTime(ts){const d=new Date(ts),n=new Date();return d.toDateString()===n.toDateString()?clock(ts):(n-d<172800000?'Yesterday':d.toLocaleDateString([],{day:'numeric',month:'short'}));}
+
+/* one source of truth for badges: Messages = unread chat messages, Notifications = unread alerts (not chat) */
+function updateUnread(){
+  const n=CONVS.reduce((a,c)=>a+(c.un||0),0),b=$('navUnread');
+  b.style.display=n?'flex':'none';b.textContent=n>99?'99+':n;
+  const m=NOTIFS.filter(x=>x.un&&x.type!=='message').length,nb=$('notifBadge');
+  nb.style.display=m?'flex':'none';nb.textContent=m>99?'99+':m;
 }
-$('markAllRead').addEventListener('click',()=>{NOTIFS.forEach(n=>n.un=0);updateUnread();renderNotifs();});
+function sortConvs(keep){const sel=keep||CONVS[state.conv];CONVS.sort((a,b)=>new Date(b.at)-new Date(a.at));const i=CONVS.indexOf(sel);state.conv=i>=0?i:0;}
+function addMsgLocal(c,m){if(!c.msgs)return true;if(c.msgs.some(x=>x.id===m.id))return false;c.msgs.push(m);return true;}
+
+async function loadConvs(){
+  if(!me)return;
+  const {data,error}=await sb.from('conversations').select('id,listing_id,listing_title,buyer_id,seller_id,last_message,last_at').order('last_at',{ascending:false}).limit(50);
+  if(error){console.error(error);return;}
+  const ids=[...new Set(data.map(c=>c.buyer_id===me.id?c.seller_id:c.buyer_id))],names={};
+  if(ids.length){const {data:ps}=await sb.from('profiles').select('id,full_name').in('id',ids);(ps||[]).forEach(p=>names[p.id]=p.full_name);}
+  const {data:un}=await sb.from('messages').select('conversation_id').is('read_at',null).neq('sender_id',me.id);
+  const cnt={};(un||[]).forEach(m=>cnt[m.conversation_id]=(cnt[m.conversation_id]||0)+1);
+  const old={};CONVS.forEach(c=>old[c.id]=c.msgs);
+  const keep=CONVS[state.conv]&&CONVS[state.conv].id;
+  CONVS.length=0;
+  data.forEach(c=>{const o=c.buyer_id===me.id?c.seller_id:c.buyer_id;CONVS.push({id:c.id,lid:c.listing_id,n:names[o]||'Student',e:'💬',sub:c.listing_title||'',un:cnt[c.id]||0,at:c.last_at,t:convTime(c.last_at),prev:c.last_message||'No messages yet',msgs:old[c.id]||null});});
+  const k=CONVS.findIndex(c=>c.id===keep);state.conv=k>=0?k:0;
+  updateUnread();
+  if(viewOn('messages')){renderConvs();const c=CONVS[state.conv];if(c&&c.msgs===null)selectConv(state.conv);else{renderChat();markConvRead(c);}}
+}
+async function loadMsgs(c){
+  const {data,error}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:true}).limit(200);
+  if(error){toast('Could not load messages.');c.msgs=[];return;}
+  c.msgs=data.map(m=>({id:m.id,o:m.sender_id===me.id?1:0,x:m.body,at:m.created_at}));
+}
+async function markConvRead(c){
+  if(!c||!me)return;
+  const hadU=c.un>0,hadN=NOTIFS.some(n=>n.ref===c.id&&n.un);
+  if(!hadU&&!hadN)return;
+  c.un=0;NOTIFS.forEach(n=>{if(n.ref===c.id)n.un=0;});updateUnread();
+  if(viewOn('messages'))renderConvs();
+  if(hadU)await sb.from('messages').update({read_at:new Date().toISOString()}).eq('conversation_id',c.id).neq('sender_id',me.id).is('read_at',null);
+  if(hadN)await sb.from('notifications').update({read:true}).eq('ref_id',c.id).eq('read',false);
+}
+async function selectConv(i){
+  state.conv=i;const c=CONVS[i];renderConvs();
+  if(c&&c.msgs===null){$('chatBody').innerHTML='<div class="empty">Loading…</div>';await loadMsgs(c);}
+  if(state.conv===i){renderChat();markConvRead(c);}
+}
+function renderConvs(){
+  const L=$('convList');
+  L.innerHTML='<div class="conv-head">Inbox <span style="font-size:11px;color:var(--muted);font-weight:600">'+CONVS.length+' chat'+(CONVS.length===1?'':'s')+'</span></div>'
+  +(CONVS.length?CONVS.map((c,i)=>'<div class="conv'+(i===state.conv?' active':'')+'" data-c="'+i+'"><div class="conv-av">'+c.e+'</div><div class="conv-body"><div class="conv-name"><span>'+esc(c.n)+'</span><time>'+esc(c.t)+'</time></div><div class="conv-prev">'+esc(c.prev)+'</div></div>'+(c.un?'<span class="unread">'+c.un+'</span>':'')+'</div>').join(''):'<div class="empty" style="padding:30px 16px">No conversations yet. Tap ✉ on any listing to message the seller.</div>');
+  L.querySelectorAll('.conv').forEach(el=>el.addEventListener('click',()=>selectConv(+el.dataset.c)));
+}
 function renderChat(){
-  const c=CONVS[state.conv];$('chatName').textContent=c.n;$('chatAv').innerHTML=c.e+'<span class="on"></span>';
-  $('chatBody').innerHTML=c.msgs.map(m=>'<div class="msg '+(m.o?'out':'in')+'">'+esc(m.x)+'<time>'+(m.o?'12:40':'12:38')+'</time></div>').join('');
+  const c=CONVS[state.conv];
+  if(!c){$('chatName').textContent='Messages';$('chatAv').textContent='💬';$('chatSub').textContent='';$('chatBody').innerHTML='<div class="empty">Select or start a conversation with a seller or buyer.</div>';return;}
+  $('chatName').textContent=c.n;$('chatAv').textContent=c.e;$('chatSub').textContent=c.sub?'Re: '+c.sub:'';
+  $('chatBody').innerHTML=(c.msgs||[]).map(m=>'<div class="msg '+(m.o?'out':'in')+'">'+esc(m.x)+'<time>'+clock(m.at)+'</time></div>').join('')||'<div class="empty">Say hello 👋</div>';
   $('chatBody').scrollTop=$('chatBody').scrollHeight;
 }
-function sendMsg(){
-  const v=$('chatInput').value.trim();if(!v)return;
-  CONVS[state.conv].msgs.push({o:1,x:v});CONVS[state.conv].prev=v;renderChat();renderConvs();$('chatInput').value='';
-  const tb=document.createElement('div');tb.className='typing';tb.innerHTML='<i></i><i></i><i></i>';$('chatBody').appendChild(tb);$('chatBody').scrollTop=$('chatBody').scrollHeight;
-  setTimeout(()=>{tb.remove();const reps=['Great! Noted 👍','Okay, I\'ll confirm and get back to you in 5 mins.','Sure! Meet at the Library front desk?','Payment confirmed on my end ✓'];const r=reps[Math.floor(Math.random()*reps.length)];CONVS[state.conv].msgs.push({o:0,x:r});CONVS[state.conv].prev=r;renderChat();renderConvs();},1400);
+async function sendMsg(){
+  const c=CONVS[state.conv],v=$('chatInput').value.trim();
+  if(!c||!v||sending)return;
+  if(v.length>2000){toast('Message too long (max 2000 characters).');return;}
+  sending=true;$('chatInput').value='';
+  const {data,error}=await sb.from('messages').insert({conversation_id:c.id,sender_id:me.id,body:v}).select('id,created_at').single();
+  sending=false;
+  if(error){$('chatInput').value=v;toast('Could not send: '+error.message,3500);return;}
+  addMsgLocal(c,{id:data.id,o:1,x:v,at:data.created_at});
+  c.prev=v;c.at=data.created_at;c.t=convTime(c.at);
+  sortConvs(c);renderConvs();renderChat();
 }
 $('sendBtn').addEventListener('click',sendMsg);
 $('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
-$('waJump').addEventListener('click',()=>window.open('https://wa.me/2348000000000?text='+encodeURIComponent('Hi! Continuing our Sureo conversation on WhatsApp.'),'_blank'));
+$('waJump').addEventListener('click',()=>window.open('https://wa.me/'+WA_DEFAULT+'?text='+encodeURIComponent('Hi! Continuing our Sureo conversation on WhatsApp.'),'_blank'));
+
+async function startChat(it){
+  if(!me)return null;
+  if(!it||!it.r||!it.sid){toast('This is a sample listing. Messaging works on real listings.',3500);return null;}
+  if(it.sid===me.id){toast("That's your own listing.");return null;}
+  let c=CONVS.find(x=>x.lid===it.id);
+  if(c)return c;
+  const {data,error}=await sb.from('conversations').insert({listing_id:it.id,listing_title:it.n,buyer_id:me.id,seller_id:it.sid,last_message:'',last_at:new Date().toISOString()}).select('id,last_at').single();
+  if(error){await loadConvs();c=CONVS.find(x=>x.lid===it.id);if(!c)toast('Could not start chat: '+error.message,4000);return c||null;}
+  c={id:data.id,lid:it.id,n:it.v,e:'💬',sub:it.n,un:0,at:data.last_at,t:convTime(data.last_at),prev:'No messages yet',msgs:[]};
+  CONVS.unshift(c);return c;
+}
+async function openChatFor(it){
+  const c=await startChat(it);if(!c)return;
+  sortConvs(c);setView('messages');selectConv(CONVS.indexOf(c));
+}
+
+/* notifications */
+function mapNotif(r){const t=NTYPE[r.type]||NTYPE.system;return {id:r.id,i:t.i,c:t.c,t:r.title,d:r.body||'',at:r.created_at,un:r.read?0:1,v:r.view||t.v,ref:r.ref_id,type:r.type};}
+async function loadNotifs(){
+  if(!me)return;
+  const {data,error}=await sb.from('notifications').select('id,type,title,body,view,ref_id,read,created_at').order('created_at',{ascending:false}).limit(50);
+  if(error){console.error(error);return;}
+  NOTIFS.length=0;data.forEach(r=>NOTIFS.push(mapNotif(r)));
+  updateUnread();if(viewOn('notifications'))renderNotifs();
+}
+function renderNotifs(){
+  const L=$('notifList');
+  if(!NOTIFS.length){L.innerHTML='<div class="notif-empty"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><br>No notifications yet</div>';return;}
+  const card=(n,i)=>'<div class="notif'+(n.un?' is-new':'')+'" data-n="'+i+'" style="--i:'+Math.min(i,12)+';--c:'+n.c+'"><div class="notif-ic">'+NI[n.i]+'</div><div class="notif-body"><b>'+esc(n.t)+'</b><p>'+esc(n.d)+'</p><time>'+ago(n.at)+'</time></div>'+(n.un?'<span class="notif-dot"></span>':'')+'</div>';
+  const fresh=NOTIFS.map((n,i)=>n.un?card(n,i):'').join(''),old=NOTIFS.map((n,i)=>n.un?'':card(n,i)).join('');
+  L.innerHTML=(fresh?'<div class="notif-group">New</div>'+fresh:'')+(old?'<div class="notif-group">Earlier</div>'+old:'');
+  L.querySelectorAll('.notif').forEach(el=>el.addEventListener('click',()=>{
+    const n=NOTIFS[+el.dataset.n];
+    if(n.un){n.un=0;if(n.id)sb.from('notifications').update({read:true}).eq('id',n.id).then(()=>{});}
+    updateUnread();
+    if(n.type==='message'&&n.ref){const i=CONVS.findIndex(c=>c.id===n.ref);setView('messages');if(i>=0)selectConv(i);return;}
+    setView(n.v);
+  }));
+}
+$('markAllRead').addEventListener('click',async()=>{
+  NOTIFS.forEach(n=>{if(n.type!=='message')n.un=0;});updateUnread();renderNotifs();
+  if(me)await sb.from('notifications').update({read:true}).eq('user_id',me.id).eq('read',false).neq('type','message');
+});
+
+/* realtime */
+function stopRealtime(){try{if(msgChan)sb.removeChannel(msgChan);if(notifChan)sb.removeChannel(notifChan);}catch(e){}msgChan=notifChan=null;rtOK=false;}
+function startRealtime(){
+  stopRealtime();
+  msgChan=sb.channel('msgs-'+me.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},async p=>{
+    const m=p.new,c=CONVS.find(x=>x.id===m.conversation_id);
+    if(!c){await loadConvs();return;}
+    const mine=m.sender_id===me.id;
+    if(!addMsgLocal(c,{id:m.id,o:mine?1:0,x:m.body,at:m.created_at}))return;
+    c.prev=m.body;c.at=m.created_at;c.t=convTime(c.at);
+    const viewing=viewOn('messages')&&CONVS[state.conv]===c;
+    if(!mine&&!viewing)c.un=(c.un||0)+1;
+    sortConvs();updateUnread();
+    if(viewOn('messages')){renderConvs();renderChat();}
+    if(!mine&&viewing)markConvRead(c);
+  }).subscribe(st=>{rtOK=st==='SUBSCRIBED';});
+  notifChan=sb.channel('notifs-'+me.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:'user_id=eq.'+me.id},p=>{
+    const n=mapNotif(p.new);
+    for(let k=NOTIFS.length-1;k>=0;k--)if(n.ref&&NOTIFS[k].ref===n.ref&&NOTIFS[k].type==='message'&&NOTIFS[k].un)NOTIFS.splice(k,1);
+    const viewing=n.type==='message'&&n.ref&&viewOn('messages')&&CONVS[state.conv]&&CONVS[state.conv].id===n.ref;
+    if(viewing){n.un=0;sb.from('notifications').update({read:true}).eq('id',n.id).then(()=>{});}
+    NOTIFS.unshift(n);updateUnread();
+    if(viewOn('notifications'))renderNotifs();
+    else if(!viewing&&n.type!=='message')toast('🔔 '+n.t);
+  }).subscribe();
+}
+setInterval(()=>{if(me&&!rtOK&&!document.hidden){loadConvs();loadNotifs();}},45000);
 
 /* ---------- VIEWS / NAV ---------- */
 function setView(v){
@@ -1326,8 +1480,9 @@ function setView(v){
   window.scrollTo({top:0,behavior:'instant'});
   try{
     if(v==='boards')renderBoard();
-    if(v==='notifications')renderNotifs();
-    if(v==='messages'){renderConvs();renderChat();}
+    if(v==='notifications'){renderNotifs();loadNotifs();}
+    if(v==='messages'){renderConvs();renderChat();loadConvs();}
+    if(v==='profile')loadMyListings();
   }catch(e){console.error(e);}
   if(v==='safety')$('hubGrid').querySelectorAll('.hub').forEach(h=>io.observe(h));
 }
@@ -1336,27 +1491,54 @@ $('menuBtn').addEventListener('click',()=>$('mobileNav').classList.toggle('open'
 $('shareMeetup').addEventListener('click',()=>toast('🔗 Meetup plan copied! Share it with your deal partner & a friend.'));
 
 /* ---------- PAYMENT ---------- */
-let payMethod='card';
-function openPay(name,vendor,price){
-  state.payItem=name;$('payItem').textContent=name;$('payVendor').textContent=vendor;
+let payMethod='transfer';
+function openPay(name,vendor,price,it){
+  state.payItem=name;state.payObj=it||null;$('payItem').textContent=name;$('payVendor').textContent=vendor;
   $('payAmount').textContent=price===0?'FREE':'₦'+price.toLocaleString();
   $('payFlow').style.display='block';$('paySuccess').style.display='none';
-  $('payConfirmText').textContent=price===0?'Confirm reservation':'Confirm & Pay';
+  $('payConfirmText').textContent=price===0?'Confirm reservation':'Send order request';
   $('payModal').classList.add('open');
 }
 document.querySelectorAll('.pay-opt').forEach(o=>o.addEventListener('click',()=>{document.querySelectorAll('.pay-opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');payMethod=o.dataset.pay;}));
-$('payConfirm').addEventListener('click',()=>{
-  const b=$('payConfirm');b.classList.add('loading');
-  setTimeout(()=>{b.classList.remove('loading');$('payFlow').style.display='none';$('paySuccess').style.display='block';
-    $('successTitle').textContent=payMethod==='offline'?'Deal arranged!':'Payment successful!';
-    $('successSub').textContent=payMethod==='offline'?'Meet at a safety hub and pay on delivery.':'Your order has been sent to the vendor.';
-  },1400);
+$('payConfirm').addEventListener('click',async()=>{
+  const it=state.payObj,b=$('payConfirm');
+  if(!it||!it.r){toast('This is a sample listing. Real listings can be ordered.',3500);return;}
+  if(!me||it.sid===me.id){toast("You can't order your own listing.");return;}
+  if(b.classList.contains('loading'))return;
+  b.classList.add('loading');
+  try{
+    const {data:o,error}=await sb.from('orders').insert({listing_id:it.id,listing_title:it.n,seller_id:it.sid,buyer_id:me.id,amount_kobo:it.p*100,method:payMethod}).select('id').single();
+    if(error){if(error.code==='23505')throw new Error('You already have a pending order for this item.');throw error;}
+    state.orderId=o.id;state.orderSeller=it.sid;
+    const c=await startChat(it);
+    if(c){
+      const body='Hi! I\'d like to order "'+it.n+'" ('+(it.p?'₦'+it.p.toLocaleString():'free')+'). Payment: '+(payMethod==='offline'?'pay on delivery':'bank transfer')+'. When can we meet?';
+      const {data:m,error:e2}=await sb.from('messages').insert({conversation_id:c.id,sender_id:me.id,body}).select('id,created_at').single();
+      if(!e2){addMsgLocal(c,{id:m.id,o:1,x:body,at:m.created_at});c.prev=body;c.at=m.created_at;c.t=convTime(c.at);sortConvs(c);}
+    }
+    $('payFlow').style.display='none';$('paySuccess').style.display='block';
+    $('successTitle').textContent='Order request sent!';
+    $('successSub').textContent=payMethod==='offline'?'Chat with the seller to agree a meetup and pay on delivery.':'The seller will share payment details in your chat.';
+  }catch(e){toast(e.message||'Could not place order, try again.',4500);}
+  finally{b.classList.remove('loading');}
 });
 $('rateBtn').addEventListener('click',()=>{$('payModal').classList.remove('open');$('rateModal').classList.add('open');});
 document.querySelectorAll('#starRow button').forEach(s=>s.addEventListener('click',()=>{state.stars=+s.dataset.s;document.querySelectorAll('#starRow button').forEach(x=>x.classList.toggle('on',+x.dataset.s<=state.stars));}));
-$('rateSubmit').addEventListener('click',()=>{if(!state.stars){toast('Pick a star rating first ★');return;}$('rateModal').classList.remove('open');toast('✓ Review posted! '+state.payItem.split(' ')[0]+' rated you ★5 back — two-way trust updated.');state.stars=0;document.querySelectorAll('#starRow button').forEach(x=>x.classList.remove('on'));});
+$('rateSubmit').addEventListener('click',async()=>{
+  if(!state.stars){toast('Pick a star rating first ★');return;}
+  if(!state.orderId){toast('You can rate a seller after placing an order.');return;}
+  const {error}=await sb.from('reviews').insert({order_id:state.orderId,reviewer_id:me.id,reviewee_id:state.orderSeller,rating:state.stars});
+  $('rateModal').classList.remove('open');
+  toast(error?(error.code==='23505'?'You already rated this order.':'Could not save review: '+error.message):'✓ Thanks! Your review was saved.',3500);
+  state.stars=0;document.querySelectorAll('#starRow button').forEach(x=>x.classList.remove('on'));
+});
 document.querySelectorAll('.rep-opt').forEach(o=>o.addEventListener('click',()=>{document.querySelectorAll('.rep-opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');state.repReason=o.dataset.r;}));
-$('repSubmit').addEventListener('click',()=>{if(!state.repReason){toast('Select a reason first');return;}$('repModal').classList.remove('open');document.querySelectorAll('.rep-opt').forEach(x=>x.classList.remove('sel'));toast('🚩 Report received. Moderation will review within 24 hours.');state.repReason=null;});
+$('repSubmit').addEventListener('click',async()=>{
+  if(!state.repReason){toast('Select a reason first');return;}
+  const it=state.repObj;
+  if(it&&it.r&&me){const {error}=await sb.from('reports').insert({listing_id:it.id,listing_title:it.n,reporter_id:me.id,reason:state.repReason});if(error){toast('Could not send report: '+error.message,4000);return;}}
+  $('repModal').classList.remove('open');document.querySelectorAll('.rep-opt').forEach(x=>x.classList.remove('sel'));toast('🚩 Report received. Thank you for keeping Sureo safe.');state.repReason=null;
+});
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.close).classList.remove('open')));
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
@@ -1428,7 +1610,7 @@ $('sSubmit').addEventListener('click',async()=>{
     $('sellModal').classList.remove('open');n.value='';$('sPrice').value='';$('sPhone').value='';$('sCode').value='';$('mediaFile').value='';$('mediaPrev').innerHTML='';$('mediaBox').textContent='📷 Click to add photos or video (up to 5)';$('mediaBox').classList.remove('done');
     setView('market');state.tab=CAT_TAB[cat];document.querySelectorAll('.tab-btn').forEach(x=>x.classList.toggle('active',x.dataset.tab===state.tab));
     await loadListings();
-    toast("✓ Listing posted! It's live with your Sureo ✓ badge.");
+    loadMyListings();toast("✓ Listing posted! It's live with your Sureo ✓ badge.");
   }catch(e){console.error(e);toast('Could not post: '+(e.message||'please try again'),4500);}
   finally{btn.disabled=false;btn.firstElementChild.textContent='Post on Sureo ✓';}
 });
@@ -1438,9 +1620,11 @@ const auth=$('auth');let wizStep=1,authMode='signup',idUploaded=false;
 function openAuth(mode){authMode=mode;auth.classList.add('open');document.body.classList.add('locked');showAuthStep();}
 function showAuthStep(){
   const seller=authMode==='seller',signin=authMode==='signin';
+  const reset=authMode==='reset';
+  $('stepReset').style.display=reset?'block':'none';
   $('stepSignin').style.display=signin?'block':'none';
-  $('stepWizard').style.display=signin?'none':'block';
-  if(signin)return;
+  $('stepWizard').style.display=(signin||reset)?'none':'block';
+  if(signin||reset)return;
   const step=seller?wizStep:1;
   $('wz1').style.display=step===1?'block':'none';$('wz2').style.display=step===2?'block':'none';$('wz3').style.display=step===3?'block':'none';
   document.querySelector('.wiz-steps').style.display=seller?'flex':'none';
@@ -1466,10 +1650,10 @@ $('wizNext').addEventListener('click',()=>{
   const btn=$('wizNext');
   if(wizStep===1){
     if(!$('wAgree').checked){$('wzErr').textContent='Please agree to the Terms and Privacy Policy to continue.';$('wzErr').classList.add('show');return;}
-    const EMAIL_RE=/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;const ok=$('wName').value.trim()&&EMAIL_RE.test($('wEmail').value.trim())&&$('wPass').value.length>=6;
+    const EMAIL_RE=/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;const ok=$('wName').value.trim()&&EMAIL_RE.test($('wEmail').value.trim())&&$('wPass').value.length>=8;
     $('wzErr').classList.toggle('show',!ok);
     $('wEmail').classList.toggle('err',!!$('wEmail').value&&!EMAIL_RE.test($('wEmail').value.trim()));
-    if(!ok){$('wzErr').textContent=!$('wName').value.trim()?'Enter your full name.':!EMAIL_RE.test($('wEmail').value.trim())?'Enter a valid email address, e.g. you@gmail.com.':'Password must be at least 6 characters.';return;}
+    if(!ok){$('wzErr').textContent=!$('wName').value.trim()?'Enter your full name.':!EMAIL_RE.test($('wEmail').value.trim())?'Enter a valid email address, e.g. you@gmail.com.':'Password must be at least 8 characters.';return;}
     btn.classList.add('loading');doSignup($('wName').value.trim(),$('wEmail').value.trim(),$('wPass').value).finally(()=>btn.classList.remove('loading'));return;
   }
   if(wizStep===2){
@@ -1489,9 +1673,9 @@ $('siBtn').addEventListener('click',()=>{
   const ok=$('siEmail').value.trim()&&$('siPass').value.trim();$('siErr').textContent='Please fill in both fields.';
   $('siErr').classList.toggle('show',!ok);if(!ok)return;
   const b=$('siBtn');b.classList.add('loading');
-  sb.auth.signInWithPassword({email:$('siEmail').value.trim(),password:$('siPass').value}).then(async({data,error})=>{
+  signInRemember($('siEmail').value.trim(),$('siPass').value).then(async({data,error})=>{
     b.classList.remove('loading');
-    if(error){$('siErr').textContent=error.message==='Invalid login credentials'?'Wrong email or password.':error.message;$('siErr').classList.add('show');return;}
+    if(error){$('siErr').textContent=error.message==='Invalid login credentials'?'Wrong email or password.':error.message;$('siErr').classList.add('show');$('resendBtn').style.display=/confirm/i.test(error.message)?'block':'none';return;}
     await onSignedIn(data.user);
   });
 });
@@ -1521,13 +1705,13 @@ function completeSeller(matric,idType,idNum){
 }
 function finishAuth(name,email,restored){
   const first=(name.charAt(0).toUpperCase()+name.slice(1))||'Student';
-  userEmail=email;
+  userEmail=email;lastAct=Date.now();try{localStorage.setItem('sureoLast',lastAct);}catch(e){}
   $('avatar').textContent=first.charAt(0).toUpperCase();$('hello').textContent='Hi, '+first.split(' ')[0];
   $('heroName').textContent=first.split(' ')[0];
   $('profileAv').textContent=first.charAt(0).toUpperCase();$('profileName').textContent=first;
   $('kycEmail').textContent=email;
   setSellerStatus(false);
-  closeAuth();document.body.classList.add('authed');window.scrollTo({top:0});
+  if(!recovering)closeAuth();document.body.classList.add('authed');window.scrollTo({top:0});
   let startView='market';
   if(restored){try{const sv=localStorage.getItem('sureoView');if(sv&&document.getElementById('view-'+sv))startView=sv;}catch(e){}}
   setView(startView);render();updateUnread();
@@ -1556,7 +1740,7 @@ $('uploadIdBtn')&&$('uploadIdBtn').addEventListener('click',()=>{
   inp.click();
 });
 $('editProfile').addEventListener('click',()=>toast('✏️ Profile editing coming in v2 — prototype note.'));
-$('logoutBtn').addEventListener('click',()=>{sb.auth.signOut();me=null;kycRow=null;sellerOK=false;document.body.classList.remove('authed');setView('market');try{localStorage.removeItem('sureoView');}catch(e){}window.scrollTo({top:0});toast('👋🏾 Logged out. See you soon!');});
+$('logoutBtn').addEventListener('click',()=>doLogout());
 
 /* ---------- MISC ---------- */
 let secs=7200;setInterval(()=>{secs=secs>0?secs-1:7200;$('timer').textContent=[Math.floor(secs/3600),Math.floor(secs%3600/60),secs%60].map(x=>String(x).padStart(2,'0')).join(':');},1000);
@@ -1578,9 +1762,127 @@ function openLegal(which){
 document.addEventListener('click',e=>{const t=e.target.closest('[data-legal]');if(t){e.preventDefault();openLegal(t.dataset.legal);}});
 
 
+/* ---------- LOGOUT / 20-MIN IDLE / REMEMBER ME ---------- */
+async function doLogout(msg){
+  stopRealtime();
+  try{await sb.auth.signOut();}catch(e){}
+  me=null;kycRow=null;sellerOK=false;CONVS.length=0;NOTIFS.length=0;state.conv=0;
+  document.body.classList.remove('authed');
+  document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'));closeAuth();
+  setView('market');updateUnread();
+  try{localStorage.removeItem('sureoView');localStorage.removeItem('sureoLast');}catch(e){}
+  window.scrollTo({top:0});toast(msg||'👋🏾 Logged out. See you soon!',4000);
+}
+function touchActive(){if(!me)return;const n=Date.now();if(n-lastAct>5000){lastAct=n;try{localStorage.setItem('sureoLast',n);}catch(e){}}}
+['mousemove','keydown','click','touchstart','scroll'].forEach(ev=>window.addEventListener(ev,touchActive,{passive:true,capture:true}));
+function checkIdle(){
+  if(!me)return;
+  let last=lastAct;try{last=Math.max(last,+localStorage.getItem('sureoLast')||0);}catch(e){}
+  if(Date.now()-last>=IDLE_MS)doLogout('⏱️ You were logged out after 20 minutes of inactivity.');
+}
+setInterval(checkIdle,30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkIdle();});
+function signInRemember(e,p){setRemember($('siRemember').checked);return sb.auth.signInWithPassword({email:e,password:p});}
+$('siRemember').checked=rememberOn();
+
+/* ---------- FORGOT / RESET PASSWORD + RESEND EMAIL ---------- */
+$('forgotBtn').addEventListener('click',async()=>{
+  const email=$('siEmail').value.trim(),e=$('siErr');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)){e.textContent='Enter your email above, then tap "Forgot password?".';e.classList.add('show');return;}
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  e.textContent=error?error.message:'If an account exists for that email, a reset link is on its way. Check your inbox.';e.classList.add('show');
+});
+sb.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){recovering=true;openAuth('reset');}});
+if(recovering)setTimeout(()=>openAuth('reset'),600);
+$('rsBtn').addEventListener('click',async()=>{
+  const p=$('rsPass').value,e=$('rsErr');
+  if(p.length<8){e.textContent='Password must be at least 8 characters.';e.classList.add('show');return;}
+  const {error}=await sb.auth.updateUser({password:p});
+  if(error){e.textContent=error.message;e.classList.add('show');return;}
+  recovering=false;$('rsPass').value='';e.classList.remove('show');closeAuth();
+  try{history.replaceState(null,'',location.pathname);}catch(x){}
+  toast('✓ Password updated. You are signed in.',4000);
+});
+async function resendConfirm(btn){
+  const email=pendingEmail||$('siEmail').value.trim();
+  if(!email){toast('Enter your email first.');return;}
+  btn.disabled=true;
+  const {error}=await sb.auth.resend({type:'signup',email});
+  toast(error?'Could not resend: '+error.message:'✓ Confirmation email sent. Check inbox and spam.',4000);
+  setTimeout(()=>{btn.disabled=false;},60000);
+}
+$('resendBtn').addEventListener('click',e=>resendConfirm(e.currentTarget));
+$('wzResend').addEventListener('click',e=>resendConfirm(e.currentTarget));
+
+/* ---------- MY LISTINGS (edit / sold / delete) ---------- */
+let MY=[];
+async function rmFolder(bucket,prefix){
+  try{
+    const {data}=await sb.storage.from(bucket).list(prefix,{limit:1000});
+    if(!data||!data.length)return;
+    const files=[];
+    for(const f of data){if(f.id)files.push(prefix+'/'+f.name);else await rmFolder(bucket,prefix+'/'+f.name);}
+    if(files.length)await sb.storage.from(bucket).remove(files);
+  }catch(e){}
+}
+async function loadMyListings(){
+  if(!me)return;
+  const L=$('myList');
+  const {data,error}=await sb.from('listings').select('id,title,price_kobo,status,category,type').eq('seller_id',me.id).order('created_at',{ascending:false}).limit(100);
+  if(error){L.innerHTML='<div class="mono">Could not load your listings.</div>';return;}
+  MY=data;
+  $('statListings').textContent=data.length;
+  L.innerHTML=data.length?data.map(l=>'<div class="my-row"><div class="my-info"><b>'+esc(l.title)+'</b><span>'+(l.price_kobo?'₦'+Math.round(l.price_kobo/100).toLocaleString():(l.type==='trade'?'Trade':'Free'))+' · <i class="my-st '+esc(l.status)+'">'+esc(l.status)+'</i></span></div><div class="my-btns"><button data-ma="edit" data-id="'+esc(l.id)+'">Edit</button><button data-ma="sold" data-id="'+esc(l.id)+'">'+(l.status==='sold'?'Relist':'Mark sold')+'</button><button class="danger" data-ma="del" data-id="'+esc(l.id)+'">Delete</button></div></div>').join(''):'<div class="mono" style="padding:8px 0">You haven\'t posted anything yet.</div>';
+}
+let editId=null;
+$('myList').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-ma]');if(!b)return;
+  const l=MY.find(x=>x.id===b.dataset.id);if(!l)return;
+  if(b.dataset.ma==='edit'){editId=l.id;$('eName').value=l.title;$('ePrice').value=Math.round(l.price_kobo/100);$('editModal').classList.add('open');return;}
+  if(b.dataset.ma==='sold'){
+    const next=l.status==='sold'?'active':'sold';
+    const {error}=await sb.from('listings').update({status:next}).eq('id',l.id).eq('seller_id',me.id);
+    if(error){toast('Could not update: '+error.message,4000);return;}
+    toast(next==='sold'?'✓ Marked as sold. It is hidden from the market.':'✓ Listing is live again.');
+    loadMyListings();loadListings();return;
+  }
+  if(b.dataset.ma==='del'){
+    if(!confirm('Delete "'+l.title+'" permanently?'))return;
+    const {error}=await sb.from('listings').delete().eq('id',l.id).eq('seller_id',me.id);
+    if(error){toast('Could not delete: '+error.message,4000);return;}
+    rmFolder('listing-media',me.id+'/'+l.id);
+    toast('🗑️ Listing deleted.');loadMyListings();loadListings();
+  }
+});
+$('eSave').addEventListener('click',async()=>{
+  const name=$('eName').value.trim(),p=Math.max(0,Math.round(+$('ePrice').value||0));
+  if(!name){$('eName').classList.add('err');return;}$('eName').classList.remove('err');
+  const btn=$('eSave');if(btn.classList.contains('loading'))return;btn.classList.add('loading');
+  const {error}=await sb.from('listings').update({title:name,price_kobo:p*100}).eq('id',editId).eq('seller_id',me.id);
+  btn.classList.remove('loading');
+  if(error){toast('Could not save: '+error.message,4000);return;}
+  $('editModal').classList.remove('open');toast('✓ Listing updated.');loadMyListings();loadListings();
+});
+
+/* ---------- DELETE ACCOUNT ---------- */
+$('deleteAcctBtn').addEventListener('click',async()=>{
+  if(!me)return;
+  if(prompt('This permanently deletes your account, listings, chats and verification files. Type DELETE to confirm.')!=='DELETE')return;
+  const btn=$('deleteAcctBtn');btn.disabled=true;btn.textContent='Deleting…';
+  try{
+    await rmFolder('kyc-private',me.id);await rmFolder('listing-media',me.id);
+    const {error}=await sb.rpc('delete_my_account');
+    if(error)throw error;
+    await doLogout('Your account has been deleted.');
+  }catch(e){toast('Could not delete account: '+(e.message||'try again'),5000);}
+  finally{btn.disabled=false;btn.textContent='Delete account';}
+});
+
 /* ---------- RESTORE SESSION ---------- */
 sb.auth.getSession().then(async({data})=>{
   if(data.session){
+    let stale=false;try{const l=+localStorage.getItem('sureoLast')||0;stale=l&&Date.now()-l>=IDLE_MS;}catch(e){}
+    if(stale){try{await sb.auth.signOut();}catch(e){}document.body.classList.remove('authed','restoring');toast('⏱️ You were logged out after 20 minutes of inactivity.',4000);return;}
     try{await onSignedIn(data.session.user,true);}finally{document.body.classList.remove('restoring');if(!me)document.body.classList.remove('authed');}
   }else{
     document.body.classList.remove('authed','restoring');
