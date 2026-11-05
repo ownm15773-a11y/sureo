@@ -496,6 +496,22 @@ body{overflow-x:clip;max-width:100%}
 .consent{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--muted);line-height:1.5;margin:4px 0 6px}
 .consent input{width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--primary)}
 .consent a,.legal-link{color:var(--primary);font-weight:700;text-decoration:underline;cursor:pointer;background:none;padding:0;font-size:inherit}
+
+/* ===== ADMIN ===== */
+.adm-wrap{padding-top:24px;padding-bottom:40px;max-width:760px}
+.adm-wrap h2{font-size:24px;font-weight:800;margin-bottom:4px}
+.adm-sub{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+.adm-h{font-size:15px;font-weight:800;margin:22px 0 10px}
+.adm-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.adm-name{font-weight:800;font-size:15px}
+.adm-meta{font-size:12.5px;color:var(--muted);margin:3px 0 10px;line-height:1.5}
+.adm-row{display:flex;gap:8px;flex-wrap:wrap}
+.adm-row button{padding:9px 14px;border-radius:10px;font-size:13px;font-weight:700;border:1.5px solid var(--border);background:#fff;cursor:pointer}
+.adm-row .ok{background:var(--primary);color:#fff;border-color:var(--primary)}
+.adm-row .no{color:#b91c1c;border-color:#fecaca}
+.adm-empty{color:var(--muted);font-size:13.5px;padding:10px 0}
+.adm-id{display:block;max-width:100%;border-radius:12px;margin:0 0 10px;border:1px solid var(--border)}
+#adminBtn{display:none;margin-top:12px;padding:10px 16px;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;font-size:13.5px}
 </style>
 </head>
 <body>
@@ -721,12 +737,25 @@ body{overflow-x:clip;max-width:100%}
   </div>
 
   <!-- PROFILE VIEW -->
+  <!-- ADMIN VIEW -->
+  <div class="view" id="view-admin">
+    <section class="adm-wrap container">
+      <h2>🛡️ Admin</h2>
+      <p class="adm-sub">Only you can see this page.</p>
+      <div class="adm-h">Sellers waiting for approval</div>
+      <div id="admPending"><div class="adm-empty">Loading…</div></div>
+      <div class="adm-h">Recent users</div>
+      <div id="admUsers"><div class="adm-empty">Loading…</div></div>
+    </section>
+  </div>
+
   <div class="view" id="view-profile">
     <section class="profile-wrap container">
       <div class="profile-head">
         <div class="profile-av" id="profileAv">S</div>
         <div>
           <div class="profile-name"><span id="profileName">Student</span><span class="vbadge" id="profileBadge">✓ VERIFIED</span></div>
+          <button id="adminBtn" data-view="admin">🛡️ Open Admin</button>
           <div class="profile-meta" id="profileMeta">U2020/123456 · computer_science@uni.edu.ng</div>
         </div>
         <div class="profile-stats">
@@ -1135,6 +1164,7 @@ async function onSignedIn(user){
   if(p&&p.is_seller_verified)setSellerStatus(true,(k&&k.matric_no)||'Verified seller',(k&&k.id_type)||'ID',(k&&k.id_last4)||'0000');
   else if(k&&k.status==='pending')showPending();
   loadListings();
+  await checkAdmin();
 }
 async function doSignup(name,email,pass){
   const {data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}});
@@ -1280,7 +1310,8 @@ function setView(v){
   $('mobileNav').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
   try{
-    if(v==='boards')renderBoard();
+    if(v==='admin')loadAdmin();
+  if(v==='boards')renderBoard();
     if(v==='notifications')renderNotifs();
     if(v==='messages'){renderConvs();renderChat();}
   }catch(e){console.error(e);}
@@ -1479,6 +1510,58 @@ function openLegal(which){
   $('legalModal').classList.add('open');
 }
 document.addEventListener('click',e=>{const t=e.target.closest('[data-legal]');if(t){e.preventDefault();openLegal(t.dataset.legal);}});
+
+
+/* ===== ADMIN ===== */
+let isAdmin=false;
+async function checkAdmin(){
+  const {data}=await sb.from('admins').select('user_id').eq('user_id',me.id).maybeSingle();
+  isAdmin=!!data;
+  $('adminBtn').style.display=isAdmin?'inline-block':'none';
+}
+async function loadAdmin(){
+  if(!isAdmin)return;
+  const {data:ks,error}=await sb.from('kyc').select('user_id,id_type,id_last4,matric_no,student_id_path,created_at,profiles(full_name)').eq('status','pending').order('created_at');
+  const box=$('admPending');
+  if(error){box.innerHTML='<div class="adm-empty">Could not load: '+esc(error.message)+'</div>';}
+  else if(!ks.length){box.innerHTML='<div class="adm-empty">No one is waiting. 🎉</div>';}
+  else{
+    box.innerHTML=ks.map(k=>'<div class="adm-card" data-uid="'+k.user_id+'"><div class="adm-name">'+esc((k.profiles&&k.profiles.full_name)||'Student')+'</div>'
+     +'<div class="adm-meta">Matric: '+esc(k.matric_no||'-')+'<br>'+esc(k.id_type||'ID')+' ending '+esc(k.id_last4||'----')+'<br>Sent '+new Date(k.created_at).toLocaleString()+'</div>'
+     +'<div class="adm-idbox"></div><div class="adm-row">'
+     +(k.student_id_path?'<button data-act="view" data-path="'+esc(k.student_id_path)+'">View ID</button>':'')
+     +'<button class="ok" data-act="approve">Approve</button><button class="no" data-act="reject">Reject</button></div></div>').join('');
+  }
+  const {data:us}=await sb.from('profiles').select('id,full_name,is_seller_verified,is_banned,created_at').order('created_at',{ascending:false}).limit(30);
+  $('admUsers').innerHTML=(us&&us.length)?us.map(u=>'<div class="adm-card" data-uid="'+u.id+'"><div class="adm-name">'+esc(u.full_name)+(u.is_seller_verified?' ✓':'')+(u.is_banned?' · BANNED':'')+'</div>'
+     +'<div class="adm-row" style="margin-top:8px">'+(u.is_banned?'<button data-act="unban">Unban</button>':'<button class="no" data-act="ban">Ban</button>')+'</div></div>').join(''):'<div class="adm-empty">No users yet.</div>';
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('#view-admin [data-act]');if(!b||!isAdmin)return;
+  const card=b.closest('.adm-card'),uid=card.dataset.uid,act=b.dataset.act;
+  if(act==='view'){
+    const {data,error}=await sb.storage.from('kyc-private').createSignedUrl(b.dataset.path,300);
+    if(error){toast('Could not open ID: '+error.message);return;}
+    const holder=card.querySelector('.adm-idbox');
+    holder.innerHTML=/\.pdf$/i.test(b.dataset.path)?'<a href="'+data.signedUrl+'" target="_blank" rel="noopener">Open PDF</a>':'<img class="adm-id" src="'+data.signedUrl+'" alt="Student ID">';
+    return;
+  }
+  if((act==='ban'||act==='reject')&&!confirm(act==='ban'?'Ban this user and remove their listings?':'Reject this seller?'))return;
+  b.disabled=true;let err=null;
+  if(act==='approve'){
+    err=(await sb.from('kyc').update({status:'verified',reviewed_at:new Date().toISOString()}).eq('user_id',uid)).error
+      ||(await sb.from('profiles').update({is_seller_verified:true}).eq('id',uid)).error;
+  }else if(act==='reject'){
+    err=(await sb.from('kyc').update({status:'rejected',reviewed_at:new Date().toISOString()}).eq('user_id',uid)).error;
+  }else if(act==='ban'){
+    err=(await sb.from('profiles').update({is_banned:true,is_seller_verified:false}).eq('id',uid)).error
+      ||(await sb.from('listings').update({status:'removed'}).eq('seller_id',uid)).error;
+  }else if(act==='unban'){
+    err=(await sb.from('profiles').update({is_banned:false}).eq('id',uid)).error;
+  }
+  if(err){toast('Failed: '+err.message);b.disabled=false;return;}
+  toast('✓ Done');loadAdmin();loadListings();
+});
 
 /* ---------- RESTORE SESSION ---------- */
 sb.auth.getSession().then(({data})=>{if(data.session)onSignedIn(data.session.user);});
