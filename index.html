@@ -1141,7 +1141,7 @@ async function ensureConsent(){
   const {error}=await sb.from('consents').insert({user_id:me.id,terms_version:v.t,privacy_version:v.p});
   if(!error){try{localStorage.removeItem('sureoConsent');}catch(e){}}
 }
-async function onSignedIn(user){
+async function onSignedIn(user,restored){
   me=user;
   await ensureConsent();
   const {data:p}=await sb.from('profiles').select('full_name,is_seller_verified,is_banned,rating_avg,rating_count').eq('id',user.id).maybeSingle();
@@ -1149,7 +1149,7 @@ async function onSignedIn(user){
   const {data:k}=await sb.from('kyc').select('id_type,id_last4,matric_no,status').eq('user_id',user.id).maybeSingle();
   kycRow=k||null;
   const name=(p&&p.full_name)||(user.user_metadata&&user.user_metadata.full_name)||user.email.split('@')[0];
-  finishAuth(name,user.email);
+  finishAuth(name,user.email,restored);
   if(p&&p.is_seller_verified)setSellerStatus(true,(k&&k.matric_no)||'Verified seller',(k&&k.id_type)||'ID',(k&&k.id_last4)||'0000');
   else if(k&&k.status==='pending')showPending();
   loadListings();
@@ -1301,6 +1301,7 @@ $('waJump').addEventListener('click',()=>window.open('https://wa.me/234800000000
 
 /* ---------- VIEWS / NAV ---------- */
 function setView(v){
+  try{localStorage.setItem('sureoView',v);}catch(e){}
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   $('view-'+v).classList.add('active');
   document.querySelectorAll('#mainNav .nav-link,#bottomNav .bn-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
@@ -1502,7 +1503,7 @@ function completeSeller(matric,idType,idNum){
   toast('✓ Seller verification complete! You can now list items.');
   $('sellModal').classList.add('open');
 }
-function finishAuth(name,email){
+function finishAuth(name,email,restored){
   const first=(name.charAt(0).toUpperCase()+name.slice(1))||'Student';
   userEmail=email;
   $('avatar').textContent=first.charAt(0).toUpperCase();$('hello').textContent='Hi, '+first.split(' ')[0];
@@ -1511,9 +1512,11 @@ function finishAuth(name,email){
   $('kycEmail').textContent=email;
   setSellerStatus(false);
   closeAuth();document.body.classList.add('authed');window.scrollTo({top:0});
-  setView('market');render();updateUnread();
+  let startView='market';
+  if(restored){try{const sv=localStorage.getItem('sureoView');if(sv&&document.getElementById('view-'+sv))startView=sv;}catch(e){}}
+  setView(startView);render();updateUnread();
   document.querySelectorAll('#app .fade-item').forEach((el,i)=>{el.dataset.d=(100+i*100)+'ms';io.observe(el);});
-  toast('🎉 Welcome to Sureo, '+first.split(' ')[0]+'!',3000);
+  if(!restored)toast('🎉 Welcome to Sureo, '+first.split(' ')[0]+'!',3000);
 }
 $('uploadIdBtn')&&$('uploadIdBtn').addEventListener('click',()=>{
   if(!me){return;}
@@ -1537,7 +1540,7 @@ $('uploadIdBtn')&&$('uploadIdBtn').addEventListener('click',()=>{
   inp.click();
 });
 $('editProfile').addEventListener('click',()=>toast('✏️ Profile editing coming in v2 — prototype note.'));
-$('logoutBtn').addEventListener('click',()=>{sb.auth.signOut();me=null;kycRow=null;sellerOK=false;document.body.classList.remove('authed');setView('market');window.scrollTo({top:0});toast('👋🏾 Logged out. See you soon!');});
+$('logoutBtn').addEventListener('click',()=>{sb.auth.signOut();me=null;kycRow=null;sellerOK=false;document.body.classList.remove('authed');setView('market');try{localStorage.removeItem('sureoView');}catch(e){}window.scrollTo({top:0});toast('👋🏾 Logged out. See you soon!');});
 
 /* ---------- MISC ---------- */
 let secs=7200;setInterval(()=>{secs=secs>0?secs-1:7200;$('timer').textContent=[Math.floor(secs/3600),Math.floor(secs%3600/60),secs%60].map(x=>String(x).padStart(2,'0')).join(':');},1000);
@@ -1560,7 +1563,7 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-legal]');i
 
 
 /* ---------- RESTORE SESSION ---------- */
-sb.auth.getSession().then(({data})=>{if(data.session)onSignedIn(data.session.user);});
+sb.auth.getSession().then(({data})=>{if(data.session)onSignedIn(data.session.user,true);});
 </script>
 </body>
 </html>
