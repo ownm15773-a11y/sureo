@@ -112,6 +112,7 @@ body.authed #toast{bottom:84px}
 #app{display:none}
 body.authed #app{display:block}
 body.authed #landing{display:none}
+body.restoring #app{visibility:hidden}
 
 /* ============ LANDING ============ */
 .hero-landing{position:relative;padding:88px 0 70px;text-align:center;overflow:hidden;background:linear-gradient(180deg,#fff 0%,var(--primary-light) 100%)}
@@ -517,6 +518,15 @@ body{overflow-x:clip;max-width:100%}
 </style>
 </head>
 <body>
+<script>
+/* If a saved login exists, skip the landing page flash on refresh */
+(function(){try{
+  var has=false;
+  for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^sb-.*-auth-token$/.test(k)){has=true;break;}}
+  if(has){document.body.classList.add('authed','restoring');
+    setTimeout(function(){document.body.classList.remove('restoring');},6000);}
+}catch(e){}})();
+</script>
 
 <header>
   <div class="container header-inner">
@@ -1563,7 +1573,13 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-legal]');i
 
 
 /* ---------- RESTORE SESSION ---------- */
-sb.auth.getSession().then(({data})=>{if(data.session)onSignedIn(data.session.user,true);});
+sb.auth.getSession().then(async({data})=>{
+  if(data.session){
+    try{await onSignedIn(data.session.user,true);}finally{document.body.classList.remove('restoring');if(!me)document.body.classList.remove('authed');}
+  }else{
+    document.body.classList.remove('authed','restoring');
+  }
+}).catch(()=>{document.body.classList.remove('authed','restoring');});
 </script>
 </body>
 </html>
