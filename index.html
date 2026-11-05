@@ -748,9 +748,9 @@ body{overflow-x:clip;max-width:100%}
           <div class="profile-meta" id="profileMeta">U2020/123456 · computer_science@uni.edu.ng</div>
         </div>
         <div class="profile-stats">
-          <div class="pstat"><b>★ 4.9</b><span>Your rating</span></div>
+          <div class="pstat"><b id="statRating">–</b><span>Your rating</span></div>
           <div class="pstat"><b id="statListings">0</b><span>Listings</span></div>
-          <div class="pstat"><b>12</b><span>Deals closed</span></div>
+          <div class="pstat"><b id="statReviews">0</b><span>Reviews</span></div>
         </div>
       </div>
       <div class="kyc-card">
@@ -1144,7 +1144,7 @@ async function ensureConsent(){
 async function onSignedIn(user){
   me=user;
   await ensureConsent();
-  const {data:p}=await sb.from('profiles').select('full_name,is_seller_verified,is_banned').eq('id',user.id).maybeSingle();
+  const {data:p}=await sb.from('profiles').select('full_name,is_seller_verified,is_banned,rating_avg,rating_count').eq('id',user.id).maybeSingle();
   if(p&&p.is_banned){await sb.auth.signOut();me=null;toast('This account has been suspended. Contact support@sureo.ng');return;}
   const {data:k}=await sb.from('kyc').select('id_type,id_last4,matric_no,status').eq('user_id',user.id).maybeSingle();
   kycRow=k||null;
@@ -1153,6 +1153,16 @@ async function onSignedIn(user){
   if(p&&p.is_seller_verified)setSellerStatus(true,(k&&k.matric_no)||'Verified seller',(k&&k.id_type)||'ID',(k&&k.id_last4)||'0000');
   else if(k&&k.status==='pending')showPending();
   loadListings();
+  loadProfileStats(user.id,p);
+}
+async function loadProfileStats(uid,p){
+  try{
+    const rc=(p&&p.rating_count)||0;
+    $('statRating').textContent=rc&&p.rating_avg?'★ '+Number(p.rating_avg).toFixed(1):'–';
+    $('statReviews').textContent=rc;
+    const {count}=await sb.from('listings').select('id',{count:'exact',head:true}).eq('seller_id',uid);
+    $('statListings').textContent=count||0;
+  }catch(e){}
 }
 async function doSignup(name,email,pass){
   const {data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}});
@@ -1346,6 +1356,36 @@ $('mediaFile').addEventListener('change',e=>{
   $('mediaBox').textContent=n?('✓ '+n+' media file'+(n>1?'s':'')+' attached'):'📷 Click to add photos or video (up to 5)';
   $('mediaBox').classList.toggle('done',n>0);
 });
+/* ---- category-aware sell form ---- */
+const SELL_CFG={
+  food:{cond:false,code:false,title:'e.g. Jollof Rice & Chicken',price:'1500'},
+  services:{cond:false,code:false,title:'e.g. Laptop repair / Hair braiding',price:'3000'},
+  books:{cond:true,code:true,title:'e.g. Calculus Made Easy (MTH211)',price:'2500'},
+  gadgets:{cond:true,code:false,title:'e.g. HP Laptop 15"',price:'150000'},
+  fashion:{cond:true,code:false,title:'e.g. Nike Air Force 1, size 43',price:'12000'}
+};
+function applySellCategory(){
+  const c=SELL_CFG[$('sCat').value]||SELL_CFG.gadgets;
+  const cond=$('sCond'),code=$('sCode');
+  cond.closest('.field').style.display=c.cond?'':'none';
+  code.closest('.field').style.display=c.code?'':'none';
+  if(c.cond){
+    if(cond.dataset.mode!=='item'){cond.innerHTML='<option>Brand New</option><option selected>Like New</option><option>Fairly Used</option>';cond.dataset.mode='item';}
+  }else{
+    cond.innerHTML='<option selected>N/A (Food / Service)</option>';cond.dataset.mode='na';
+    code.value='';
+  }
+  $('sName').placeholder=c.title;$('sPrice').placeholder=c.price;
+}
+$('sCat').addEventListener('change',applySellCategory);
+applySellCategory();
+function applySellType(){
+  const free=$('sType').value==='free';
+  $('sPrice').closest('.field').style.display=free?'none':'';
+  if(free)$('sPrice').value='';
+}
+$('sType').addEventListener('change',applySellType);
+applySellType();
 $('sSubmit').addEventListener('click',async()=>{
   const n=$('sName');if(!n.value.trim()){n.classList.add('err');return;}n.classList.remove('err');
   const ty=$('sType').value,cat=$('sCat').value,p=Math.max(0,Math.round(+$('sPrice').value||0));
@@ -1475,7 +1515,27 @@ function finishAuth(name,email){
   document.querySelectorAll('#app .fade-item').forEach((el,i)=>{el.dataset.d=(100+i*100)+'ms';io.observe(el);});
   toast('🎉 Welcome to Sureo, '+first.split(' ')[0]+'!',3000);
 }
-$('uploadIdBtn')&&$('uploadIdBtn').addEventListener('click',()=>toast('📎 ID upload opens in the full app — prototype note.'));
+$('uploadIdBtn')&&$('uploadIdBtn').addEventListener('click',()=>{
+  if(!me){return;}
+  if(!kycRow){toast('Complete seller verification first, then your Student ID can be added.',3500);startSellerVerify();return;}
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/jpeg,image/png,application/pdf';
+  inp.addEventListener('change',async()=>{
+    const f=inp.files[0];if(!f)return;
+    const ext=({'image/jpeg':'jpg','image/png':'png','application/pdf':'pdf'})[f.type];
+    if(!ext){toast('Student ID must be a JPG, PNG or PDF.');return;}
+    if(f.size>5*1024*1024){toast('Student ID file must be under 5 MB.');return;}
+    const b=$('uploadIdBtn');b.disabled=true;b.textContent='Uploading…';
+    const path=me.id+'/student-id-'+Date.now()+'.'+ext;
+    const up=await sb.storage.from('kyc-private').upload(path,f,{contentType:f.type});
+    if(up.error){b.disabled=false;b.textContent='Upload ID';toast('Upload failed: '+up.error.message,4000);return;}
+    const {error}=await sb.from('kyc').update({student_id_path:path}).eq('user_id',me.id);
+    if(error){b.disabled=false;b.textContent='Upload ID';toast('Could not save: '+error.message,4000);return;}
+    const r=$('kycIdStatus');if(r){r.className='kyc-status ok';r.textContent='✓ UPLOADED';}
+    $('kycIdMeta').textContent='Student ID on file · extra trust layer active';
+    toast('✓ Student ID uploaded.');
+  });
+  inp.click();
+});
 $('editProfile').addEventListener('click',()=>toast('✏️ Profile editing coming in v2 — prototype note.'));
 $('logoutBtn').addEventListener('click',()=>{sb.auth.signOut();me=null;kycRow=null;sellerOK=false;document.body.classList.remove('authed');setView('market');window.scrollTo({top:0});toast('👋🏾 Logged out. See you soon!');});
 
