@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sureo | Verified Campus Marketplace</title>
 <meta name="description" content="Sureo is the campus marketplace for food, textbooks, gadgets, housing and gigs from verified students and vendors.">
 <meta name="theme-color" content="#0d4a3a">
@@ -21,7 +21,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
 body.locked{overflow:hidden}
 a{text-decoration:none;color:inherit}
 button{cursor:pointer;border:none;background:none;font-family:inherit}
@@ -62,7 +62,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.94);backdr
 
 
 /* ============ BOTTOM NAV ============ */
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:150;display:none;background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);border-top:1px solid rgba(17,24,39,.08);padding:0 12px env(safe-area-inset-bottom)}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:150;transform:translateZ(0);-webkit-transform:translateZ(0);display:none;background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);border-top:1px solid rgba(17,24,39,.08);padding:0 12px env(safe-area-inset-bottom)}
 body.authed .bottom-nav{display:block!important}
 body.authed{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
 .bn-inner{position:relative;display:grid;grid-template-columns:repeat(4,1fr);max-width:520px;margin:0 auto;height:64px}
@@ -71,7 +71,7 @@ body.authed{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
 .bottom-nav[data-active="0"] .bn-ind{opacity:1;transform:translateX(0)}
 .bottom-nav[data-active="1"] .bn-ind{opacity:1;transform:translateX(100%)}
 .bottom-nav[data-active="2"] .bn-ind{opacity:1;transform:translateX(200%)}
-.bn-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#9ca3af;font-size:11px;font-weight:600;letter-spacing:.1px;-webkit-tap-highlight-color:transparent;transition:color .3s var(--ease)}
+.bn-item{cursor:pointer;touch-action:manipulation;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#9ca3af;font-size:11px;font-weight:600;letter-spacing:.1px;-webkit-tap-highlight-color:transparent;transition:color .3s var(--ease)}
 .bn-item:hover{color:var(--text)}
 .bn-item.active{color:var(--primary)}
 .bn-item svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .35s cubic-bezier(.22,1,.36,1),fill .3s}
@@ -440,7 +440,7 @@ footer{background:var(--primary);color:#fff;padding:50px 0 34px;text-align:cente
   .hero-stats{gap:28px}
 }
 /* ===== MOTION FIXES ===== */
-html,body{overflow-x:clip;max-width:100%}
+body{overflow-x:clip;max-width:100%}
 /* centering fixes */
 .wiz-labels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .wiz-labels span{text-align:center}
@@ -1279,9 +1279,11 @@ function setView(v){
   $('bottomNav').dataset.active=['market','messages','notifications','profile'].indexOf(v);
   $('mobileNav').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
-  if(v==='boards')renderBoard();
-  if(v==='notifications')renderNotifs();
-  if(v==='messages'){renderConvs();renderChat();}
+  try{
+    if(v==='boards')renderBoard();
+    if(v==='notifications')renderNotifs();
+    if(v==='messages'){renderConvs();renderChat();}
+  }catch(e){console.error(e);}
   if(v==='safety')$('hubGrid').querySelectorAll('.hub').forEach(h=>io.observe(h));
 }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{if(document.body.classList.contains('authed'))setView(b.dataset.view);}));
