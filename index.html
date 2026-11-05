@@ -162,6 +162,7 @@ nav .plus::after{content:'Sell an item';font-size:14px;font-weight:700}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.0/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -205,6 +206,11 @@ const ZONES=[['Faculty of Science','Science','🔬'],['Student Union Building','
 const NOTES=[['⚡ Flash deal is live','Shawarma at ₦1,000 from Tasty Bites until 2 PM.','10m ago',true],['💬 New message','Dave replied about the HP laptop.','1d ago',false]];
 const waLink=(it,msg)=>{const d=(it.phone||'').replace(/\D/g,'');const n=d.startsWith('0')?'234'+d.slice(1):d;return 'https://wa.me/'+n+'?text='+encodeURIComponent(msg)};
 
+const SB=supabase.createClient('https://gkxseebwenpbljmxplps.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreHNlZWJ3ZW5wYmxqbXhwbHBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4ODc0NDgsImV4cCI6MjEwOTQ2MzQ0OH0.X5b3DXDu1R4Fu4-PoBf1LavdqOtbTbuzJfcr-Wve_pk');
+const SEL='*, profiles(name,verified)';
+const imgUrl=p=>p?SB.storage.from('listings').getPublicUrl(p).data.publicUrl:'';
+const fromRow=(r,uid)=>({id:'db'+r.id,dbId:r.id,sellerId:r.seller_id,ts:Date.parse(r.created_at)||0,section:r.section,title:r.title,vendor:r.seller_id===uid?'You':((r.profiles&&r.profiles.name)||'Student'),price:r.price,verified:!!(r.profiles&&r.profiles.verified==='verified'),category:r.category,emoji:r.emoji||'🛍️',img:imgUrl(r.img_path),imgPath:r.img_path,rating:0,reviews:0,location:r.location||'On campus',desc:r.description||'',time:r.time_note||'',phone:r.phone,sold:r.sold});
+const upImg=async(dataUrl,uid)=>{const b=await (await fetch(dataUrl)).blob();const p=uid+'/'+Date.now()+'.jpg';const {error}=await SB.storage.from('listings').upload(p,b,{contentType:'image/jpeg'});if(error)throw error;return p};
 const W=[['hostel a',3],['hostel b',5],['hostel c',6],['hostel d',7],['nddc',5],['block 5',9],['student union',8],['library',9],['gate 3',10],['cafeteria',11],['medical',12],['arts',12],['science',14],['engineering',15],['lodge',20],['comes to',5]];
 const mins=it=>{const l=it.location.toLowerCase(),m=W.find(([k])=>l.includes(k));return m?m[1]:10};
 const STEPS=['Sent','Preparing','On the way','Delivered'];
@@ -214,6 +220,25 @@ function Landing({onEnter}){
     <section className="lhero"><h1>Buy, sell and eat on campus, safely.</h1><p>Food from campus vendors, books and gadgets from students you can verify, all in one place. Chat on WhatsApp, meet in public and pay on delivery.</p><button className="lbtn big" onClick={onEnter}>Browse listings</button></section>
     <section className="lgrid">{[['🍛','Campus Eats','Order from bukaterias and food vendors near your hostel.'],['🛍️','Student Market','Books, gadgets, fashion and services from fellow students.'],['✓','Verified sellers','Sellers with a ✓ have shown a student ID.'],['💬','WhatsApp chat','Message sellers directly. There’s no new app to learn.'],['🔎','Wanted board','Post what you need and let sellers come to you.'],['🛡️','Built for safety','Reports, blocking and a safety guide for every deal.']].map(([e,t,d])=><div key={t} className="lc"><span>{e}</span><b>{t}</b><div className="mute">{d}</div></div>)}</section>
     <div className="lf">Sureo is a prototype. Listings you see are demo data.</div></div>}
+
+function Auth(){
+  const [mode,setMode]=useState('in'),[f,setF]=useState({name:'',email:'',pw:''}),[busy,setBusy]=useState(false),[msg,setMsg]=useState('');
+  const set=k=>e=>setF(x=>({...x,[k]:e.target.value}));
+  const go=async e=>{e.preventDefault();setBusy(true);setMsg('');
+    const r=mode==='up'?await SB.auth.signUp({email:f.email.trim(),password:f.pw,options:{data:{name:f.name.trim()}}}):await SB.auth.signInWithPassword({email:f.email.trim(),password:f.pw});
+    setBusy(false);
+    if(r.error)return setMsg(r.error.message);
+    if(mode==='up'&&!r.data.session)setMsg('Account created. Check your email to confirm it, then sign in.')};
+  return <div className="land"><div className="lh"><span className="logo">Su<i>✓</i>reo</span></div>
+    <form onSubmit={go} className="box" style={{maxWidth:380,width:'calc(100% - 32px)',margin:'24px auto',padding:20}}>
+      <h3 style={{fontSize:18}}>{mode==='up'?'Create your account':'Welcome back'}</h3>
+      {mode==='up'&&<><label>Full name</label><input className="in" required value={f.name} onChange={set('name')} autoComplete="name"/></>}
+      <label>Email</label><input className="in" type="email" required value={f.email} onChange={set('email')} autoComplete="email"/>
+      <label>Password</label><input className="in" type="password" required minLength={6} value={f.pw} onChange={set('pw')} autoComplete={mode==='up'?'new-password':'current-password'}/>
+      {msg&&<div className="note w">{msg}</div>}
+      <button className="btn" style={{marginTop:16}} disabled={busy}>{busy?'Please wait…':mode==='up'?'Sign up':'Sign in'}</button>
+      <button type="button" className="lnk" onClick={()=>{setMode(mode==='up'?'in':'up');setMsg('')}}>{mode==='up'?'Already have an account? Sign in':'New here? Create an account'}</button>
+    </form></div>}
 
 function Sheet({onClose,children}){
   const [dy,setDy]=useState(0),[drag,setDrag]=useState(false),ref=React.useRef(null),t0=React.useRef(null);
@@ -248,21 +273,25 @@ function App(){
   const [fOpen,setFOpen]=useState(false),[flt,setFlt]=useState({min:'',max:'',walk:0});
   const [landing,setLanding]=useState(()=>{try{return !localStorage.getItem('sureo-seen')&&!/^#item-/.test(location.hash)}catch(e){return !/^#item-/.test(location.hash)}});
   const enter=()=>{setLanding(false);try{localStorage.setItem('sureo-seen','1')}catch(e){}};
-  const [blocked,setBlocked]=useState([]),[safeOpen,setSafeOpen]=useState(false),[blkOpen,setBlkOpen]=useState(false);
+  const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),hashDone=React.useRef(false),[blocked,setBlocked]=useState([]),[safeOpen,setSafeOpen]=useState(false),[blkOpen,setBlkOpen]=useState(false);
   const [shop,setShop]=useState('Tasty Bites'),[closed,setClosed]=useState({});
   const [edit,setEdit]=useState(null),[wants,setWants]=useState(WANTS),[wOpen,setWOpen]=useState(false),[wf,setWf]=useState({title:'',budget:'',note:'',phone:''});
   const all=[...eats,...market];
 
   useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),2800);return()=>clearTimeout(t)},[toast]);
   useEffect(()=>{const t=setInterval(()=>setSecs(s=>Math.max(0,s-1)),1000);return()=>clearInterval(t)},[]);
-  useEffect(()=>{const m=location.hash.match(/^#item-(\d+)$/);if(m){const it=all.find(i=>i.id==m[1]);it&&setActive(it)}},[]);
+  useEffect(()=>{SB.auth.getSession().then(({data})=>{setUser(data.session?data.session.user:null);setReady(true)});const {data:l}=SB.auth.onAuthStateChange((_e,s)=>setUser(s?s.user:null));return()=>l.subscription.unsubscribe()},[]);
+  const load=async()=>{const uid=user.id;const [a,p,w]=await Promise.all([SB.from('listings').select(SEL).order('created_at',{ascending:false}),SB.from('profiles').select('*').eq('id',uid).single(),SB.from('wishlist').select('listing_id')]);if(a.error)return setToast('Could not load listings. Check your connection.');const rows=a.data.map(r=>fromRow(r,uid));setEats([...rows.filter(r=>r.section==='eats'),...EATS]);setMarket([...rows.filter(r=>r.section==='market'),...MARKET]);if(p.data){setProfile(p.data);setVerif(p.data.verified)}if(w.data)setWish(w.data.map(x=>'db'+x.listing_id))};
+  useEffect(()=>{if(user)load();else{setProfile(null);setEats(EATS);setMarket(MARKET);setWish([])}},[user&&user.id]);
+  useEffect(()=>{if(hashDone.current)return;const m=location.hash.match(/^#item-(\w+)$/);if(!m){hashDone.current=true;return}const it=all.find(i=>String(i.id)===m[1]);if(it){setActive(it);hashDone.current=true}},[eats,market]);
 
-  const toggleWish=id=>{setWish(w=>w.includes(id)?w.filter(x=>x!==id):[...w,id]);setToast(wish.includes(id)?'Removed from saved items':'Saved to your wishlist')};
+  const toggleWish=async id=>{const on=wish.includes(id);setWish(w=>on?w.filter(x=>x!==id):[...w,id]);setToast(on?'Removed from saved items':'Saved to your wishlist');const it=all.find(i=>i.id===id);if(it&&it.dbId){const r=on?await SB.from('wishlist').delete().match({user_id:user.id,listing_id:it.dbId}):await SB.from('wishlist').insert({user_id:user.id,listing_id:it.dbId});if(r.error)setToast('Could not save. Try again.')}};
   const openChat=it=>{setChat(it);setMsg('Hi, I saw “'+it.title+'” on Sureo. Is it still available?');setChats(c=>c.includes(it.id)?c:[...c,it.id])};
   const pickSection=s=>{setSection(s);setCat('All')};
   const FEE=200,fc=(flt.min||flt.max?1:0)+(flt.walk?1:0),isEats=active&&eats.some(i=>i.id===active.id);
   const patch=(id,fn)=>{setEats(l=>l.map(i=>i.id===id?fn(i):i));setMarket(l=>l.map(i=>i.id===id?fn(i):i));setActive(a=>a&&a.id===id?fn(a):a)};
-  const toggleSold=it=>{patch(it.id,i=>({...i,sold:!i.sold}));setToast(it.sold?'Marked as available':'Marked as sold')};
+  const toggleSold=async it=>{if(it.dbId){const {error}=await SB.from('listings').update({sold:!it.sold}).eq('id',it.dbId);if(error)return setToast('Could not update. Try again.')}patch(it.id,i=>({...i,sold:!i.sold}));setToast(it.sold?'Marked as available':'Marked as sold')};
+  const delListing=async it=>{if(!window.confirm('Delete “'+it.title+'”?'))return;const {error}=await SB.from('listings').delete().eq('id',it.dbId);if(error)return setToast('Could not delete. Try again.');setEats(l=>l.filter(i=>i.id!==it.id));setMarket(l=>l.filter(i=>i.id!==it.id));setActive(a=>a&&a.id===it.id?null:a);setToast('Listing deleted')};
   const approve=()=>{setVerif('verified');const f=l=>l.map(i=>i.vendor==='You'?{...i,verified:true}:i);setEats(f);setMarket(f);setToast('Verified. Your listings now show the ✓ badge.')};
   const submitVerify=e=>{e.preventDefault();if(!idImg)return setToast('Add a photo of your student ID');setVerif('pending');setVOpen(false);setToast('ID submitted. Review usually takes a day.')};
   const addCart=it=>{setCart(c=>{const v=Object.keys(c)[0],cur=v&&all.find(i=>i.id==v),base=cur&&cur.vendor!==it.vendor?{}:c;return {...base,[it.id]:(base[it.id]||0)+1}});setToast('Added to your order')};
@@ -276,29 +305,36 @@ function App(){
   const advance=(o,k)=>{setOrders(l=>l.map(x=>x.id===o.id?{...x,step:k}:x));if(k===3){setDone(d=>[...d,...o.items.map(x=>x.id)]);setToast('Delivered. The buyer can now rate this order.')}};
   const decline=o=>{setOrders(l=>l.map(x=>x.id===o.id?{...x,declined:true}:x));setToast('Order declined')};
   const ed=k=>e=>setEdit(f=>({...f,[k]:e.target.value})),wfs=k=>e=>setWf(f=>({...f,[k]:e.target.value}));
-  const saveEdit=e=>{e.preventDefault();patch(edit.id,i=>({...i,title:edit.title.trim(),price:Number(edit.price),location:edit.location,desc:edit.desc,phone:edit.phone,img:edit.img}));setEdit(null);setToast('Listing updated')};
+  const saveEdit=async e=>{e.preventDefault();if((edit.phone||'').replace(/\D/g,'').length<10)return setToast('Enter a valid WhatsApp number');setBusy(true);try{let img=edit.img,imgPath=edit.imgPath;if(img&&img.startsWith('data:')){imgPath=await upImg(img,user.id);img=imgUrl(imgPath)}const {error}=await SB.from('listings').update({title:edit.title.trim(),price:Number(edit.price),location:edit.location,description:edit.desc,phone:edit.phone,img_path:imgPath||null}).eq('id',edit.dbId);if(error)throw error;patch(edit.id,i=>({...i,title:edit.title.trim(),price:Number(edit.price),location:edit.location,desc:edit.desc,phone:edit.phone,img,imgPath}));setEdit(null);setToast('Listing updated')}catch(x){setToast('Could not save changes. Try again.')}setBusy(false)};
   const postWant=e=>{e.preventDefault();if(wf.phone.replace(/\D/g,'').length<10)return setToast('Enter a valid WhatsApp number');setWants(l=>[{id:Date.now(),title:wf.title.trim(),budget:Number(wf.budget),by:'You',note:wf.note.trim(),phone:wf.phone},...l]);setWf({title:'',budget:'',note:'',phone:''});setWOpen(false);setToast('Request posted. Sellers can message you on WhatsApp.')};
   const markDeal=it=>{setDone(d=>d.includes(it.id)?d:[...d,it.id]);askRate(it)};
   const submitRate=()=>{if(!stars)return setToast('Pick a star rating');const id=rate.id;patch(id,i=>({...i,rating:Math.round((i.rating*i.reviews+stars)/(i.reviews+1)*10)/10,reviews:i.reviews+1}));setRated(r=>[...r,id]);setToast('Thanks for rating '+rate.vendor);setRate(null);setStars(0)};
-  const sendReport=why=>{setToast('Report sent: '+why+'. We’ll review this listing.');setReport(null)};
+  const sendReport=async why=>{const it=report;setReport(null);if(it&&it.dbId){const {error}=await SB.from('reports').insert({reporter_id:user.id,listing_id:it.dbId,reason:why});if(error)return setToast('Could not send report. Try again.')}setToast('Report sent: '+why+'. We’ll review this listing.')};
 
   const list=useMemo(()=>{
     const s=q.trim().toLowerCase();
     const base=(s?all:(section==='eats'?eats:market)).filter(i=>!blocked.includes(i.vendor));
     const r=base.filter(i=>s?[i.title,i.vendor,i.category,i.location].join(' ').toLowerCase().includes(s):(cat==='All'||i.category===cat));
-    return r.filter(i=>i.price>=(Number(flt.min)||0)&&i.price<=(Number(flt.max)||Infinity)&&(!flt.walk||mins(i)<=flt.walk)).sort((a,b)=>(!!a.sold-!!b.sold)||(sort==='low'?a.price-b.price:sort==='high'?b.price-a.price:sort==='new'?b.id-a.id:sort==='near'?mins(a)-mins(b):b.reviews-a.reviews));
+    return r.filter(i=>i.price>=(Number(flt.min)||0)&&i.price<=(Number(flt.max)||Infinity)&&(!flt.walk||mins(i)<=flt.walk)).sort((a,b)=>(!!a.sold-!!b.sold)||(sort==='low'?a.price-b.price:sort==='high'?b.price-a.price:sort==='new'?((b.ts||0)-(a.ts||0))||(Number(b.id)-Number(a.id))||0:sort==='near'?mins(a)-mins(b):b.reviews-a.reviews));
   },[q,section,cat,sort,eats,market,flt,blocked]);
 
   const setF=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
   const pickPhoto=(file,to)=>{if(!file)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,600/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);(to||setForm)(f=>({...f,img:c.toDataURL('image/jpeg',.8)}))};im.src=r.result};r.readAsDataURL(file)};
   const closeSell=()=>{setSell(false);setStep(1)};
-  const publish=e=>{
+  const publish=async e=>{
     e.preventDefault();
     if(form.phone.replace(/\D/g,'').length<10)return setToast('Enter a valid WhatsApp number');
-    const it={id:Date.now(),title:form.title.trim(),vendor:'You',price:Number(form.price),verified:verif==='verified',category:form.category,emoji:form.emoji,img:form.img,rating:0,reviews:0,location:form.location.trim()||'On campus',desc:form.desc.trim()||'New listing on Sureo.',time:'Just listed',phone:form.phone};
-    form.section==='eats'?setEats(l=>[it,...l]):setMarket(l=>[it,...l]);
-    setSection(form.section);setCat('All');setQ('');setSort('new');setTab('home');closeSell();setForm(blank);
-    setToast(verif==='verified'?'Listed with your ✓ badge.':'Listed. Verify your student ID to earn the ✓ badge.');
+    setBusy(true);
+    try{
+      const img_path=form.img?await upImg(form.img,user.id):null;
+      const {data,error}=await SB.from('listings').insert({seller_id:user.id,section:form.section,title:form.title.trim(),category:form.category,price:Number(form.price),emoji:form.emoji,img_path,location:form.location.trim()||'On campus',description:form.desc.trim()||'New listing on Sureo.',time_note:'Just listed',phone:form.phone}).select(SEL).single();
+      if(error)throw error;
+      const it=fromRow(data,user.id);
+      form.section==='eats'?setEats(l=>[it,...l]):setMarket(l=>[it,...l]);
+      setSection(form.section);setCat('All');setQ('');setSort('new');setTab('home');closeSell();setForm(blank);
+      setToast(verif==='verified'?'Listed with your ✓ badge.':'Listed. Verify your student ID to earn the ✓ badge.');
+    }catch(x){setToast('Could not publish. Check your connection and try again.')}
+    setBusy(false);
   };
 
   const hh=String(Math.floor(secs/3600)).padStart(2,'0'),mm=String(Math.floor(secs%3600/60)).padStart(2,'0'),ss=String(secs%60).padStart(2,'0');
@@ -306,7 +342,10 @@ function App(){
   const soon=l=>setToast(l+' is coming soon');
   const Nav=({id,icon,label})=><button className={tab===id?'on':''} onClick={()=>setTab(id)}><span>{icon}</span>{label}</button>;
 
-  return landing?<Landing onEnter={enter}/>:<div className="app">
+  if(landing)return <Landing onEnter={enter}/>;
+  if(!ready)return <div className="land c" style={{paddingTop:80}}><span className="mute">Loading…</span></div>;
+  if(!user)return <Auth/>;
+  return <div className="app">
     <header>
       <div className="top">
         <button className="logo" onClick={()=>setTab('home')} aria-label="Sureo home">Su<i>✓</i>reo</button>
@@ -350,13 +389,13 @@ function App(){
     <div className="box"><h3>Menu</h3>{eats.filter(i=>i.vendor===shop).map(it=><div key={it.id} className="row" style={{cursor:'default'}}><span style={{fontSize:26}}>{it.emoji}</span><span className="r"><b>{it.title}</b><span className="mute">{fmt(it.price)}{it.sold?' · Sold out':''}</span></span><button className="mini" onClick={()=>toggleSold(it)}>{it.sold?'Back in stock':'Sold out'}</button></div>)}</div></div>}
 
     {tab==='profile'&&<div className="pad">
-      <div className="hero c"><div style={{fontSize:40}}>👤</div><h2>Chinedu Okafor</h2><span style={{fontSize:12,opacity:.9}}>Computer Science, 300 Level, Hostel A (demo account)</span></div>
+      <div className="hero c"><div style={{fontSize:40}}>👤</div><h2>{(profile&&profile.name)||'Student'}</h2><span style={{fontSize:12,opacity:.9}}>{user&&user.email}</span></div>
       <div className="stats"><div className="stat"><b>{mine.length}</b><small>My listings</small></div><div className="stat"><b>{wish.length}</b><small>Saved</small></div><div className="stat"><b>{chats.length}</b><small>Chats</small></div></div>
       <div className="box"><h3>Saved items</h3>
         {all.filter(i=>wish.includes(i.id)).map(it=><button key={it.id} className="row" onClick={()=>setActive(it)}><span style={{fontSize:26}}>{it.emoji}</span><span className="r"><b>{it.title}</b><span className="mute">{fmt(it.price)}</span></span></button>)}
         {!wish.length&&<p className="mute">Tap ♡ on a listing to save it here.</p>}
       </div>
-      <div className="box"><button className="row" onClick={()=>setVOpen(true)}><span className="r"><b>Student ID verification</b><span className="mute">{verif==='verified'?'Verified ✓':verif==='pending'?'Pending review':'Not verified'}</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setTab('vendor')}><span className="r"><b>Vendor dashboard</b><span className="mute">Orders, menu and open hours</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setMineOpen(true)}><span className="r"><b>My listings</b><span className="mute">{mine.length} listed</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setSafeOpen(true)}><span className="r"><b>Safety guide</b><span className="mute">Tips to avoid scams</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setBlkOpen(true)}><span className="r"><b>Blocked sellers</b><span className="mute">{blocked.length} blocked</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setLanding(true)}><span className="r"><b>About Sureo</b><span className="mute">What it is and how it works</span></span><span className="mute">›</span></button>{['Notification settings'].map(l=><button key={l} className="row" onClick={()=>soon(l)}><span className="r"><b>{l}</b></span><span className="mute">›</span></button>)}</div>
+      <div className="box"><button className="row" onClick={()=>setVOpen(true)}><span className="r"><b>Student ID verification</b><span className="mute">{verif==='verified'?'Verified ✓':verif==='pending'?'Pending review':'Not verified'}</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setTab('vendor')}><span className="r"><b>Vendor dashboard</b><span className="mute">Orders, menu and open hours</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setMineOpen(true)}><span className="r"><b>My listings</b><span className="mute">{mine.length} listed</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setSafeOpen(true)}><span className="r"><b>Safety guide</b><span className="mute">Tips to avoid scams</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setBlkOpen(true)}><span className="r"><b>Blocked sellers</b><span className="mute">{blocked.length} blocked</span></span><span className="mute">›</span></button><button className="row" onClick={()=>setLanding(true)}><span className="r"><b>About Sureo</b><span className="mute">What it is and how it works</span></span><span className="mute">›</span></button><button className="row" onClick={()=>SB.auth.signOut()}><span className="r"><b>Sign out</b></span><span className="mute">›</span></button>{['Notification settings'].map(l=><button key={l} className="row" onClick={()=>soon(l)}><span className="r"><b>{l}</b></span><span className="mute">›</span></button>)}</div>
     </div>}
     </main>
 
@@ -403,7 +442,7 @@ function App(){
         <label>Pickup spot or hostel</label><input className="in" value={form.location} onChange={setF('location')} placeholder="Hostel A, Room 12"/>
         <label>Description</label><textarea className="in" rows={3} value={form.desc} onChange={setF('desc')} placeholder="Condition, delivery terms or pickup times"/>
         <div className="note">New listings show a “not verified” mark until your student ID is checked.</div>
-        <div className="two"><button type="button" className="btn l" style={{width:'33%'}} onClick={()=>setStep(1)}>Back</button><button type="submit" className="btn">Publish listing</button></div>
+        <div className="two"><button type="button" className="btn l" style={{width:'33%'}} onClick={()=>setStep(1)}>Back</button><button type="submit" className="btn" disabled={busy}>{busy?'Publishing…':'Publish listing'}</button></div>
       </>}
       </form>
     </Sheet>}
@@ -412,9 +451,9 @@ function App(){
     {cartOpen&&<Sheet onClose={()=>setCartOpen(false)}><h3>Your order{cartItems[0]?' from '+cartItems[0].it.vendor:''}</h3>{cartItems.map(({it,n})=><div key={it.id} className="row" style={{cursor:'default'}}><span style={{fontSize:26}}>{it.emoji}</span><span className="r"><b>{it.title}</b><span className="mute">{fmt(it.price*n)}</span></span><span className="qty"><button onClick={()=>setQty(it.id,-1)} aria-label="Remove one">−</button>{n}<button onClick={()=>setQty(it.id,1)} aria-label="Add one">+</button></span></div>)}{!count&&<p className="mute">Your order is empty.</p>}{count>0&&<><label>Deliver to</label><input className="in" value={dropoff} onChange={e=>setDropoff(e.target.value)}/><div className="note">Items {fmt(sub)} · Delivery {fmt(FEE)}<br/><b>Total {fmt(sub+FEE)}</b>. Pay the vendor on delivery.</div><button className="btn" style={{marginTop:14}} onClick={placeOrder}>Place order</button></>}</Sheet>}
     {rate&&<Sheet onClose={()=>setRate(null)}><h3>Rate {rate.vendor}</h3><div className="mute">{rate.title}</div><div className="stars">{[1,2,3,4,5].map(n=><button key={n} className={stars>=n?'on':''} aria-label={n+' stars'} onClick={()=>setStars(n)}>★</button>)}</div><button className="btn" onClick={submitRate}>Submit rating</button><div className="mute c" style={{marginTop:10}}>You can rate a seller once, after a completed deal.</div></Sheet>}
     {report&&<Sheet onClose={()=>setReport(null)}><h3>Report this listing</h3><div className="mute">{report.title}</div>{['Looks like a scam','Item not as described','Wrong price','Abusive seller','Prohibited item'].map(r=><button key={r} className="row" onClick={()=>sendReport(r)}><span className="r"><b>{r}</b></span><span className="mute">›</span></button>)}</Sheet>}
-    {mineOpen&&<Sheet onClose={()=>setMineOpen(false)}><h3>My listings</h3>{mine.map(it=><div key={it.id} className="row" style={{cursor:'default'}}><span style={{fontSize:26}}>{it.img?<img src={it.img} alt="" style={{width:36,height:36,borderRadius:8,objectFit:'cover'}}/>:it.emoji}</span><span className="r"><b>{it.title}</b><span className="mute">{fmt(it.price)}{it.sold?' · Sold':''}</span></span><button className="mini" style={{marginRight:6}} onClick={()=>{setEdit({...it});setMineOpen(false)}}>Edit</button><button className="mini" onClick={()=>toggleSold(it)}>{it.sold?'Relist':'Mark sold'}</button></div>)}{!mine.length&&<p className="mute">You haven’t listed anything yet. Tap + to start.</p>}</Sheet>}
+    {mineOpen&&<Sheet onClose={()=>setMineOpen(false)}><h3>My listings</h3>{mine.map(it=><div key={it.id} className="row" style={{cursor:'default'}}><span style={{fontSize:26}}>{it.img?<img src={it.img} alt="" style={{width:36,height:36,borderRadius:8,objectFit:'cover'}}/>:it.emoji}</span><span className="r"><b>{it.title}</b><span className="mute">{fmt(it.price)}{it.sold?' · Sold':''}</span></span><button className="mini" style={{marginRight:6}} onClick={()=>{setEdit({...it});setMineOpen(false)}}>Edit</button><button className="mini" onClick={()=>toggleSold(it)}>{it.sold?'Relist':'Mark sold'}</button><button className="mini" style={{marginLeft:6}} onClick={()=>delListing(it)}>Delete</button></div>)}{!mine.length&&<p className="mute">You haven’t listed anything yet. Tap + to start.</p>}</Sheet>}
     {fOpen&&<Sheet onClose={()=>setFOpen(false)}><h3>Filters</h3><label>Price range (₦)</label><div style={{display:'flex',gap:8}}><input className="in" type="number" min="0" placeholder="Min" value={flt.min} onChange={e=>setFlt(f=>({...f,min:e.target.value}))}/><input className="in" type="number" min="0" placeholder="Max" value={flt.max} onChange={e=>setFlt(f=>({...f,max:e.target.value}))}/></div><div style={{marginTop:6}}>{[['Under ₦1,000',1000],['Under ₦5,000',5000],['Under ₦20,000',20000]].map(([l,b])=><button key={l} className="chip" onClick={()=>setFlt(f=>({...f,min:'',max:String(b)}))}>{l}</button>)}</div><label>Walking distance from Hostel A</label><div>{[[0,'Any'],[5,'5 min'],[10,'10 min'],[15,'15 min']].map(([m,l])=><button key={m} className={'chip'+(flt.walk===m?' on':'')} onClick={()=>setFlt(f=>({...f,walk:m}))}>{l}</button>)}</div><div className="two"><button className="btn l" style={{width:'40%'}} onClick={()=>setFlt({min:'',max:'',walk:0})}>Reset</button><button className="btn" onClick={()=>setFOpen(false)}>Show {list.length} items</button></div></Sheet>}
-    {edit&&<Sheet onClose={()=>setEdit(null)}><h3>Edit listing</h3><form onSubmit={saveEdit}><label>Title</label><input className="in" required value={edit.title} onChange={ed('title')}/><label>Price (₦)</label><input className="in" type="number" min="0" required value={edit.price} onChange={ed('price')}/><label>Photo</label><label className="up" style={{fontWeight:400,fontSize:13}}>{edit.img?<img src={edit.img} alt="Preview"/>:'📷'}<span>{edit.img?'Change photo':'Add a photo'}</span><input type="file" accept="image/*" hidden onChange={e=>pickPhoto(e.target.files[0],setEdit)}/></label><label>WhatsApp number</label><input className="in" type="tel" value={edit.phone||''} onChange={ed('phone')}/><label>Pickup spot</label><input className="in" value={edit.location} onChange={ed('location')}/><label>Description</label><textarea className="in" rows={3} value={edit.desc} onChange={ed('desc')}/><button type="submit" className="btn" style={{marginTop:16}}>Save changes</button></form></Sheet>}
+    {edit&&<Sheet onClose={()=>setEdit(null)}><h3>Edit listing</h3><form onSubmit={saveEdit}><label>Title</label><input className="in" required value={edit.title} onChange={ed('title')}/><label>Price (₦)</label><input className="in" type="number" min="0" required value={edit.price} onChange={ed('price')}/><label>Photo</label><label className="up" style={{fontWeight:400,fontSize:13}}>{edit.img?<img src={edit.img} alt="Preview"/>:'📷'}<span>{edit.img?'Change photo':'Add a photo'}</span><input type="file" accept="image/*" hidden onChange={e=>pickPhoto(e.target.files[0],setEdit)}/></label><label>WhatsApp number</label><input className="in" type="tel" value={edit.phone||''} onChange={ed('phone')}/><label>Pickup spot</label><input className="in" value={edit.location} onChange={ed('location')}/><label>Description</label><textarea className="in" rows={3} value={edit.desc} onChange={ed('desc')}/><button type="submit" className="btn" style={{marginTop:16}} disabled={busy}>{busy?'Saving…':'Save changes'}</button></form></Sheet>}
     {wOpen&&<Sheet onClose={()=>setWOpen(false)}><h3>Post a request</h3><form onSubmit={postWant}><label>What do you need?</label><input className="in" required value={wf.title} onChange={wfs('title')} placeholder="Used scientific calculator"/><label>Your budget (₦)</label><input className="in" type="number" min="0" required value={wf.budget} onChange={wfs('budget')} placeholder="4000"/><label>Details (optional)</label><input className="in" value={wf.note} onChange={wfs('note')} placeholder="Condition, deadline, pickup spot"/><label>WhatsApp number</label><input className="in" type="tel" required value={wf.phone} onChange={wfs('phone')} placeholder="0803 000 0000"/><button type="submit" className="btn" style={{marginTop:16}}>Post request</button></form></Sheet>}
     {safeOpen&&<Sheet onClose={()=>setSafeOpen(false)}><h3>Safety guide</h3>{[['📍','Meet in a busy campus spot','The SUB, the library or a bukateria, in daylight. Don’t go to a stranger’s room alone.'],['🔍','Check before you pay','Switch on phones and laptops, test calculators, flip through textbooks.'],['✅','Look for the ✓','Verified sellers have shown a student ID. Take extra care with unverified ones.'],['💵','Pay on delivery','Avoid sending money first, including “booking fees” or “delivery deposits”.'],['👥','Bring a friend','Especially for anything over ₦20,000, like a laptop or phone.'],['🚩','Watch for red flags','A price that’s too good, pressure to hurry, or a seller who won’t meet in person.']].map(([e,t,d])=><div key={t} className="row" style={{cursor:'default',alignItems:'flex-start'}}><span style={{fontSize:22}}>{e}</span><span className="r"><b>{t}</b><span className="mute">{d}</span></span></div>)}<div className="note">Something feels off? Report the listing and block the seller.</div></Sheet>}
     {blkOpen&&<Sheet onClose={()=>setBlkOpen(false)}><h3>Blocked sellers</h3>{blocked.map(v=><div key={v} className="row" style={{cursor:'default'}}><span className="r"><b>{v}</b></span><button className="mini" onClick={()=>setBlocked(b=>b.filter(x=>x!==v))}>Unblock</button></div>)}{!blocked.length&&<p className="mute">No one is blocked. You can block a seller from their listing.</p>}</Sheet>}
