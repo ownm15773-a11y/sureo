@@ -524,6 +524,15 @@ body{overflow-x:clip;max-width:100%}
 .my-st{font-style:normal;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.4px}.my-st.active{color:var(--primary)}.my-st.sold{color:var(--accent)}
 .my-btns{display:flex;gap:6px}.my-btns button{font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;background:var(--primary-light);color:var(--primary)}.my-btns .danger{background:#fef2f2;color:var(--red)}
 .chat-body .empty,.conv-list .empty{text-align:center}
+
+/* ===== STABILITY: static page, no shaking ===== */
+html,body{overflow-x:clip;max-width:100%;overscroll-behavior-x:none}
+html{scroll-behavior:auto}
+body{touch-action:pan-y pinch-zoom}
+.pill-row.scroll{touch-action:pan-x pan-y}
+#app .flash-emoji,#app .typing i{animation:none!important}
+.view.active,.card.anim,.board-card.anim,.hub.anim,.notif,.msg{animation:none!important}
+@media (hover:none){*:hover{transform:none!important}}
 </style>
 </head>
 <body>
@@ -1317,7 +1326,7 @@ const NI={
  star:'<svg viewBox="0 0 24 24"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L7 14.2 2 9.3l6.9-1z"/></svg>'};
 const NTYPE={message:{i:'msg',c:'#2563eb',v:'messages'},order:{i:'tag',c:'#FF6B35',v:'messages'},system:{i:'ok',c:'#0d4a3a',v:'profile'},safety:{i:'pin',c:'#7c3aed',v:'safety'}};
 const NOTIFS=[];
-let msgChan=null,notifChan=null,rtOK=false,sending=false;
+let msgChan=null,notifChan=null,rtOK=false,sending=false,convSig='',notifSig='';
 const viewOn=v=>$('view-'+v).classList.contains('active');
 const clock=ts=>new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 function ago(ts){const s=Math.max(0,(Date.now()-new Date(ts))/1000);if(s<60)return 'Just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' hr ago';if(s<172800)return 'Yesterday';return Math.floor(s/86400)+' days ago';}
@@ -1341,6 +1350,9 @@ async function loadConvs(){
   if(ids.length){const {data:ps}=await sb.from('profiles').select('id,full_name').in('id',ids);(ps||[]).forEach(p=>names[p.id]=p.full_name);}
   const {data:un}=await sb.from('messages').select('conversation_id').is('read_at',null).neq('sender_id',me.id);
   const cnt={};(un||[]).forEach(m=>cnt[m.conversation_id]=(cnt[m.conversation_id]||0)+1);
+  const sig=JSON.stringify(data.map(c=>[c.id,c.last_at,cnt[c.id]||0]));
+  if(sig===convSig&&CONVS.length===data.length){updateUnread();return;}
+  convSig=sig;
   const old={};CONVS.forEach(c=>old[c.id]=c.msgs);
   const keep=CONVS[state.conv]&&CONVS[state.conv].id;
   CONVS.length=0;
@@ -1419,6 +1431,9 @@ async function loadNotifs(){
   if(!me)return;
   const {data,error}=await sb.from('notifications').select('id,type,title,body,view,ref_id,read,created_at').order('created_at',{ascending:false}).limit(50);
   if(error){console.error(error);return;}
+  const sig=data.map(r=>r.id+(r.read?1:0)).join();
+  if(sig===notifSig&&NOTIFS.length===data.length)return;
+  notifSig=sig;
   NOTIFS.length=0;data.forEach(r=>NOTIFS.push(mapNotif(r)));
   updateUnread();if(viewOn('notifications'))renderNotifs();
 }
@@ -1766,7 +1781,7 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-legal]');i
 async function doLogout(msg){
   stopRealtime();
   try{await sb.auth.signOut();}catch(e){}
-  me=null;kycRow=null;sellerOK=false;CONVS.length=0;NOTIFS.length=0;state.conv=0;
+  me=null;kycRow=null;sellerOK=false;CONVS.length=0;NOTIFS.length=0;state.conv=0;convSig='';notifSig='';
   document.body.classList.remove('authed');
   document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'));closeAuth();
   setView('market');updateUnread();
