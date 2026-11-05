@@ -58,11 +58,11 @@ async function enter(user){
   me=user;$('login').style.display='none';$('app').style.display='block';$('who').textContent=user.email;load();
 }
 async function load(){
-  const {data:ks,error}=await sb.from('kyc').select('user_id,id_type,id_last4,matric_no,student_id_path,created_at,profiles(full_name)').eq('status','pending').order('created_at');
+  const {data:ks,error}=await sb.from('kyc').select('user_id,matric_no,student_id_path,selfie_path,created_at,profiles(full_name)').eq('status','pending').order('created_at');
   $('pend').innerHTML=error?'<div class="em">Could not load: '+esc(error.message)+'</div>':!ks.length?'<div class="em">No one is waiting. 🎉</div>':ks.map(k=>
     '<div class="card" data-uid="'+k.user_id+'"><div class="nm">'+esc((k.profiles&&k.profiles.full_name)||'Student')+'</div>'
-    +'<div class="mt">Matric: '+esc(k.matric_no||'-')+'<br>'+esc(k.id_type||'ID')+' ending '+esc(k.id_last4||'----')+'<br>Sent '+new Date(k.created_at).toLocaleString()+'</div>'
-    +'<div class="box"></div><div class="row">'+(k.student_id_path?'<button data-act="view" data-path="'+esc(k.student_id_path)+'">View ID</button>':'')
+    +'<div class="mt">Matric: '+esc(k.matric_no||'-')+'<br>Sent '+new Date(k.created_at).toLocaleString()+'</div>'
+    +'<div class="box"></div><div class="row">'+((k.student_id_path||k.selfie_path)?'<button data-act="view" data-path="'+esc(k.student_id_path||'')+'" data-selfie="'+esc(k.selfie_path||'')+'">View ID &amp; selfie</button>':'')
     +'<button class="ok" data-act="approve">Approve</button><button class="no" data-act="reject">Reject</button></div></div>').join('');
   const {data:us}=await sb.from('profiles').select('id,full_name,is_seller_verified,is_banned').order('created_at',{ascending:false}).limit(30);
   $('usr').innerHTML=us&&us.length?us.map(u=>'<div class="card" data-uid="'+u.id+'"><div class="nm">'+esc(u.full_name)+(u.is_seller_verified?' ✓':'')+(u.is_banned?' · BANNED':'')+'</div><div class="row" style="margin-top:8px">'
@@ -72,9 +72,14 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b||!me)return;
   const card=b.closest('.card'),uid=card.dataset.uid,act=b.dataset.act;
   if(act==='view'){
-    const {data,error}=await sb.storage.from('kyc-private').createSignedUrl(b.dataset.path,300);
-    if(error){toast('Could not open ID: '+error.message);return;}
-    card.querySelector('.box').innerHTML=/\.pdf$/i.test(b.dataset.path)?'<p><a href="'+data.signedUrl+'" target="_blank" rel="noopener">Open PDF</a></p>':'<img class="id" src="'+data.signedUrl+'" alt="Student ID">';return;
+    const show=async(path,label)=>{
+      if(!path)return '<p class="mt"><b>'+label+':</b> not provided</p>';
+      const {data,error}=await sb.storage.from('kyc-private').createSignedUrl(path,300);
+      if(error)return '<p class="mt"><b>'+label+':</b> could not open ('+esc(error.message)+')</p>';
+      return '<p class="mt"><b>'+label+'</b></p>'+(/\.pdf$/i.test(path)?'<p><a href="'+data.signedUrl+'" target="_blank" rel="noopener">Open PDF</a></p>':'<img class="id" src="'+data.signedUrl+'" alt="'+label+'">');
+    };
+    const html=(await show(b.dataset.path,'Student ID'))+(await show(b.dataset.selfie,'Selfie holding ID'));
+    card.querySelector('.box').innerHTML=html+'<p class="mt">Check: the name, photo and matric on the ID match the selfie and the profile name.</p>';return;
   }
   if((act==='ban'||act==='reject')&&!confirm(act==='ban'?'Ban this user and remove their listings?':'Reject this seller?'))return;
   b.disabled=true;let err=null;const now=new Date().toISOString();
