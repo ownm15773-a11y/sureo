@@ -113,6 +113,9 @@ body.authed #toast{bottom:84px}
 body.authed #app{display:block}
 body.authed #landing{display:none}
 body.restoring #app{visibility:hidden}
+body.authed footer{display:none}
+.acct-legal{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:13px}
+.acct-legal button{color:var(--muted);text-decoration:underline;font-size:13px}
 
 /* ============ LANDING ============ */
 .hero-landing{position:relative;padding:88px 0 70px;text-align:center;overflow:hidden;background:linear-gradient(180deg,#fff 0%,var(--primary-light) 100%)}
@@ -585,7 +588,7 @@ body{overflow-x:clip;max-width:100%}
   <section class="section" id="how"><div class="container">
     <div class="section-head2 fade-item"><span class="kicker">How it works</span><h2>Three steps. Zero stress.</h2><p>From "I need it" to "I got it" in minutes — not hours of scrolling group chats.</p></div>
     <div class="steps">
-      <div class="step fade-item"><span class="step-num">1</span><span class="em">🪪</span><h3>Join in seconds</h3><p>Sign up with any email and start browsing. Sellers complete a quick BVN/NIN check to earn the Sureo ✓.</p></div>
+      <div class="step fade-item"><span class="step-num">1</span><span class="em">🪪</span><h3>Join in seconds</h3><p>Sign up with any email and start browsing. Sellers verify with their student ID to earn the Sureo ✓.</p></div>
       <div class="step fade-item" data-d="120ms"><span class="step-num">2</span><span class="em">🔍</span><h3>Search & discover</h3><p>Food, books by course code or ISBN, gadgets, housing, gigs and lost items — all in one clean feed.</p></div>
       <div class="step fade-item" data-d="240ms"><span class="step-num">3</span><span class="em">🤝</span><h3>Chat, pay & meet safely</h3><p>In-app messaging or one-tap WhatsApp, online or offline payment, and designated meetup safety hubs.</p></div>
     </div>
@@ -599,7 +602,7 @@ body{overflow-x:clip;max-width:100%}
         <li>Zero accountability after payment</li></div>
       <div class="cmp good fade-item" data-d="140ms"><h3>✓ Sureo</h3>
         <li>Find anything in 2 seconds — even by ISBN</li><li>Listings stay visible until sold</li>
-        <li>KYC-verified sellers with the Sureo ✓</li><li>Categories, rents, trades & free stuff organized</li>
+        <li>Student-verified sellers with the Sureo ✓</li><li>Categories, rents, trades & free stuff organized</li>
         <li>Ratings, reports & meetup safety hubs</li></div>
     </div>
   </div></section>
@@ -767,7 +770,7 @@ body{overflow-x:clip;max-width:100%}
         <h3>Identity & KYC</h3>
         <p class="kyc-sub">Your verification status. Fully verified members get the Sureo ✓ badge on every listing.</p>
         <div class="kyc-row"><div class="kyc-ic">🏛️</div><div class="kyc-info"><b>Email address</b><span id="kycEmail">verified@uni.edu.ng</span></div><span class="kyc-status ok">✓ VERIFIED</span></div>
-        <div class="kyc-row"><div class="kyc-ic">🪪</div><div class="kyc-info"><b>BVN / NIN regulatory check</b><span id="kycBvn">BVN •••••••8721 · verified by Sureo</span></div><span class="kyc-status ok">✓ VERIFIED</span></div>
+        <div class="kyc-row"><div class="kyc-ic">🪪</div><div class="kyc-info"><b>Seller verification</b><span id="kycBvn">Student ID and selfie reviewed by the Sureo team</span></div><span class="kyc-status ok">✓ VERIFIED</span></div>
         <div class="kyc-row"><div class="kyc-ic">🎓</div><div class="kyc-info"><b>Student ID upload <em style="color:var(--muted);font-style:normal">(optional)</em></b><span id="kycIdMeta">Adds an extra trust layer to your profile</span></div><span class="kyc-status opt" id="kycIdStatus"><button id="uploadIdBtn">Upload ID</button></span></div>
       </div>
       <div class="kyc-card">
@@ -777,6 +780,7 @@ body{overflow-x:clip;max-width:100%}
           <button class="btn-primary" id="editProfile">Edit profile</button>
           <button class="btn-ghost" style="width:auto;padding:12px 20px" id="logoutBtn">Log out</button>
         </div>
+        <div class="acct-legal"><button type="button" data-legal="terms">Terms of Service</button><button type="button" data-legal="privacy">Privacy Policy</button></div>
       </div>
     </section>
   </div>
@@ -805,7 +809,7 @@ body{overflow-x:clip;max-width:100%}
       <button class="footer-link" data-legal="terms" style="color:#fff">Terms of Service</button>
       <button class="footer-link" data-legal="privacy" style="color:#fff">Privacy Policy</button>
     </div>
-    <div class="copyright">© 2026 Sureo Marketplace · KYC-compliant · All rights reserved.</div>
+    <div class="copyright">© 2026 Sureo Marketplace · All rights reserved.</div>
   </div>
 </footer>
 
@@ -831,7 +835,7 @@ body{overflow-x:clip;max-width:100%}
       <h2 id="wizTitle">Create your account 🎉</h2>
       <p class="auth-sub" id="wizSub">Step 1 of 3 — your account details.</p>
       <div class="wiz-steps"><div class="wiz-bar on" id="wb1"></div><div class="wiz-bar" id="wb2"></div><div class="wiz-bar" id="wb3"></div></div>
-      <div class="wiz-labels"><span>Account</span><span>Identity</span><span>Campus</span></div>
+      <div class="wiz-labels"><span>Account</span><span>Student ID</span><span>Selfie</span></div>
 
       <div id="wz1">
         <div class="field"><label>Full name</label><input type="text" id="wName" placeholder="e.g. Chidera Okafor"></div>
@@ -841,22 +845,20 @@ body{overflow-x:clip;max-width:100%}
       </div>
 
       <div id="wz2" style="display:none">
-        <div class="field"><label>Regulatory identity check</label>
-          <select id="wIdType"><option value="BVN">BVN — Bank Verification Number</option><option value="NIN">NIN — National Identity Number</option></select>
+        <div class="field"><label>Matric number</label><input type="text" id="wMatric" placeholder="e.g. U2020/123456"></div>
+        <div class="field"><label>Student ID photo</label>
+          <div class="upload-box" id="uploadBox">📎 Tap to upload a clear photo of your student ID</div>
+          <input type="file" id="idFile" accept="image/jpeg,image/png,application/pdf" style="display:none">
         </div>
-        <div class="field"><label id="wIdLabel">BVN (11 digits)</label><input type="text" id="wIdNum" inputmode="numeric" maxlength="11" placeholder="e.g. 22145678901"></div>
-        <div class="kyc-check" id="bvnOk">✓ Details received. Final check happens on review</div>
-        <p class="form-err" id="wz2Err">BVN/NIN must be exactly 11 digits.</p>
-        <div class="hint" style="font-size:11px;color:var(--muted)">🔒 Required by regulation. Encrypted & never shown to other users.</div>
+        <div class="hint" style="font-size:11px;color:var(--muted)">🔒 Only the Sureo team can see this. It is never shown to other users.</div>
       </div>
 
       <div id="wz3" style="display:none">
-        <div class="field"><label>Matric number</label><input type="text" id="wMatric" placeholder="e.g. U2020/123456"></div>
-        <div class="field"><label>Student ID upload <span style="color:var(--muted);font-weight:500">(optional but boosts trust)</span></label>
-          <div class="upload-box" id="uploadBox">📎 Click to upload your student ID (photo or PDF)</div>
-          <input type="file" id="idFile" accept="image/*,.pdf" style="display:none">
+        <div class="field"><label>Selfie holding your student ID</label>
+          <div class="upload-box" id="selfieBox">🤳 Tap to take a selfie holding your ID next to your face</div>
+          <input type="file" id="selfieFile" accept="image/*" capture="user" style="display:none">
         </div>
-        <div class="kyc-check show" style="background:var(--primary-light)">🎓 Our team reviews your details before your Seller badge is activated.</div>
+        <div class="kyc-check show" style="background:var(--primary-light)">🎓 Our team checks that your selfie, student ID and name match before your Seller badge is activated.</div>
       </div>
 
       <p class="form-err" id="wzErr">Please fill in all fields correctly.</p>
@@ -885,7 +887,7 @@ body{overflow-x:clip;max-width:100%}
 <li>You must give accurate information and keep your password secure. You are responsible for all activity on your account.</li>
 <li>One person, one account. Impersonating someone else or using false identity or student details is prohibited.</li></ul>
 <h4>3. Seller verification (KYC)</h4>
-<p>To sell, we may require your BVN or NIN, matric number and student ID. We use these only to verify who you are, prevent fraud, and meet legal obligations. A "Verified" badge means you passed our checks at the time; it is <b>not</b> a guarantee of an item's quality or a user's conduct.</p>
+<p>To sell, we require your matric number, a photo of your student ID and a selfie holding it. We use these only to verify who you are, prevent fraud, and meet legal obligations. A "Verified" badge means you passed our checks at the time; it is <b>not</b> a guarantee of an item's quality or a user's conduct.</p>
 <h4>4. Listings and prohibited items</h4>
 <p>You may only list items you own or are authorised to sell, described honestly with real photos. You must not list or promote:</p>
 <ul><li>Illegal goods, stolen goods, counterfeits or pirated material</li>
@@ -918,12 +920,12 @@ body{overflow-x:clip;max-width:100%}
 <p>Questions? Email <b>support@sureo.ng</b>.</p>
 </template>
 <template id="tplPrivacy"><p class="upd">Last updated: November 5, 2026</p>
-<div class="callout">🔒 In short: we collect only what we need to run a safe marketplace, we never sell your personal data, and your BVN/NIN is never shown to other users.</div>
+<div class="callout">🔒 In short: we collect only what we need to run a safe marketplace, we never sell your personal data, and your student ID and selfie are never shown to other users.</div>
 <h4>1. Who we are</h4>
 <p>Sureo ("we", "us") is the data controller for personal data processed through this platform. This policy is written to align with the <b>Nigeria Data Protection Act 2023 (NDPA)</b>.</p>
 <h4>2. What we collect</h4>
 <ul><li><b>Account data:</b> full name, email address, password (stored securely hashed, never in plain text).</li>
-<li><b>Seller verification data:</b> BVN or NIN, matric number, student ID image, and your university.</li>
+<li><b>Seller verification data:</b> matric number, student ID image, a selfie holding your ID, and your university.</li>
 <li><b>Marketplace activity:</b> listings, photos, messages, orders, reviews, reports and saved items.</li>
 <li><b>Payment data:</b> transaction references and status from our payment provider. We do not store full card numbers or PINs.</li>
 <li><b>Technical data:</b> device type, browser, IP address and basic usage logs, for security and performance.</li></ul>
@@ -933,10 +935,10 @@ body{overflow-x:clip;max-width:100%}
 <li>To process payments and resolve disputes <i>(contract)</i>.</li>
 <li>To keep the platform safe, investigate reports and enforce our Terms <i>(legitimate interest)</i>.</li>
 <li>To send service notices such as order updates, and, with your consent, offers and news <i>(consent; you can opt out anytime)</i>.</li></ul>
-<h4>4. BVN / NIN handling</h4>
-<p>Your BVN or NIN is used only for identity verification, is transmitted over encrypted connections, is stored with restricted access, and is <b>never displayed to other users</b>. We may use a licensed verification provider to confirm it.</p>
+<h4>4. Student ID and selfie handling</h4>
+<p>Your student ID photo and selfie are used only to verify you are a real student, are transmitted over encrypted connections, are stored in a private bucket with restricted access, and are <b>never displayed to other users</b>.</p>
 <h4>5. Who we share data with</h4>
-<ul><li><b>Other users:</b> only what is needed for a deal, such as your display name, verified status, rating and listings. Never your BVN/NIN, email or password.</li>
+<ul><li><b>Other users:</b> only what is needed for a deal, such as your display name, verified status, rating and listings. Never your student ID, selfie, email or password.</li>
 <li><b>Service providers:</b> payment processors, identity verification, hosting, SMS/email, and analytics, bound by confidentiality and data protection terms.</li>
 <li><b>Authorities:</b> where required by law, court order, or to prevent fraud or harm.</li></ul>
 <p>We do <b>not</b> sell your personal data.</p>
@@ -1189,17 +1191,21 @@ function showPending(){
 }
 async function submitKyc(){
   const fail=m=>{$('wzErr').textContent=m;$('wzErr').classList.add('show');};
-  const matric=$('wMatric').value.trim(),idType=$('wIdType').value,last4=$('wIdNum').value.trim().slice(-4);
-  let path=null;const f=$('idFile').files[0];
-  if(f){
-    if(f.size>5*1024*1024)return fail('Student ID file must be under 5 MB.');
-    const ext=({'image/jpeg':'jpg','image/png':'png','application/pdf':'pdf'})[f.type];
-    if(!ext)return fail('Student ID must be a JPG, PNG or PDF.');
-    path=me.id+'/student-id-'+Date.now()+'.'+ext;
-    const up=await sb.storage.from('kyc-private').upload(path,f,{contentType:f.type});
-    if(up.error)return fail('Upload failed: '+up.error.message);
-  }
-  const {error}=await sb.from('kyc').upsert({user_id:me.id,id_type:idType,id_last4:last4,matric_no:matric,student_id_path:path,status:'pending'});
+  const matric=$('wMatric').value.trim();
+  const idf=$('idFile').files[0],sf=$('selfieFile').files[0];
+  if(!idf||!sf)return fail('Add your student ID and a selfie holding it.');
+  const EXT={'image/jpeg':'jpg','image/png':'png','application/pdf':'pdf'};
+  if(!EXT[idf.type])return fail('Student ID must be a JPG, PNG or PDF.');
+  if(!/^image\//.test(sf.type))return fail('Selfie must be a photo.');
+  if(idf.size>5*1024*1024||sf.size>8*1024*1024)return fail('Each photo must be under 5 MB.');
+  const t=Date.now();
+  const idPath=me.id+'/student-id-'+t+'.'+EXT[idf.type];
+  const sfPath=me.id+'/selfie-'+t+'.'+(sf.type==='image/png'?'png':'jpg');
+  let up=await sb.storage.from('kyc-private').upload(idPath,idf,{contentType:idf.type});
+  if(up.error)return fail('Upload failed: '+up.error.message);
+  up=await sb.storage.from('kyc-private').upload(sfPath,sf,{contentType:sf.type==='image/png'?'image/png':'image/jpeg'});
+  if(up.error)return fail('Upload failed: '+up.error.message);
+  const {error}=await sb.from('kyc').upsert({user_id:me.id,id_type:null,id_last4:null,matric_no:matric,student_id_path:idPath,selfie_path:sfPath,status:'pending'});
   if(error)return fail('Could not submit: '+error.message);
   kycRow={status:'pending'};showPending();closeAuth();
   toast("✓ Submitted! We'll review your details and activate your Seller badge.",4500);
@@ -1228,7 +1234,7 @@ function render(){
     return '<article class="card" data-d="'+((idx%10)*50)+'ms">'
     +'<div class="thumb" style="background:'+BG[i.c]+'">'+(i0.img?'<img src="'+esc(i0.img)+'" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">':'')+'<span class="badge">'+i.c+'</span>'
     +(ty!=='sell'?'<span class="type-tag '+ty+'">'+ty+'</span>':'')
-    +(i.vf?'<span class="verified" title="KYC-verified seller">✓</span>':'')
+    +(i.vf?'<span class="verified" title="Student-verified seller">✓</span>':'')
     +(i.md?'<span class="media-count">📷 '+i.md+(i.md>3?' · 🎬':'')+'</span>':'')
     +(i0.img?'':'<span class="thumb-emoji">'+i.e+'</span>')+'</div>'
     +'<div class="card-body"><h3 class="card-title">'+i.n+'</h3>'
@@ -1441,7 +1447,7 @@ function showAuthStep(){
   document.querySelector('.wiz-labels').style.display=seller?'grid':'none';
   $('wb1').classList.toggle('on',step>=1);$('wb2').classList.toggle('on',step>=2);$('wb3').classList.toggle('on',step>=3);
   $('wizTitle').textContent=seller?'Verify to start selling 🛡️':'Create your account 🎉';
-  $('wizSub').textContent=seller?'Step '+step+' of 3 — '+['your account details.','regulatory identity (BVN/NIN).','campus verification.'][step-1]+' Only sellers need this.':'Quick sign-up. Verification is only needed if you want to sell.';
+  $('wizSub').textContent=seller?'Step '+step+' of 3 — '+['your account details.','your student ID.','a selfie with your ID.'][step-1]+' Only sellers need this.':'Quick sign-up. Verification is only needed if you want to sell.';
   $('wizNextText').textContent=!seller?'Create account':(step===3?'Complete verification':'Continue');
   $('stepWizard').querySelector('.auth-div').style.display=seller?'none':'flex';
   $('toSignin').style.display=seller?'none':'block';
@@ -1452,9 +1458,10 @@ function closeAuth(){auth.classList.remove('open');document.body.classList.remov
 $('toSignin').addEventListener('click',()=>{authMode='signin';showAuthStep();});
 $('toSignup').addEventListener('click',()=>{authMode='signup';wizStep=1;showAuthStep();});
 auth.addEventListener('click',e=>{if(e.target===auth)closeAuth();});
-$('wIdType').addEventListener('change',()=>{$('wIdLabel').textContent=$('wIdType').value+' (11 digits)';});
 $('uploadBox').addEventListener('click',()=>$('idFile').click());
-$('idFile').addEventListener('change',e=>{if(e.target.files.length){idUploaded=true;$('uploadBox').textContent='✓ '+e.target.files[0].name+' uploaded';$('uploadBox').classList.add('done');}});
+$('idFile').addEventListener('change',e=>{if(e.target.files.length){idUploaded=true;$('uploadBox').textContent='✓ '+e.target.files[0].name+' added';$('uploadBox').classList.add('done');}});
+$('selfieBox').addEventListener('click',()=>$('selfieFile').click());
+$('selfieFile').addEventListener('change',e=>{if(e.target.files.length){$('selfieBox').textContent='✓ Selfie added';$('selfieBox').classList.add('done');}});
 $('wizNext').addEventListener('click',()=>{
   const btn=$('wizNext');
   if(wizStep===1){
@@ -1466,15 +1473,14 @@ $('wizNext').addEventListener('click',()=>{
     btn.classList.add('loading');doSignup($('wName').value.trim(),$('wEmail').value.trim(),$('wPass').value).finally(()=>btn.classList.remove('loading'));return;
   }
   if(wizStep===2){
-    const num=$('wIdNum').value.trim();
-    if(!/^\d{11}$/.test(num)){$('wz2Err').classList.add('show');$('wIdNum').classList.add('err');return;}
-    $('wz2Err').classList.remove('show');$('wIdNum').classList.remove('err');
-    btn.classList.add('loading');
-    setTimeout(()=>{btn.classList.remove('loading');$('bvnOk').classList.add('show');setTimeout(()=>{wizStep=3;showAuthStep();},700);},1200);
-    return;
+    const err=m=>{$('wzErr').textContent=m;$('wzErr').classList.add('show');};
+    if(!$('wMatric').value.trim())return err('Enter your matric number.');
+    if(!$('idFile').files[0])return err('Upload a clear photo of your student ID.');
+    $('wzErr').classList.remove('show');
+    wizStep=3;showAuthStep();return;
   }
   if(wizStep===3){
-    if(!$('wMatric').value.trim()){$('wzErr').textContent='Enter your matric number.';$('wzErr').classList.add('show');return;}
+    if(!$('selfieFile').files[0]){$('wzErr').textContent='Take a selfie holding your student ID.';$('wzErr').classList.add('show');return;}
     btn.classList.add('loading');
     submitKyc().finally(()=>btn.classList.remove('loading'));
   }
@@ -1494,7 +1500,7 @@ function setSellerStatus(ok,matric,idType,idNum){
   sellerOK=ok;
   const st=document.querySelectorAll('#view-profile .kyc-row')[1].querySelector('.kyc-status');
   if(ok){
-    $('kycBvn').textContent=idType+' •••••••'+idNum.slice(-4)+' · matched to national records';
+    $('kycBvn').textContent='Student ID and selfie reviewed by the Sureo team';
     st.className='kyc-status ok';st.textContent='✓ VERIFIED';
     $('profileMeta').textContent=matric+' · '+userEmail;
   }else{
@@ -1503,7 +1509,7 @@ function setSellerStatus(ok,matric,idType,idNum){
     $('verifyNowBtn').addEventListener('click',startSellerVerify);
     $('profileMeta').textContent=userEmail;
   }
-  $('profileBadge').textContent=ok?'✓ VERIFIED SELLER':'✓ MEMBER';
+  $('profileBadge').textContent=ok?'✓ STUDENT VERIFIED':'✓ MEMBER';
 }
 function startSellerVerify(){wizStep=2;openAuth('seller');}
 function completeSeller(matric,idType,idNum){
