@@ -415,7 +415,7 @@ body.authed footer{display:none}
 .star-row button:hover{transform:scale(1.15)}
 .rep-opt{display:flex;gap:10px;align-items:center;border:1.5px solid var(--border);border-radius:11px;padding:11px 14px;margin-bottom:9px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
 .rep-opt.sel{border-color:var(--red);background:#fef2f2;color:var(--red)}
-#toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,80px);background:var(--text);color:#fff;padding:13px 22px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:2000;transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .4s;opacity:0;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90vw;text-align:center}
+#toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,80px);background:#111827;color:#fff;padding:13px 22px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:2000;transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .4s;opacity:0;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90vw;text-align:center}
 #toast.show{transform:translate(-50%,0);opacity:1}
 
 footer{background:var(--primary);color:#fff;padding:50px 0 34px;text-align:center}
@@ -940,6 +940,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div class="auth-div">or</div>
       <button class="btn-ghost" id="toSignin">I already have an account</button>
       <p class="auth-note">🔒 Your details are encrypted and never shown to other users.</p>
+    </div>
+    <div id="stepVerified" style="display:none;text-align:center;padding:40px 0">
+      <div style="font-size:54px">✅</div>
+      <h2 style="margin-top:12px">Email confirmed! 🎉</h2>
+      <p class="auth-sub">Setting up your account…</p>
     </div>
   </div>
 </div>
@@ -1680,7 +1685,7 @@ function openAuth(mode){authMode=mode;auth.classList.add('open');document.body.c
 function showAuthStep(){
   const seller=authMode==='seller',signin=authMode==='signin';
   const reset=authMode==='reset';
-  $('stepReset').style.display=reset?'block':'none';
+  $('stepReset').style.display=reset?'block':'none';$('stepVerified').style.display='none';
   $('stepSignin').style.display=signin?'block':'none';
   $('stepWizard').style.display=(signin||reset)?'none':'block';
   if(signin||reset)return;
@@ -1878,7 +1883,7 @@ $('wzOtpBtn').addEventListener('click',async()=>{
   const {data,error}=await sb.auth.verifyOtp({email:pendingEmail,token:code,type:'signup'});
   b.classList.remove('loading');
   if(error){$('wzErr').textContent='That code is wrong or expired. Check it or tap Resend.';$('wzErr').classList.add('show');return;}
-  if(data.session){await onSignedIn(data.session.user);}
+  if(data.session){$('stepWizard').style.display='none';$('stepVerified').style.display='block';await onSignedIn(data.session.user);}
 });
 
 /* ---------- MY LISTINGS (edit / sold / delete) ---------- */
