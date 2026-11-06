@@ -931,6 +931,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       </div>
 
       <p class="form-err" id="wzErr">Please fill in all fields correctly.</p>
+      <div id="wzOtpBox" style="display:none">
+        <div class="field"><label>Confirmation code</label><input type="text" id="wzOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Enter the 8-digit code"></div>
+        <button type="button" class="btn-auth" id="wzOtpBtn" style="margin-bottom:10px"><span class="spin"></span><span>Verify code</span></button>
+      </div>
       <button type="button" id="wzResend" style="display:none;color:var(--primary);font-weight:600;font-size:13px;margin-bottom:10px">Resend confirmation email</button>
       <button class="btn-auth" id="wizNext" style="margin-top:14px"><span class="spin"></span><span id="wizNextText">Continue</span><span class="arr">→</span></button>
       <div class="auth-div">or</div>
@@ -1265,7 +1269,7 @@ async function doSignup(name,email,pass){
   if(error){$('wzErr').textContent=error.message;$('wzErr').classList.add('show');return;}
   try{localStorage.setItem('sureoConsent',JSON.stringify({t:TERMS_V,p:PRIV_V}));}catch(e){}
   if(data.session){await onSignedIn(data.session.user);}
-  else{pendingEmail=email;$('wzResend').style.display='block';$('wzErr').textContent='Almost done! Check your email to confirm your account, then sign in.';$('wzErr').classList.add('show');}
+  else{pendingEmail=email;$('wzResend').style.display='block';$('wzOtpBox').style.display='block';$('wzErr').textContent='Almost done! Enter the code we emailed you to confirm your account.';$('wzErr').classList.add('show');}
 }
 function showPending(){
   const st=document.querySelectorAll('#view-account .kyc-row')[1].querySelector('.kyc-status');
@@ -1867,6 +1871,15 @@ async function resendConfirm(btn){
 }
 $('resendBtn').addEventListener('click',e=>resendConfirm(e.currentTarget));
 $('wzResend').addEventListener('click',e=>resendConfirm(e.currentTarget));
+$('wzOtpBtn').addEventListener('click',async()=>{
+  const code=$('wzOtp').value.trim();
+  if(!code){$('wzErr').textContent='Enter the code from your email.';$('wzErr').classList.add('show');return;}
+  const b=$('wzOtpBtn');b.classList.add('loading');
+  const {data,error}=await sb.auth.verifyOtp({email:pendingEmail,token:code,type:'signup'});
+  b.classList.remove('loading');
+  if(error){$('wzErr').textContent='That code is wrong or expired. Check it or tap Resend.';$('wzErr').classList.add('show');return;}
+  if(data.session){await onSignedIn(data.session.user);}
+});
 
 /* ---------- MY LISTINGS (edit / sold / delete) ---------- */
 let MY=[];
