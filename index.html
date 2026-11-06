@@ -553,7 +553,18 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .tab-btn.active{color:#fff}
 @media (max-width:640px){.tab-btn{padding:12px 16px}}
 .grid.swap{animation:gridSwap .25s ease}
-@keyframes gridSwap{from{opacity:.3}to{opacity:1}}</style>
+@keyframes gridSwap{from{opacity:.3}to{opacity:1}}
+/* ============ ACCOUNT PAGE ============ */
+.acct-top{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.acct-top h2{font-size:24px;font-weight:800;letter-spacing:-.6px}
+.back-btn{width:40px;height:40px;border-radius:10px;background:var(--primary-light);color:var(--primary);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .25s var(--ease)}
+.back-btn:active{transform:scale(.92)}
+.acct-link{display:flex;align-items:center;gap:14px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:transform .25s var(--ease),border-color .25s}
+.acct-link:hover{border-color:var(--primary)}
+.acct-link:active{transform:scale(.985)}
+.acct-link .kyc-info{flex:1;min-width:0}
+.acct-chev{font-size:24px;color:var(--muted);line-height:1}
+</style>
 </head>
 <body>
 <script>
@@ -588,6 +599,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <span class="auth-only" style="display:none">
       <button data-view="market">Market</button>
       <button data-view="safety">Safety</button>
+      <button data-view="account">Identity &amp; account</button>
       <button id="sellBtn3" style="color:var(--primary);font-weight:700">+ Sell an item</button>
     </span>
   </nav>
@@ -794,16 +806,30 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         </div>
       </div>
       <div class="kyc-card">
+        <h3>My listings</h3>
+        <p class="kyc-sub">Edit, mark as sold, or remove what you have posted.</p>
+        <div id="myList"><div class="mono">Loading…</div></div>
+      </div>
+      <button type="button" class="kyc-card acct-link" data-view="account">
+        <span class="kyc-ic">🔐</span>
+        <span class="kyc-info"><b>Identity &amp; account</b><span>Verification, log out, delete account</span></span>
+        <span class="acct-chev" aria-hidden="true">›</span>
+      </button>
+    </section>
+  </div>
+
+  <div class="view" id="view-account">
+    <section class="profile-wrap container">
+      <div class="acct-top">
+        <button type="button" class="back-btn" data-view="profile" aria-label="Back to profile">←</button>
+        <h2>Identity &amp; account</h2>
+      </div>
+      <div class="kyc-card">
         <h3>Identity & KYC</h3>
         <p class="kyc-sub">Your verification status. Fully verified members get the Sureo ✓ badge on every listing.</p>
         <div class="kyc-row"><div class="kyc-ic">🏛️</div><div class="kyc-info"><b>Email address</b><span id="kycEmail">verified@uni.edu.ng</span></div><span class="kyc-status ok">✓ VERIFIED</span></div>
         <div class="kyc-row"><div class="kyc-ic">🪪</div><div class="kyc-info"><b>Seller verification</b><span id="kycBvn">Student ID and selfie reviewed by the Sureo team</span></div><span class="kyc-status ok">✓ VERIFIED</span></div>
         <div class="kyc-row"><div class="kyc-ic">🎓</div><div class="kyc-info"><b>Student ID upload <em style="color:var(--muted);font-style:normal">(optional)</em></b><span id="kycIdMeta">Adds an extra trust layer to your profile</span></div><span class="kyc-status opt" id="kycIdStatus"><button id="uploadIdBtn">Upload ID</button></span></div>
-      </div>
-      <div class="kyc-card">
-        <h3>My listings</h3>
-        <p class="kyc-sub">Edit, mark as sold, or remove what you have posted.</p>
-        <div id="myList"><div class="mono">Loading…</div></div>
       </div>
       <div class="kyc-card">
         <h3>Account actions</h3>
@@ -1242,7 +1268,7 @@ async function doSignup(name,email,pass){
   else{pendingEmail=email;$('wzResend').style.display='block';$('wzErr').textContent='Almost done! Check your email to confirm your account, then sign in.';$('wzErr').classList.add('show');}
 }
 function showPending(){
-  const st=document.querySelectorAll('#view-profile .kyc-row')[1].querySelector('.kyc-status');
+  const st=document.querySelectorAll('#view-account .kyc-row')[1].querySelector('.kyc-status');
   st.className='kyc-status opt';st.textContent='⏳ PENDING REVIEW';
   $('kycBvn').textContent="Submitted · we'll notify you once approved";
   $('profileBadge').textContent='⏳ VERIFICATION PENDING';
@@ -1710,7 +1736,7 @@ $('siBtn').addEventListener('click',()=>{
 let sellerOK=false,userEmail='';
 function setSellerStatus(ok,matric,idType,idNum){
   sellerOK=ok;
-  const st=document.querySelectorAll('#view-profile .kyc-row')[1].querySelector('.kyc-status');
+  const st=document.querySelectorAll('#view-account .kyc-row')[1].querySelector('.kyc-status');
   if(ok){
     $('kycBvn').textContent='Student ID and selfie reviewed by the Sureo team';
     st.className='kyc-status ok';st.textContent='✓ VERIFIED';
