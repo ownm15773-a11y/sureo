@@ -1597,7 +1597,7 @@ document.querySelectorAll('#starRow button').forEach(s=>s.addEventListener('clic
 $('rateSubmit').addEventListener('click',async()=>{
   if(!state.stars){toast('Pick a star rating first ★');return;}
   if(!state.orderId){toast('You can rate a seller after placing an order.');return;}
-  const {error}=await sb.from('reviews').insert({order_id:state.orderId,reviewer_id:me.id,reviewee_id:state.orderSeller,rating:state.stars});
+  const {error}=await sb.from('reviews').insert({order_id:state.orderId,reviewer_id:me.id,reviewee_id:state.orderSeller,stars:state.stars});
   $('rateModal').classList.remove('open');
   toast(error?(error.code==='23505'?'You already rated this order.':'Could not save review: '+error.message):'✓ Thanks! Your review was saved.',3500);
   state.stars=0;document.querySelectorAll('#starRow button').forEach(x=>x.classList.remove('on'));
