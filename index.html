@@ -931,15 +931,21 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       </div>
 
       <p class="form-err" id="wzErr">Please fill in all fields correctly.</p>
-      <div id="wzOtpBox" style="display:none">
-        <div class="field"><label>Confirmation code</label><input type="text" id="wzOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Enter the 8-digit code"></div>
-        <button type="button" class="btn-auth" id="wzOtpBtn" style="margin-bottom:10px"><span class="spin"></span><span>Verify code</span></button>
-      </div>
       <button type="button" id="wzResend" style="display:none;color:var(--primary);font-weight:600;font-size:13px;margin-bottom:10px">Resend confirmation email</button>
       <button class="btn-auth" id="wizNext" style="margin-top:14px"><span class="spin"></span><span id="wizNextText">Continue</span><span class="arr">→</span></button>
       <div class="auth-div">or</div>
       <button class="btn-ghost" id="toSignin">I already have an account</button>
       <p class="auth-note">🔒 Your details are encrypted and never shown to other users.</p>
+    </div>
+    <div id="stepCode" style="display:none">
+      <h2>Enter your code 📩</h2>
+      <p class="auth-sub">We sent an 8-digit code to <b id="wzCodeEmail"></b>. Enter it below to confirm your account.</p>
+      <div class="field"><label>Confirmation code</label><input type="text" id="wzOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Enter the 8-digit code"></div>
+      <p class="form-err" id="wzOtpErr"></p>
+      <button class="btn-auth" id="wzOtpBtn"><span class="spin"></span><span>Create account</span><span class="arr">→</span></button>
+      <button type="button" id="wzResend2" style="color:var(--primary);font-weight:600;font-size:13px;margin:12px 0">Resend code</button>
+      <div class="auth-div">or</div>
+      <button class="btn-ghost" id="wzCodeBack">Back</button>
     </div>
     <div id="stepVerified" style="display:none;text-align:center;padding:40px 0">
       <div style="font-size:54px">✅</div>
@@ -1274,7 +1280,7 @@ async function doSignup(name,email,pass){
   if(error){$('wzErr').textContent=error.message;$('wzErr').classList.add('show');return;}
   try{localStorage.setItem('sureoConsent',JSON.stringify({t:TERMS_V,p:PRIV_V}));}catch(e){}
   if(data.session){await onSignedIn(data.session.user);}
-  else{pendingEmail=email;$('wzResend').style.display='block';$('wzOtpBox').style.display='block';$('wzErr').textContent='Almost done! Enter the code we emailed you to confirm your account.';$('wzErr').classList.add('show');}
+  else{pendingEmail=email;$('wzResend').style.display='block';$('wzCodeEmail').textContent=email;$('wzOtp').value='';$('wzOtpErr').classList.remove('show');$('stepWizard').style.display='none';$('stepCode').style.display='block';}
 }
 function showPending(){
   const st=document.querySelectorAll('#view-account .kyc-row')[1].querySelector('.kyc-status');
@@ -1685,7 +1691,7 @@ function openAuth(mode){authMode=mode;auth.classList.add('open');document.body.c
 function showAuthStep(){
   const seller=authMode==='seller',signin=authMode==='signin';
   const reset=authMode==='reset';
-  $('stepReset').style.display=reset?'block':'none';$('stepVerified').style.display='none';
+  $('stepReset').style.display=reset?'block':'none';$('stepVerified').style.display='none';$('stepCode').style.display='none';
   $('stepSignin').style.display=signin?'block':'none';
   $('stepWizard').style.display=(signin||reset)?'none':'block';
   if(signin||reset)return;
@@ -1876,14 +1882,16 @@ async function resendConfirm(btn){
 }
 $('resendBtn').addEventListener('click',e=>resendConfirm(e.currentTarget));
 $('wzResend').addEventListener('click',e=>resendConfirm(e.currentTarget));
+$('wzResend2').addEventListener('click',e=>resendConfirm(e.currentTarget));
+$('wzCodeBack').addEventListener('click',()=>{$('stepCode').style.display='none';$('stepWizard').style.display='block';});
 $('wzOtpBtn').addEventListener('click',async()=>{
   const code=$('wzOtp').value.trim();
-  if(!code){$('wzErr').textContent='Enter the code from your email.';$('wzErr').classList.add('show');return;}
+  if(!code){$('wzOtpErr').textContent='Enter the code from your email.';$('wzOtpErr').classList.add('show');return;}
   const b=$('wzOtpBtn');b.classList.add('loading');
   const {data,error}=await sb.auth.verifyOtp({email:pendingEmail,token:code,type:'signup'});
   b.classList.remove('loading');
-  if(error){$('wzErr').textContent='That code is wrong or expired. Check it or tap Resend.';$('wzErr').classList.add('show');return;}
-  if(data.session){$('stepWizard').style.display='none';$('stepVerified').style.display='block';await onSignedIn(data.session.user);}
+  if(error){$('wzOtpErr').textContent='That code is wrong or expired. Check it or tap Resend code.';$('wzOtpErr').classList.add('show');return;}
+  if(data.session){$('stepCode').style.display='none';$('stepVerified').style.display='block';await onSignedIn(data.session.user);}
 });
 
 /* ---------- MY LISTINGS (edit / sold / delete) ---------- */
