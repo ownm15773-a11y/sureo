@@ -1201,7 +1201,7 @@ const grid=$('grid');
 /* ---------- SUPABASE BACKEND ---------- */
 const SB_URL='https://dgzltdkaumkprxijuoqv.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnemx0ZGthdW1rcHJ4aWp1b3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4OTc2OTksImV4cCI6MjEwOTQ3MzY5OX0.rDMF7Dwp3QddBoXzhBFDn_QWI5k-j2o9sRAqtHmntuQ'; /* public anon key: safe in browser, protected by database rules */
-const SHOW_DEMO=true; /* set to false at launch to hide the sample listings */
+const SHOW_DEMO=false; /* set to false at launch to hide the sample listings */
 const TERMS_V='2026-11-05',PRIV_V='2026-11-05';
 const IDLE_MS=20*60*1000;
 const rememberOn=()=>{try{return localStorage.getItem('sureoRemember')!=='0';}catch(e){return true;}};
@@ -1295,7 +1295,7 @@ async function submitKyc(){
   toast("✓ Submitted! We'll review your details and activate your Seller badge.",4500);
 }
 
-const WA_DEFAULT='2348000000000'; /* TODO: replace with your real Sureo support WhatsApp number */
+const WA_DEFAULT='2348108755314'; /* Sureo support WhatsApp */
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function waNum(p){const d=String(p||'').replace(/\D/g,'');if(/^0\d{10}$/.test(d))return '234'+d.slice(1);if(/^234\d{10}$/.test(d))return d;return null;}
 
@@ -1350,7 +1350,7 @@ function renderBoard(){
    +'<div class="board-info"><div class="board-title">'+b.n+(b.vf?' <span class="tick" style="color:var(--primary);font-weight:800">✓</span>':'')+'</div>'
    +'<div class="board-meta"><span>'+b.m+'</span>'+(b.st?'<span class="status-pill '+b.st+'">'+b.st+'</span>':'')+'</div></div>'
    +'<div class="board-price">'+b.p+'</div>'
-   +'<button class="btn-wa" style="flex-shrink:0" onclick="window.open(\'https://wa.me/2348000000000?text='+encodeURIComponent('Hi! I saw "'+b.n+'" on the Sureo board.')+'\',\'_blank\')">💬 Chat</button></div>').join('');
+   +'<button class="btn-wa" style="flex-shrink:0" onclick="window.open(\'https://wa.me/2348108755314?text='+encodeURIComponent('Hi! I saw "'+b.n+'" on the Sureo board.')+'\',\'_blank\')">💬 Chat</button></div>').join('');
   $('boardList').querySelectorAll('.board-card').forEach(c=>io.observe(c));
 }
 $('boardTabs').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#boardTabs .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.board=c.dataset.board;renderBoard();});
@@ -1527,8 +1527,9 @@ function setView(v){
   try{localStorage.setItem('sureoView',v);}catch(e){}
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   $('view-'+v).classList.add('active');
-  document.querySelectorAll('#mainNav .nav-link,#bottomNav .bn-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
-  $('bottomNav').dataset.active=['market','messages','notifications','profile'].indexOf(v);
+  const nv=v==='account'?'profile':v;
+  document.querySelectorAll('#mainNav .nav-link,#bottomNav .bn-item').forEach(b=>b.classList.toggle('active',b.dataset.view===nv));
+  $('bottomNav').dataset.active=['market','messages','notifications','profile'].indexOf(nv);
   $('mobileNav').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
   try{
