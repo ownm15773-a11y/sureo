@@ -833,6 +833,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div class="kyc-row"><div class="kyc-ic">🏛️</div><div class="kyc-info"><b>Email address</b><span id="kycEmail">verified@uni.edu.ng</span></div><span class="kyc-status ok">✓ VERIFIED</span></div>
         <div class="kyc-row"><div class="kyc-ic">🪪</div><div class="kyc-info"><b>Seller verification</b><span id="kycBvn">Student ID and selfie reviewed by the Sureo team</span></div><span class="kyc-status ok">✓ VERIFIED</span></div>
         <div class="kyc-row"><div class="kyc-ic">🎓</div><div class="kyc-info"><b>Student ID upload <em style="color:var(--muted);font-style:normal">(optional)</em></b><span id="kycIdMeta">Adds an extra trust layer to your profile</span></div><span class="kyc-status opt" id="kycIdStatus"><button id="uploadIdBtn">Upload ID</button></span></div>
+        <div class="kyc-row"><div class="kyc-ic">🏦</div><div class="kyc-info"><b>Payout account</b><span id="kycPayMeta">Where online payments are sent when you sell</span></div><span class="kyc-status opt" id="kycPayStatus">Verify first</span></div>
       </div>
       <div class="kyc-card">
         <h3>Account actions</h3>
@@ -985,10 +986,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 <li>Scams, advance-fee schemes, or requests to move payment off Sureo to avoid protections</li></ul>
 <p>We may remove listings and suspend or ban accounts that break these rules.</p>
 <h4>5. Payments, fees and refunds</h4>
-<ul><li>Sureo does not process payments. When you place an order, you send the seller an order request, and the buyer and seller agree how and when to pay, for example by bank transfer or on delivery. Sureo does not hold, collect or release any money, and is not responsible for payments made between users.</li>
+<ul><li><b>Online payments:</b> Online payments are processed by Paystack. Funds go directly to the seller's verified Paystack subaccount; Sureo does not hold or release your money. An order is marked as paid only after Paystack confirms the charge, never because a user says so.</li>
+<li><b>Pay on delivery:</b> You may instead choose to pay cash or by POS when you meet at a campus safety hub. Sellers must never share personal bank account numbers in chat or ask for off-platform transfers.</li>
 <li>We recommend meeting in a public place, inspecting the item before you pay, and never paying for something you have not seen. Paying in advance to a stranger is at your own risk.</li>
-<li>Sureo does not currently charge fees. If we introduce fees or in-app payments in future, we will tell you in advance and update these Terms.</li>
-<li>If an item is not delivered or is not as described, report the listing or user in the app. We may remove listings or suspend accounts, but we cannot refund money paid between users.</li></ul>
+<li>Sureo does not currently charge buyers a fee. Paystack may apply its own processing charges. We will tell you in advance if we introduce fees and update these Terms.</li>
+<li>If an item is not delivered or is not as described, report the listing or user in the app and email support@sureo.name.ng with your order details. We may remove listings or suspend accounts. Refunds for online payments are handled through Paystack and the seller; we cannot refund cash paid on delivery.</li></ul>
 <h4>6. Meeting safely</h4>
 <p>Meet in public campus locations, preferably the Safety Hubs shown in the app. Inspect items before confirming. Never share your PIN, OTP or password with anyone, including people claiming to be Sureo staff.</p>
 <h4>7. Reviews, reports and disputes</h4>
@@ -1014,7 +1016,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 <ul><li><b>Account data:</b> full name, email address, password (stored securely hashed, never in plain text).</li>
 <li><b>Seller verification data:</b> matric number, student ID image, a selfie holding your ID, and your university.</li>
 <li><b>Marketplace activity:</b> listings, photos, messages, orders, reviews, reports and saved items.</li>
-<li><b>Order data:</b> the items you request, the amount and your chosen payment method. Sureo does not process or store card or bank details.</li>
+<li><b>Order and payment data:</b> the items you order, the amount, your payment method and the Paystack transaction reference and status. Card and bank details are entered on Paystack and are never seen or stored by Sureo. Sellers who accept online payments also provide bank details to Paystack to create a payout subaccount; Sureo stores only the Paystack subaccount code.</li>
 <li><b>Technical data:</b> device type, browser, IP address and basic usage logs, for security and performance.</li></ul>
 <h4>3. Why we use it, and our legal basis</h4>
 <ul><li>To create and run your account and provide the service <i>(contract)</i>.</li>
@@ -1082,7 +1084,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <button type="button" id="payQtyPlus" style="width:38px;height:38px;border:1.5px solid var(--border);border-radius:10px;font-size:20px;font-weight:700;background:var(--card);color:var(--text)">+</button>
       </div>
     </div>
-        <div class="pay-opt sel" data-pay="transfer"><span class="rad"></span><span class="em">🏦</span><div><b>Bank transfer to seller</b><span>Seller shares account details in your chat</span></div></div>
+        <div class="pay-opt sel" data-pay="paystack"><span class="rad"></span><span class="em">💳</span><div><b>Pay online with Paystack</b><span>Card, bank transfer or USSD. Paid straight to the seller.</span></div></div>
     <div class="pay-opt" data-pay="offline"><span class="rad"></span><span class="em">🤝</span><div><b>Pay on delivery (offline)</b><span>Cash or POS at a meetup safety hub</span></div></div>
     <button class="btn-auth" id="payConfirm" style="margin-top:8px"><span class="spin"></span><span id="payConfirmText">Confirm & Pay</span></button>
   </div>
@@ -1127,8 +1129,27 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <button class="btn-auth" id="eSave"><span class="spin"></span><span>Save changes</span></button>
 </div></div>
 
+<div class="modal" id="payoutModal"><div class="modal-card sheet">
+  <div class="modal-head"><h3>Payout account</h3><button class="modal-close" data-close="payoutModal">×</button></div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Buyers who pay online are paid straight into this account through Paystack. Sureo never holds your money.</p>
+  <div class="field"><label>Bank</label><select id="poBank">
+    <option value="">Select your bank</option>
+    <option value="044">Access Bank</option><option value="050">Ecobank</option><option value="070">Fidelity Bank</option>
+    <option value="011">First Bank</option><option value="214">FCMB</option><option value="058">GTBank</option>
+    <option value="50211">Kuda</option><option value="50515">Moniepoint</option><option value="999992">OPay</option>
+    <option value="999991">PalmPay</option><option value="076">Polaris Bank</option><option value="221">Stanbic IBTC</option>
+    <option value="232">Sterling Bank</option><option value="033">UBA</option><option value="032">Union Bank</option>
+    <option value="035">Wema Bank</option><option value="057">Zenith Bank</option>
+    <option value="001">Paystack Test Bank (test mode only)</option>
+  </select></div>
+  <div class="field"><label>Account number</label><input type="text" id="poAcct" inputmode="numeric" maxlength="10" placeholder="10-digit account number"></div>
+  <div id="poErr" style="display:none;font-size:12px;color:var(--red);margin-bottom:10px"></div>
+  <button class="btn-auth" id="poSave"><span class="spin"></span><span>Save payout account</span></button>
+</div></div>
+
 <div id="toast"></div>
 
+<script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* ================= DATA ================= */
@@ -1263,13 +1284,13 @@ async function ensureConsent(){
 async function onSignedIn(user,restored){
   me=user;
   await ensureConsent();
-  const {data:p}=await sb.from('profiles').select('full_name,is_seller_verified,is_banned,rating_avg,rating_count').eq('id',user.id).maybeSingle();
+  const {data:p}=await sb.from('profiles').select('full_name,is_seller_verified,is_banned,rating_avg,rating_count,paystack_subaccount').eq('id',user.id).maybeSingle();
   if(p&&p.is_banned){await sb.auth.signOut();me=null;toast('This account has been suspended. Contact support@sureo.name.ng');return;}
   const {data:k}=await sb.from('kyc').select('id_type,id_last4,matric_no,status').eq('user_id',user.id).maybeSingle();
   kycRow=k||null;
   const name=(p&&p.full_name)||(user.user_metadata&&user.user_metadata.full_name)||user.email.split('@')[0];
   finishAuth(name,user.email,restored);
-  if(p&&p.is_seller_verified)setSellerStatus(true,(k&&k.matric_no)||'Verified seller',(k&&k.id_type)||'ID',(k&&k.id_last4)||'0000');
+  if(p&&p.is_seller_verified){setSellerStatus(true,(k&&k.matric_no)||'Verified seller',(k&&k.id_type)||'ID',(k&&k.id_last4)||'0000');hasPayout=!!p.paystack_subaccount;setPayoutStatus();}
   else if(k&&k.status==='pending')showPending();
   loadListings();
   loadProfileStats(user.id,p);
@@ -1571,18 +1592,47 @@ $('menuBtn').addEventListener('click',()=>$('mobileNav').classList.toggle('open'
 $('shareMeetup').addEventListener('click',()=>toast('🔗 Meetup plan copied! Share it with your deal partner & a friend.'));
 
 /* ---------- PAYMENT ---------- */
-let payMethod='transfer',payQty=1,payUnit=0;
+let payMethod='paystack',payQty=1,payUnit=0;
+function setPayText(){$('payConfirmText').textContent=payUnit===0?'Confirm reservation':(payMethod==='paystack'?'Pay securely with Paystack':'Place order (pay on delivery)');}
 function showPayAmount(){$('payQty').textContent=payQty;$('payAmount').textContent=payUnit===0?'FREE':'₦'+(payUnit*payQty).toLocaleString();}
 function openPay(name,vendor,price,it){
   state.payItem=name;state.payObj=it||null;$('payItem').textContent=name;$('payVendor').textContent=vendor;
   payQty=1;payUnit=price;showPayAmount();
   $('payFlow').style.display='block';$('paySuccess').style.display='none';
-  $('payConfirmText').textContent=price===0?'Confirm reservation':'Send order request';
+  payMethod='paystack';document.querySelectorAll('.pay-opt').forEach(x=>x.classList.toggle('sel',x.dataset.pay==='paystack'));setPayText();
   $('payModal').classList.add('open');
 }
 $('payQtyMinus').addEventListener('click',()=>{if(payQty>1){payQty--;showPayAmount();}});
 $('payQtyPlus').addEventListener('click',()=>{if(payQty<20){payQty++;showPayAmount();}});
-document.querySelectorAll('.pay-opt').forEach(o=>o.addEventListener('click',()=>{document.querySelectorAll('.pay-opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');payMethod=o.dataset.pay;}));
+document.querySelectorAll('.pay-opt').forEach(o=>o.addEventListener('click',()=>{document.querySelectorAll('.pay-opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');payMethod=o.dataset.pay;setPayText();}));
+async function callPaystack(action,orderId){
+  const {data,error}=await sb.functions.invoke('paystack',{body:{action:action,order_id:orderId}});
+  if(error){let code='';try{const j=await error.context.json();code=j.error||'';}catch(_){}return {err:code||'failed'};}
+  return {data:data};
+}
+function popupPay(accessCode){
+  return new Promise((res,rej)=>{
+    try{new PaystackPop().resumeTransaction(accessCode,{onSuccess:()=>res(true),onCancel:()=>res(false),onError:e=>rej(new Error((e&&e.message)||'Payment failed'))});}
+    catch(e){rej(new Error('Payment window could not open. Check your connection.'));}
+  });
+}
+async function payOnline(orderId){
+  if(typeof PaystackPop==='undefined')throw new Error('Paystack failed to load. Check your connection.');
+  const ini=await callPaystack('init',orderId);
+  if(ini.err){
+    if(ini.err==='seller_not_ready')throw new Error('This seller cannot take online payments yet. Choose pay on delivery.');
+    if(ini.err==='already_paid')return true;
+    throw new Error('Could not start payment. Try again.');
+  }
+  const done=await popupPay(ini.data.access_code);
+  if(!done)return false;
+  for(let i=0;i<4;i++){
+    const v=await callPaystack('verify',orderId);
+    if(v.data&&v.data.ok)return true;
+    await new Promise(r=>setTimeout(r,2000));
+  }
+  throw new Error('We could not confirm your payment yet. If you were charged, email support@sureo.name.ng with your order.');
+}
 $('payConfirm').addEventListener('click',async()=>{
   const it=state.payObj,b=$('payConfirm');
   if(!it||!it.r){toast('This is a sample listing. Real listings can be ordered.',3500);return;}
@@ -1590,18 +1640,30 @@ $('payConfirm').addEventListener('click',async()=>{
   if(b.classList.contains('loading'))return;
   b.classList.add('loading');
   try{
-    const {data:o,error}=await sb.from('orders').insert({listing_id:it.id,listing_title:it.n,seller_id:it.sid,buyer_id:me.id,amount_kobo:it.p*payQty*100,quantity:payQty,method:payMethod}).select('id').single();
-    if(error){if(error.code==='23505')throw new Error('You already have a pending order for this item.');throw error;}
-    state.orderId=o.id;state.orderSeller=it.sid;
+    const online=payMethod==='paystack'&&it.p>0;
+    let ins=await sb.from('orders').insert({listing_id:it.id,listing_title:it.n,seller_id:it.sid,buyer_id:me.id,amount_kobo:it.p*payQty*100,quantity:payQty,method:online?'paystack':'offline'}).select('id').single();
+    if(ins.error){
+      if(ins.error.code==='23505'){
+        const {data:ex}=await sb.from('orders').select('id,payment_status').eq('listing_id',it.id).eq('buyer_id',me.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        if(online&&ex&&ex.payment_status!=='paid')ins={data:{id:ex.id}};
+        else throw new Error('You already have a pending order for this item.');
+      }else throw ins.error;
+    }
+    state.orderId=ins.data.id;state.orderSeller=it.sid;
+    let paid=false;
+    if(online){
+      paid=await payOnline(state.orderId);
+      if(!paid){toast('Payment not completed. Your order is saved. Tap Pay to try again.',4500);return;}
+    }
     const c=await startChat(it);
     if(c){
-      const body='Hi! I\'d like to order '+(payQty>1?payQty+' x ':'')+'"'+it.n+'" ('+(it.p?'₦'+(it.p*payQty).toLocaleString():'free')+'). Payment: '+(payMethod==='offline'?'pay on delivery':'bank transfer')+'. When can we meet?';
+      const body="Hi! I'd like to order "+(payQty>1?payQty+' x ':'')+'"'+it.n+'" ('+(it.p?'₦'+(it.p*payQty).toLocaleString():'free')+'). '+(paid?'Paid online via Paystack. ':'Payment: pay on delivery. ')+'When can we meet?';
       const {data:m,error:e2}=await sb.from('messages').insert({conversation_id:c.id,sender_id:me.id,body}).select('id,created_at').single();
       if(!e2){addMsgLocal(c,{id:m.id,o:1,x:body,at:m.created_at});c.prev=body;c.at=m.created_at;c.t=convTime(c.at);sortConvs(c);}
     }
     $('payFlow').style.display='none';$('paySuccess').style.display='block';
-    $('successTitle').textContent='Order request sent!';
-    $('successSub').textContent=payMethod==='offline'?'Chat with the seller to agree a meetup and pay on delivery.':'The seller will share payment details in your chat.';
+    $('successTitle').textContent=paid?'Payment verified!':'Order request sent!';
+    $('successSub').textContent=paid?'Paystack confirmed your payment. Chat with the seller to arrange pickup at a safety hub.':'Chat with the seller to agree a meetup and pay on delivery.';
   }catch(e){toast(e.message||'Could not place order, try again.',4500);}
   finally{b.classList.remove('loading');}
 });
@@ -1762,9 +1824,26 @@ $('siBtn').addEventListener('click',()=>{
     await onSignedIn(data.user);
   });
 });
-let sellerOK=false,userEmail='';
+let sellerOK=false,userEmail='',hasPayout=false;
+function setPayoutStatus(){
+  const st=$('kycPayStatus');if(!st)return;
+  if(hasPayout){st.className='kyc-status ok';st.textContent='✓ READY';$('kycPayMeta').textContent='Online payments go straight to your account';}
+  else if(sellerOK){st.className='kyc-status opt';st.innerHTML='<button id="payoutBtn">Set up</button>';$('kycPayMeta').textContent='Needed to accept online payments';$('payoutBtn').addEventListener('click',()=>{$('poErr').style.display='none';$('payoutModal').classList.add('open');});}
+  else{st.className='kyc-status opt';st.textContent='Verify first';$('kycPayMeta').textContent='Where online payments are sent when you sell';}
+}
+$('poSave').addEventListener('click',async()=>{
+  const bank=$('poBank').value,acct=$('poAcct').value.trim(),er=$('poErr'),b=$('poSave');
+  er.style.display='none';
+  if(!bank||!/^\d{10}$/.test(acct)){er.textContent='Choose your bank and enter a 10-digit account number.';er.style.display='block';return;}
+  b.classList.add('loading');
+  const {data,error}=await sb.functions.invoke('paystack',{body:{action:'subaccount',bank_code:bank,account_number:acct}});
+  b.classList.remove('loading');
+  if(error){let m='';try{const j=await error.context.json();m=j.error||'';}catch(_){}
+    er.textContent=m==='not_verified'?'Complete seller verification first.':(m||'Could not save. Try again.');er.style.display='block';return;}
+  hasPayout=true;setPayoutStatus();$('payoutModal').classList.remove('open');toast('✓ Payout account saved. You can now accept online payments.');
+});
 function setSellerStatus(ok,matric,idType,idNum){
-  sellerOK=ok;
+  sellerOK=ok;if(!ok)hasPayout=false;setPayoutStatus();
   const st=document.querySelectorAll('#view-account .kyc-row')[1].querySelector('.kyc-status');
   if(ok){
     $('kycBvn').textContent='Student ID and selfie reviewed by the Sureo team';
