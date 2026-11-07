@@ -628,8 +628,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <a href="#how" class="btn-outline">See how it works</a>
       </div>
       <div class="hero-stats">
-        <div class="stat"><div class="stat-num" data-count="68" data-suffix="+">0</div><div class="stat-label">Live listings</div></div>
-        <div class="stat"><div class="stat-num" data-count="38" data-suffix="">0</div><div class="stat-label">Verified sellers</div></div>
+        <div class="stat"><div class="stat-num" id="statListings" data-count="0" data-suffix="">0</div><div class="stat-label">Live listings</div></div>
+        <div class="stat"><div class="stat-num" id="statSellers" data-count="0" data-suffix="">0</div><div class="stat-label">Verified sellers</div></div>
         <div class="stat"><div class="stat-num" data-count="24" data-suffix="h">0</div><div class="stat-label">Report review time</div></div>
       </div>
     </div>
@@ -1378,6 +1378,15 @@ let toastT;function toast(msg,ms){const t=$('toast');t.textContent=msg;t.classLi
 /* ---------- SCROLL REVEAL ---------- */
 const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const el=en.target;el.style.animationDelay=el.dataset.d||'0ms';el.classList.add('anim');if(el.classList.contains('stat-num'))countUp(el);io.unobserve(el);});},{threshold:.1,rootMargin:'0px 0px -30px 0px'});
 function countUp(el){const tg=+el.dataset.count,sf=el.dataset.suffix||'',dur=1300,t0=performance.now();(function tick(t){const k=Math.min((t-t0)/dur,1),e=1-Math.pow(1-k,3);el.textContent=Math.round(tg*e)+sf;if(k<1)requestAnimationFrame(tick);})(t0);}
+function setStat(id,n){const el=$(id);if(!el)return;el.dataset.count=n;el.dataset.suffix='';if(el.classList.contains('anim'))countUp(el);}
+(async()=>{try{
+  const [l,v]=await Promise.all([
+    sb.from('listings').select('id',{count:'exact',head:true}).eq('status','active'),
+    sb.from('profiles').select('id',{count:'exact',head:true}).eq('is_seller_verified',true)
+  ]);
+  if(!l.error&&l.count!=null)setStat('statListings',l.count);
+  if(!v.error&&v.count!=null)setStat('statSellers',v.count);
+}catch(e){}})();
 
 /* ---------- MARKET RENDER ---------- */
 function render(){
