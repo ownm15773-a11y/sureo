@@ -628,7 +628,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <a href="#how" class="btn-outline">See how it works</a>
       </div>
       <div class="hero-stats">
-        <div class="stat"><div class="stat-num" id="statListings" data-count="0" data-suffix="">0</div><div class="stat-label">Live listings</div></div>
+        <div class="stat"><div class="stat-num" id="statLiveListings" data-count="0" data-suffix="">0</div><div class="stat-label">Live listings</div></div>
         <div class="stat"><div class="stat-num" id="statSellers" data-count="0" data-suffix="">0</div><div class="stat-label">Verified sellers</div></div>
         <div class="stat"><div class="stat-num" data-count="24" data-suffix="h">0</div><div class="stat-label">Report review time</div></div>
       </div>
@@ -1400,7 +1400,7 @@ function setStat(id,n){const el=$(id);if(!el)return;el.dataset.count=n;el.datase
     sb.from('listings').select('id',{count:'exact',head:true}).eq('status','active'),
     sb.from('profiles').select('id',{count:'exact',head:true}).eq('is_seller_verified',true)
   ]);
-  if(!l.error&&l.count!=null)setStat('statListings',l.count);
+  if(!l.error&&l.count!=null)setStat('statLiveListings',l.count);
   if(!v.error&&v.count!=null)setStat('statSellers',v.count);
 }catch(e){}})();
 
