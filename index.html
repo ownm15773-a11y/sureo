@@ -921,6 +921,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <p class="auth-sub" id="edText"></p>
       <button class="btn-auth" id="edBtn"><span>Done</span></button>
     </div>
+    <div id="stepDelete" style="display:none">
+      <h2>Delete your account? 🗑️</h2><p class="auth-sub">This permanently deletes your account, listings, chats and verification files. It cannot be undone.</p>
+      <div class="field"><label>Type DELETE to confirm</label><input type="text" id="dlText" placeholder="DELETE" autocomplete="off" autocapitalize="characters"></div>
+      <p class="form-err" id="dlErr"></p>
+      <button class="btn-auth" id="dlConfirm" style="background:var(--red);box-shadow:none"><span class="spin"></span><span>Delete my account</span></button>
+      <button class="btn-ghost" id="dlCancel" style="margin-top:10px">Cancel</button>
+    </div>
 
     <!-- KYC WIZARD -->
     <div id="stepWizard">
@@ -1785,12 +1792,12 @@ const auth=$('auth');let wizStep=1,authMode='signup',idUploaded=false;
 function openAuth(mode){authMode=mode;auth.classList.add('open');document.body.classList.add('locked');showAuthStep();}
 function showAuthStep(){
   const seller=authMode==='seller',signin=authMode==='signin';
-  const reset=authMode==='reset',em=authMode==='email',ed=authMode==='emaildone';
+  const reset=authMode==='reset',em=authMode==='email',ed=authMode==='emaildone',dl=authMode==='delete';
   $('stepReset').style.display=reset?'block':'none';$('stepVerified').style.display='none';$('stepCode').style.display='none';
-  $('stepEmail').style.display=em?'block':'none';$('stepEmailDone').style.display=ed?'block':'none';
+  $('stepEmail').style.display=em?'block':'none';$('stepEmailDone').style.display=ed?'block':'none';$('stepDelete').style.display=dl?'block':'none';
   $('stepSignin').style.display=signin?'block':'none';
-  $('stepWizard').style.display=(signin||reset||em||ed)?'none':'block';
-  if(signin||reset||em||ed)return;
+  $('stepWizard').style.display=(signin||reset||em||ed||dl)?'none':'block';
+  if(signin||reset||em||ed||dl)return;
   const step=seller?wizStep:1;
   $('wz1').style.display=step===1?'block':'none';$('wz2').style.display=step===2?'block':'none';$('wz3').style.display=step===3?'block':'none';
   document.querySelector('.wiz-steps').style.display=seller?'flex':'none';
@@ -2091,17 +2098,24 @@ if(emailBack)setTimeout(()=>{
 },600);
 
 /* ---------- DELETE ACCOUNT ---------- */
-$('deleteAcctBtn').addEventListener('click',async()=>{
+$('deleteAcctBtn').addEventListener('click',()=>{
   if(!me)return;
-  if(prompt('This permanently deletes your account, listings, chats and verification files. Type DELETE to confirm.')!=='DELETE')return;
-  const btn=$('deleteAcctBtn');btn.disabled=true;btn.textContent='Deleting…';
+  $('dlErr').classList.remove('show');$('dlText').value='';openAuth('delete');
+});
+$('dlCancel').addEventListener('click',closeAuth);
+$('dlConfirm').addEventListener('click',async()=>{
+  const er=$('dlErr'),btn=$('dlConfirm');
+  if(!me)return;
+  if($('dlText').value.trim()!=='DELETE'){er.textContent='Type DELETE in capital letters to confirm.';er.classList.add('show');return;}
+  er.classList.remove('show');btn.classList.add('loading');btn.disabled=true;
   try{
     await rmFolder('kyc-private',me.id);await rmFolder('listing-media',me.id);
     const {error}=await sb.rpc('delete_my_account');
     if(error)throw error;
+    closeAuth();
     await doLogout('Your account has been deleted.');
-  }catch(e){toast('Could not delete account: '+(e.message||'try again'),5000);}
-  finally{btn.disabled=false;btn.textContent='Delete account';}
+  }catch(e){er.textContent='Could not delete account: '+(e.message||'try again');er.classList.add('show');}
+  finally{btn.classList.remove('loading');btn.disabled=false;}
 });
 
 /* ---------- SMOOTH TABS + SWIPE ---------- */
