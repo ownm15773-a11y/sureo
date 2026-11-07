@@ -843,6 +843,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <p class="kyc-sub">Manage your presence on Sureo.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn-primary" id="editProfile">Edit profile</button>
+          <button class="btn-ghost" style="width:auto;padding:12px 20px" id="changeEmailBtn">Change email</button>
           <button class="btn-ghost" style="width:auto;padding:12px 20px" id="logoutBtn">Log out</button>
           <button class="btn-ghost" style="width:auto;padding:12px 20px;color:var(--red)" id="deleteAcctBtn">Delete account</button>
         </div>
@@ -1147,6 +1148,14 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div class="field"><label>Account number</label><input type="text" id="poAcct" inputmode="numeric" maxlength="10" placeholder="10-digit account number"></div>
   <div id="poErr" style="display:none;font-size:12px;color:var(--red);margin-bottom:10px"></div>
   <button class="btn-auth" id="poSave"><span class="spin"></span><span>Save payout account</span></button>
+</div></div>
+
+<div class="modal" id="emailModal"><div class="modal-card sheet">
+  <div class="modal-head"><h3>Change email</h3><button class="modal-close" data-close="emailModal">×</button></div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Enter your new email. We'll send a confirmation link to it. Your email changes only after you tap that link.</p>
+  <div class="field"><label>New email address</label><input type="email" id="ceEmail" autocomplete="email" placeholder="you@example.com"></div>
+  <div id="ceErr" style="display:none;font-size:12px;color:var(--red);margin-bottom:10px"></div>
+  <button class="btn-auth" id="ceSave"><span class="spin"></span><span>Send confirmation link</span></button>
 </div></div>
 
 <div id="toast"></div>
@@ -2037,6 +2046,24 @@ $('eSave').addEventListener('click',async()=>{
   btn.classList.remove('loading');
   if(error){toast('Could not save: '+error.message,4000);return;}
   $('editModal').classList.remove('open');toast('✓ Listing updated.');loadMyListings();loadListings();
+});
+
+/* ---------- CHANGE EMAIL ---------- */
+$('changeEmailBtn').addEventListener('click',()=>{
+  if(!me)return;
+  $('ceErr').style.display='none';$('ceEmail').value='';$('emailModal').classList.add('open');
+});
+$('ceSave').addEventListener('click',async()=>{
+  const ne=$('ceEmail').value.trim().toLowerCase(),er=$('ceErr'),b=$('ceSave');
+  er.style.display='none';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ne)){er.textContent='Enter a valid email address.';er.style.display='block';return;}
+  if(ne===(userEmail||'').toLowerCase()){er.textContent='That is already your email.';er.style.display='block';return;}
+  b.classList.add('loading');
+  const {error}=await sb.auth.updateUser({email:ne},{emailRedirectTo:location.origin+location.pathname});
+  b.classList.remove('loading');
+  if(error){er.textContent=error.message||'Could not change email. Try again.';er.style.display='block';return;}
+  $('emailModal').classList.remove('open');
+  toast('✓ Check '+ne+' for the confirmation link.',5000);
 });
 
 /* ---------- DELETE ACCOUNT ---------- */
