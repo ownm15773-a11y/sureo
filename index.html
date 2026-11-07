@@ -844,6 +844,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn-primary" id="editProfile">Edit profile</button>
           <button class="btn-ghost" style="width:auto;padding:12px 20px" id="changeEmailBtn">Change email</button>
+          <button class="btn-ghost" style="width:auto;padding:12px 20px" id="changePassBtn">Change password</button>
           <button class="btn-ghost" style="width:auto;padding:12px 20px" id="logoutBtn">Log out</button>
           <button class="btn-ghost" style="width:auto;padding:12px 20px;color:var(--red)" id="deleteAcctBtn">Delete account</button>
         </div>
@@ -920,6 +921,21 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <h2 style="margin-top:12px" id="edTitle">Email changed</h2>
       <p class="auth-sub" id="edText"></p>
       <button class="btn-auth" id="edBtn"><span>Done</span></button>
+    </div>
+    <div id="stepEditProfile" style="display:none">
+      <h2>Edit your profile ✏️</h2><p class="auth-sub">This is the name other students see on your listings.</p>
+      <div class="field"><label>Full name</label><input type="text" id="epName" placeholder="e.g. Chidera Okafor" maxlength="60" autocomplete="name"></div>
+      <p class="form-err" id="epErr"></p>
+      <button class="btn-auth" id="epSave"><span class="spin"></span><span>Save changes</span></button>
+      <button class="btn-ghost" id="epCancel" style="margin-top:10px">Cancel</button>
+    </div>
+    <div id="stepChangePass" style="display:none">
+      <h2>Change your password 🔐</h2><p class="auth-sub">Choose a new password for your account.</p>
+      <div class="field"><label>New password</label><input type="password" id="cpPass" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="field"><label>Confirm new password</label><input type="password" id="cpPass2" placeholder="Type it again" autocomplete="new-password"></div>
+      <p class="form-err" id="cpErr"></p>
+      <button class="btn-auth" id="cpSave"><span class="spin"></span><span>Update password</span></button>
+      <button class="btn-ghost" id="cpCancel" style="margin-top:10px">Cancel</button>
     </div>
     <div id="stepDelete" style="display:none">
       <h2>Delete your account? 🗑️</h2><p class="auth-sub">This permanently deletes your account, listings, chats and verification files. It cannot be undone.</p>
@@ -1801,12 +1817,12 @@ const auth=$('auth');let wizStep=1,authMode='signup',idUploaded=false;
 function openAuth(mode){authMode=mode;auth.classList.add('open');document.body.classList.add('locked');showAuthStep();}
 function showAuthStep(){
   const seller=authMode==='seller',signin=authMode==='signin';
-  const reset=authMode==='reset',em=authMode==='email',ed=authMode==='emaildone',dl=authMode==='delete';
+  const reset=authMode==='reset',em=authMode==='email',ed=authMode==='emaildone',dl=authMode==='delete',ep=authMode==='editprofile',cp=authMode==='changepass';
   $('stepReset').style.display=reset?'block':'none';$('stepVerified').style.display='none';$('stepCode').style.display='none';
-  $('stepEmail').style.display=em?'block':'none';$('stepEmailDone').style.display=ed?'block':'none';$('stepDelete').style.display=dl?'block':'none';
+  $('stepEmail').style.display=em?'block':'none';$('stepEmailDone').style.display=ed?'block':'none';$('stepDelete').style.display=dl?'block':'none';$('stepEditProfile').style.display=ep?'block':'none';$('stepChangePass').style.display=cp?'block':'none';
   $('stepSignin').style.display=signin?'block':'none';
-  $('stepWizard').style.display=(signin||reset||em||ed||dl)?'none':'block';
-  if(signin||reset||em||ed||dl)return;
+  $('stepWizard').style.display=(signin||reset||em||ed||dl||ep||cp)?'none':'block';
+  if(signin||reset||em||ed||dl||ep||cp)return;
   const step=seller?wizStep:1;
   $('wz1').style.display=step===1?'block':'none';$('wz2').style.display=step===2?'block':'none';$('wz3').style.display=step===3?'block':'none';
   document.querySelector('.wiz-steps').style.display=seller?'flex':'none';
@@ -1937,7 +1953,44 @@ $('uploadIdBtn')&&$('uploadIdBtn').addEventListener('click',()=>{
   });
   inp.click();
 });
-$('editProfile').addEventListener('click',()=>toast('✏️ Profile editing coming in v2 — prototype note.'));
+function applyName(name){
+  const first=(name.charAt(0).toUpperCase()+name.slice(1))||'Student';
+  $('avatar').textContent=first.charAt(0).toUpperCase();$('hello').textContent='Hi, '+first.split(' ')[0];
+  $('heroName').textContent=first.split(' ')[0];
+  $('profileAv').textContent=first.charAt(0).toUpperCase();$('profileName').textContent=first;
+}
+$('editProfile').addEventListener('click',()=>{
+  if(!me)return;
+  $('epErr').classList.remove('show');$('epName').value=$('profileName').textContent.trim();openAuth('editprofile');
+});
+$('epCancel').addEventListener('click',closeAuth);
+$('epSave').addEventListener('click',async()=>{
+  const nm=$('epName').value.trim().replace(/\s+/g,' '),er=$('epErr'),b=$('epSave');
+  er.classList.remove('show');
+  if(nm.length<2||nm.length>60){er.textContent='Enter your name (2 to 60 characters).';er.classList.add('show');return;}
+  b.classList.add('loading');
+  const {error}=await sb.from('profiles').update({full_name:nm}).eq('id',me.id);
+  if(!error){try{await sb.auth.updateUser({data:{full_name:nm}});}catch(x){}}
+  b.classList.remove('loading');
+  if(error){er.textContent='Could not save. '+(error.message||'Try again.');er.classList.add('show');return;}
+  applyName(nm);closeAuth();toast('✓ Profile updated.',3000);
+});
+$('changePassBtn').addEventListener('click',()=>{
+  if(!me)return;
+  $('cpErr').classList.remove('show');$('cpPass').value='';$('cpPass2').value='';openAuth('changepass');
+});
+$('cpCancel').addEventListener('click',closeAuth);
+$('cpSave').addEventListener('click',async()=>{
+  const a=$('cpPass').value,c=$('cpPass2').value,er=$('cpErr'),b=$('cpSave');
+  er.classList.remove('show');
+  if(a.length<8){er.textContent='Password must be at least 8 characters.';er.classList.add('show');return;}
+  if(a!==c){er.textContent='The two passwords do not match.';er.classList.add('show');return;}
+  b.classList.add('loading');
+  const {error}=await sb.auth.updateUser({password:a});
+  b.classList.remove('loading');
+  if(error){er.textContent=error.message||'Could not update password. Try again.';er.classList.add('show');return;}
+  $('cpPass').value='';$('cpPass2').value='';closeAuth();toast('✓ Password updated.',3500);
+});
 $('logoutBtn').addEventListener('click',()=>doLogout());
 
 /* ---------- MISC ---------- */
