@@ -15,7 +15,7 @@ button{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;borde
 button.ok{background:var(--p);border-color:var(--a);color:#fff}
 button.no{color:var(--r);border-color:#5b2a2a}
 button:disabled{opacity:.5}
-input{width:100%;padding:13px 14px;border:1.5px solid var(--b);border-radius:12px;background:var(--c);margin-bottom:10px;font-size:16px}
+input,select{width:100%;padding:13px 14px;border:1.5px solid var(--b);border-radius:12px;background:var(--c);margin-bottom:10px;font-size:16px}
 #login{max-width:420px;margin:0 auto;padding:60px 18px}
 h1{font-size:22px;font-weight:800}
 .sub{color:var(--m);font-size:13.5px;margin:2px 0 18px}
@@ -265,7 +265,7 @@ async function loadReviews(){
   el.innerHTML=d.length?d.map(x=>{const n=x.stars||x.rating||0;return '<div class="card" data-rid="'+esc(x.id)+'"><div class="nm">'+'★'.repeat(n)+'☆'.repeat(Math.max(0,5-n))+'</div><div class="mt"><u data-user="'+esc(x.reviewer_id)+'">'+esc(nm[x.reviewer_id]||'Unknown')+'</u> reviewed <u data-user="'+esc(x.reviewee_id)+'">'+esc(nm[x.reviewee_id]||'Unknown')+'</u><br>'+when(x.created_at)+'</div><button class="no" data-act="delreview">Delete review</button></div>';}).join(''):'<div class="em">No reviews yet.</div>';
 }
 function loadAnnounce(){
-  $('pg-announce').innerHTML='<div class="card"><div class="nm">Send an announcement</div><div class="mt">It appears in each user\u2019s notifications. Send it to yourself first to test.</div><input id="anT" placeholder="Title (e.g. Exam week deals)" maxlength="80"><input id="anB" placeholder="Message" maxlength="240"><div class="row"><button id="anTest">Send to me (test)</button><button class="ok" id="anAll">Send to everyone</button></div></div>';
+  $('pg-announce').innerHTML='<div class="card"><div class="nm">Send an announcement</div><div class="mt">It appears in each user\u2019s notifications. Send it to yourself first to test.</div><input id="anT" placeholder="Title (e.g. Exam week deals)" maxlength="80"><input id="anB" placeholder="Message" maxlength="240"><select id="anV"><option value="market">Tapping opens: Marketplace</option><option value="safety">Tapping opens: Safety tips</option><option value="profile">Tapping opens: Profile</option></select><div class="row"><button id="anTest">Send to me (test)</button><button class="ok" id="anAll">Send to everyone</button></div></div>';
   $('anTest').onclick=()=>sendAnn(false);$('anAll').onclick=()=>sendAnn(true);
 }
 async function sendAnn(all){
@@ -273,7 +273,7 @@ async function sendAnn(all){
   let ids=[me.id];
   if(all){const r=await sb.from('profiles').select('id').or('is_banned.is.null,is_banned.eq.false').limit(5000);if(r.error){toast('Failed: '+r.error.message);return;}ids=(r.data||[]).map(x=>x.id);if(!confirm('Send to '+ids.length+' users?'))return;}
   $('anTest').disabled=$('anAll').disabled=true;let n=0;
-  for(let i=0;i<ids.length;i+=500){const rows=ids.slice(i,i+500).map(u=>({user_id:u,type:'announcement',title:t,body:b,read:false}));const r=await sb.from('notifications').insert(rows);if(r.error){toast('Stopped after '+n+': '+r.error.message);$('anTest').disabled=$('anAll').disabled=false;return;}n+=rows.length;}
+  for(let i=0;i<ids.length;i+=500){const rows=ids.slice(i,i+500).map(u=>({user_id:u,type:'announcement',title:t,body:b,view:$('anV').value,read:false}));const r=await sb.from('notifications').insert(rows);if(r.error){toast('Stopped after '+n+': '+r.error.message);$('anTest').disabled=$('anAll').disabled=false;return;}n+=rows.length;}
   $('anTest').disabled=$('anAll').disabled=false;toast('✓ Sent to '+n);
 }
 async function loadAdmins(){
