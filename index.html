@@ -2073,7 +2073,7 @@ function setTab(t){
 sb.auth.getSession().then(async({data})=>{
   if(data.session){
     let stale=false;try{const l=+localStorage.getItem('sureoLast')||0;stale=l&&Date.now()-l>=IDLE_MS;}catch(e){}
-    if(stale){try{await sb.auth.signOut();}catch(e){}document.body.classList.remove('authed','restoring');toast('⏱️ You were logged out after 20 minutes of inactivity.',4000);return;}
+    if(stale&&!recovering){try{await sb.auth.signOut();}catch(e){}document.body.classList.remove('authed','restoring');toast('⏱️ You were logged out after 20 minutes of inactivity.',4000);return;}
     try{await onSignedIn(data.session.user,true);}finally{document.body.classList.remove('restoring');if(!me)document.body.classList.remove('authed');}
   }else{
     document.body.classList.remove('authed','restoring');
