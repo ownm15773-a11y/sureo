@@ -3,46 +3,105 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>Sureo Admin</title>
+<meta name="theme-color" content="#0b1210">
+<title>Sureo Control Room</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--p:#0d4a3a;--bg:#f8f9fa;--t:#111827;--m:#6b7280;--b:#e5e7eb}
+:root{--p:#0d4a3a;--a:#2fd0a0;--bg:#0b1210;--c:#121c18;--c2:#18251f;--t:#eef5f2;--m:#8aa399;--b:#223229;--r:#f87171}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--t);line-height:1.5;padding:20px 16px calc(40px + env(safe-area-inset-bottom))}
-.w{max-width:640px;margin:0 auto}
-h1{font-size:22px;font-weight:800;margin-bottom:2px}
-.sub{color:var(--m);font-size:13.5px;margin-bottom:18px}
-h2{font-size:15px;font-weight:800;margin:24px 0 10px}
-.card{background:#fff;border:1.5px solid var(--b);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--t);line-height:1.5}
+button,input{font:inherit;color:inherit}
+button{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;border:1.5px solid var(--b);background:var(--c2);cursor:pointer;touch-action:manipulation}
+button.ok{background:var(--p);border-color:var(--a);color:#fff}
+button.no{color:var(--r);border-color:#5b2a2a}
+button:disabled{opacity:.5}
+input{width:100%;padding:13px 14px;border:1.5px solid var(--b);border-radius:12px;background:var(--c);margin-bottom:10px;font-size:16px}
+#login{max-width:420px;margin:0 auto;padding:60px 18px}
+h1{font-size:22px;font-weight:800}
+.sub{color:var(--m);font-size:13.5px;margin:2px 0 18px}
+.err{color:var(--r);font-size:13px;margin:4px 0 10px;min-height:18px}
+#app{display:none}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--b);padding:calc(10px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:12px}
+header .lg{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--p),var(--a));display:grid;place-items:center;font-size:18px}
+header .tt{flex:1;min-width:0}
+header b{display:block;font-size:17px}
+header small{color:var(--a);font-size:11px;letter-spacing:2px}
+.chip{padding:6px 12px;border:1px solid var(--b);border-radius:20px;font-size:13px;font-weight:700;background:var(--c)}
+main{max-width:640px;margin:0 auto;padding:16px 14px calc(96px + env(safe-area-inset-bottom))}
+h2{font-size:15px;font-weight:800;margin:20px 0 10px}
+.pg{display:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.st{background:var(--c);border:1px solid var(--b);border-radius:16px;padding:14px;cursor:pointer}
+.st b{font-size:26px;display:block}
+.st span{color:var(--m);font-size:12.5px}
+.card{background:var(--c);border:1px solid var(--b);border-radius:16px;padding:14px 16px;margin-bottom:10px}
 .nm{font-weight:800;font-size:15px}
 .mt{font-size:12.5px;color:var(--m);margin:3px 0 10px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
-button,input{font:inherit}
-button{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;border:1.5px solid var(--b);background:#fff;cursor:pointer;touch-action:manipulation}
-button.ok{background:var(--p);color:#fff;border-color:var(--p)}
-button.no{color:#b91c1c;border-color:#fecaca}
-button:disabled{opacity:.5}
-input{width:100%;padding:13px 14px;border:1.5px solid var(--b);border-radius:12px;margin-bottom:10px;font-size:16px}
-.err{color:#b91c1c;font-size:13px;margin:4px 0 10px;min-height:18px}
 .em{color:var(--m);font-size:13.5px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button.on{background:var(--p);border-color:var(--a);color:#fff}
 img.id{max-width:100%;border-radius:12px;border:1px solid var(--b);margin-bottom:10px;display:block}
-#app{display:none}
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;display:none;z-index:9}
+a{color:var(--a)}
+img.th{width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-bottom:10px;display:block}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--b);display:flex;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.bar button{flex:1;border:0;background:none;color:var(--m);font-size:11px;padding:6px 2px}
+.bar button i{display:block;font-style:normal;font-size:19px}
+.bar button.on{color:var(--a)}
+#ov{position:fixed;inset:0;background:#000a;z-index:8;display:none}
+#dr{position:fixed;top:0;bottom:0;left:0;width:270px;max-width:80%;background:var(--c);z-index:9;padding:calc(18px + env(safe-area-inset-top)) 12px 18px;transform:translateX(-100%);transition:transform .2s;border-right:1px solid var(--b)}
+#dr.open{transform:none}
+#dr h3{font-size:11px;letter-spacing:2px;color:var(--m);margin:6px 10px 8px}
+#dr button{display:block;width:100%;text-align:left;border:0;background:none;font-size:15px;padding:13px 10px;border-radius:10px;color:var(--t)}
+#dr button.on{background:var(--c2);color:var(--a)}
+#dr button.lo{color:var(--r);margin-top:14px;border-top:1px solid var(--b);border-radius:0}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#fff;color:#111;padding:10px 16px;border-radius:12px;font-size:13px;display:none;z-index:12}
 </style></head><body>
-<div class="w">
-  <div id="login">
-    <h1>🛡️ Sureo Admin</h1>
-    <p class="sub">Staff only. Sign in with your admin account.</p>
-    <input id="em" type="email" placeholder="Email" autocomplete="username">
-    <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
-    <div class="err" id="lerr"></div>
-    <button class="ok" id="go" style="width:100%;padding:14px">Sign in</button>
-  </div>
-  <div id="app">
-    <div class="top"><div><h1>🛡️ Sureo Admin</h1><p class="sub" id="who"></p></div><button id="out">Sign out</button></div>
-    <h2>Sellers waiting for approval</h2><div id="pend"><div class="em">Loading…</div></div>
-    <h2>Recent users</h2><div id="usr"><div class="em">Loading…</div></div>
+<div id="login">
+  <h1>🛡️ Sureo Control Room</h1>
+  <p class="sub">Staff only. Sign in with your admin account.</p>
+  <input id="em" type="email" placeholder="Email" autocomplete="username">
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="lerr"></div>
+  <button class="ok" id="go" style="width:100%;padding:14px">Sign in</button>
+</div>
+<div id="app">
+  <header>
+    <button id="mn" aria-label="Menu">☰</button>
+    <div class="lg">📈</div>
+    <div class="tt"><b id="ttl">Dashboard</b><small>SUREO CONTROL ROOM</small></div>
+    <div class="chip" id="who">Admin</div>
+  </header>
+  <main>
+    <div class="pg" id="pg-home"></div>
+    <div class="pg" id="pg-sellers"></div>
+    <div class="pg" id="pg-users"></div>
+    <div class="pg" id="pg-listings"></div>
+    <div class="pg" id="pg-orders"></div>
+    <div class="pg" id="pg-reports"></div>
+    <div class="pg" id="pg-admins"></div>
+  </main>
+  <nav class="bar">
+    <button data-go="home"><i>🏠</i>Home</button>
+    <button data-go="sellers"><i>🪪</i>Sellers</button>
+    <button data-go="listings"><i>🛍️</i>Listings</button>
+    <button data-go="orders"><i>💳</i>Orders</button>
+    <button data-go="reports"><i>🚩</i>Reports</button>
+  </nav>
+  <div id="ov"></div>
+  <div id="dr">
+    <h3>MAIN MENU</h3>
+    <button data-go="home">🏠 Dashboard</button>
+    <button data-go="users">👥 Users</button>
+    <button data-go="sellers">🪪 Seller verification</button>
+    <h3 style="margin-top:14px">MARKETPLACE</h3>
+    <button data-go="listings">🛍️ Listings</button>
+    <button data-go="reports">🚩 Reports</button>
+    <h3 style="margin-top:14px">TRANSACTIONS</h3>
+    <button data-go="orders">💳 Orders &amp; payments</button>
+    <h3 style="margin-top:14px">ACCESS</h3>
+    <button data-go="admins">🛡️ Admins</button>
+    <button class="lo" id="out">↪ Logout</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -51,26 +110,126 @@ const sb=window.supabase.createClient('https://dgzltdkaumkprxijuoqv.supabase.co'
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.x);toast.x=setTimeout(()=>t.style.display='none',3000);}
-let me=null;
+const T={home:'Dashboard',sellers:'Seller verification',users:'Users',listings:'Listings',orders:'Orders & payments',reports:'Reports',admins:'Admins'};
+let me=null,tab='home',kst='pending',ulist=[];
+function menu(o){$('dr').classList.toggle('open',o);$('ov').style.display=o?'block':'none';}
+function go(t){
+  tab=t;
+  document.querySelectorAll('.pg').forEach(p=>p.style.display=p.id==='pg-'+t?'block':'none');
+  document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===t));
+  $('ttl').textContent=T[t];menu(false);window.scrollTo(0,0);load();
+}
+function load(){({home:loadHome,sellers:loadSellers,users:loadUsers,listings:loadListings,orders:loadOrders,reports:loadReports,admins:loadAdmins})[tab]();}
 async function enter(user){
   const {data}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();
   if(!data){await sb.auth.signOut();$('lerr').textContent='This account is not an admin.';$('login').style.display='block';$('app').style.display='none';return;}
-  me=user;$('login').style.display='none';$('app').style.display='block';$('who').textContent=user.email;load();
+  me=user;$('login').style.display='none';$('app').style.display='block';$('who').textContent=(user.email||'Admin').split('@')[0];go('home');
 }
-async function load(){
-  const {data:ks,error}=await sb.from('kyc').select('user_id,matric_no,student_id_path,selfie_path,created_at,profiles(full_name)').eq('status','pending').order('created_at');
-  $('pend').innerHTML=error?'<div class="em">Could not load: '+esc(error.message)+'</div>':!ks.length?'<div class="em">No one is waiting. 🎉</div>':ks.map(k=>
+const cnt=async q=>{const {count}=await q;return count==null?'–':count;};
+async function loadHome(){
+  const el=$('pg-home');el.innerHTML='<div class="em">Loading…</div>';
+  const P=()=>sb.from('profiles').select('id',{count:'exact',head:true});
+  const O=()=>sb.from('orders').select('id',{count:'exact',head:true});
+  const [u,v,pe,bn,li,od,pd,rp,rc]=await Promise.all([
+    cnt(P()),cnt(P().eq('is_seller_verified',true)),
+    cnt(sb.from('kyc').select('user_id',{count:'exact',head:true}).eq('status','pending')),
+    cnt(P().eq('is_banned',true)),cnt(sb.from('listings').select('id',{count:'exact',head:true})),
+    cnt(O()),cnt(O().eq('payment_status','paid')),cnt(sb.from('reports').select('listing_id',{count:'exact',head:true})),
+    sb.from('profiles').select('id,full_name,created_at').order('created_at',{ascending:false}).limit(5)]);
+  const st=(n,l,t)=>'<div class="st" data-go="'+t+'"><b>'+n+'</b><span>'+l+'</span></div>';
+  el.innerHTML='<div class="grid">'+st(u,'Users','users')+st(v,'Verified sellers','sellers')+st(pe,'Waiting for approval','sellers')+st(bn,'Banned','users')+st(li,'Listings','listings')+st(rp,'Scam reports','reports')+st(od,'Orders','orders')+st(pd,'Paid orders','orders')+'</div>'
+    +'<h2>Latest sign-ups</h2>'+((rc.data&&rc.data.length)?rc.data.map(x=>'<div class="card"><div class="nm">'+esc(x.full_name||'Student')+'</div><div class="mt" style="margin:0">'+(x.created_at?new Date(x.created_at).toLocaleString():'')+'</div></div>').join(''):'<div class="em">No users yet.</div>');
+}
+async function loadSellers(){
+  const el=$('pg-sellers');
+  const tabs='<div class="tabs">'+[['pending','Pending'],['verified','Approved'],['rejected','Rejected']].map(x=>'<button data-kst="'+x[0]+'"'+(kst===x[0]?' class="on"':'')+'>'+x[1]+'</button>').join('')+'</div>';
+  el.innerHTML=tabs+'<div class="em">Loading…</div>';
+  const {data:ks,error}=await sb.from('kyc').select('user_id,matric_no,student_id_path,selfie_path,created_at,profiles(full_name)').eq('status',kst).order('created_at');
+  el.innerHTML=tabs+(error?'<div class="em">Could not load: '+esc(error.message)+'</div>':!ks.length?'<div class="em">'+(kst==='pending'?'No one is waiting. 🎉':'Nothing here yet.')+'</div>':ks.map(k=>
     '<div class="card" data-uid="'+k.user_id+'"><div class="nm">'+esc((k.profiles&&k.profiles.full_name)||'Student')+'</div>'
     +'<div class="mt">Matric: '+esc(k.matric_no||'-')+'<br>Sent '+new Date(k.created_at).toLocaleString()+'</div>'
     +'<div class="box"></div><div class="row">'+((k.student_id_path||k.selfie_path)?'<button data-act="view" data-path="'+esc(k.student_id_path||'')+'" data-selfie="'+esc(k.selfie_path||'')+'">View ID &amp; selfie</button>':'')
-    +'<button class="ok" data-act="approve">Approve</button><button class="no" data-act="reject">Reject</button></div></div>').join('');
-  const {data:us}=await sb.from('profiles').select('id,full_name,is_seller_verified,is_banned').order('created_at',{ascending:false}).limit(30);
-  $('usr').innerHTML=us&&us.length?us.map(u=>'<div class="card" data-uid="'+u.id+'"><div class="nm">'+esc(u.full_name)+(u.is_seller_verified?' ✓':'')+(u.is_banned?' · BANNED':'')+'</div><div class="row" style="margin-top:8px">'
-    +(u.is_banned?'<button data-act="unban">Unban</button>':'<button class="no" data-act="ban">Ban</button>')+'</div></div>').join(''):'<div class="em">No users yet.</div>';
+    +(kst!=='verified'?'<button class="ok" data-act="approve">Approve</button>':'')+(kst==='pending'?'<button class="no" data-act="reject">Reject</button>':'')+'</div></div>').join(''));
+}
+function renderUsers(){
+  const q=($('uq')?$('uq').value:'').trim().toLowerCase();
+  const l=ulist.filter(u=>!q||String(u.full_name||'').toLowerCase().includes(q));
+  $('ulist').innerHTML=l.length?l.map(u=>'<div class="card" data-uid="'+u.id+'"><div class="nm">'+esc(u.full_name||'Student')+(u.is_seller_verified?' ✓':'')+(u.is_banned?' · BANNED':'')+'</div><div class="row" style="margin-top:8px">'
+    +(u.is_banned?'<button data-act="unban">Unban</button>':'<button class="no" data-act="ban">Ban</button>')+'</div></div>').join(''):'<div class="em">No users found.</div>';
+}
+async function loadUsers(){
+  const el=$('pg-users'),old=$('uq')?$('uq').value:'';
+  el.innerHTML='<input id="uq" placeholder="Search by name" value="'+esc(old)+'"><div id="ulist"><div class="em">Loading…</div></div>';
+  const {data,error}=await sb.from('profiles').select('id,full_name,is_seller_verified,is_banned').order('created_at',{ascending:false}).limit(100);
+  if(error){$('ulist').innerHTML='<div class="em">Could not load: '+esc(error.message)+'</div>';return;}
+  ulist=data||[];renderUsers();
+}
+let lst='all',lrows=[],lpos=0,hasL=false,lq='',ost='all',orows=[],opos=0,hasO=false;
+const PG=100,kobo=n=>'₦'+Math.round((n||0)/100).toLocaleString(),when=d=>d?new Date(d).toLocaleString():'';
+const tabsHtml=(arr,cur,key)=>'<div class="tabs">'+arr.map(x=>'<button data-'+key+'="'+x[0]+'"'+(cur===x[0]?' class="on"':'')+'>'+x[1]+'</button>').join('')+'</div>';
+async function names(ids){ids=[...new Set(ids.filter(Boolean))];const m={};if(!ids.length)return m;const {data}=await sb.from('profiles').select('id,full_name').in('id',ids);(data||[]).forEach(p=>m[p.id]=p.full_name);return m;}
+function renderListings(){
+  const q=lq.trim().toLowerCase();
+  const l=lrows.filter(x=>!q||(String(x.title||'')+' '+String((x.profiles&&x.profiles.full_name)||'')).toLowerCase().includes(q));
+  $('llist').innerHTML=l.length?l.map(x=>{const p=x.profiles||{},im=(x.listing_media||[]).filter(m=>m.kind==='image').sort((a,b)=>a.position-b.position)[0];
+    return '<div class="card" data-id="'+esc(x.id)+'" data-uid="'+esc(x.seller_id)+'">'+(im?'<img class="th" src="'+esc(im.url)+'" alt="" loading="lazy">':'')
+    +'<div class="nm">'+esc(x.title||'Listing')+'</div><div class="mt">'+(x.price_kobo?kobo(x.price_kobo):(x.type==='trade'?'Trade':'Free'))+' · '+esc(x.category||'')+' · <b>'+esc(x.status||'')+'</b><br>Seller: '+esc(p.full_name||'Unknown')+(p.is_seller_verified?' ✓':' (not verified)')+(p.is_banned?' · BANNED':'')
+    +'<br>WhatsApp: '+esc(x.whatsapp||'-')+'<br>'+when(x.created_at)+'</div><div class="row">'
+    +(x.status==='removed'?'<button data-act="restore">Restore</button>':'<button class="no" data-act="remove">Remove</button>')+'<button class="no" data-act="ban">Ban seller</button></div></div>';}).join(''):'<div class="em">Nothing found.</div>';
+  $('lmore').style.display=hasL?'block':'none';
+}
+async function loadListings(more){
+  const el=$('pg-listings');
+  if(!more){lrows=[];lpos=0;el.innerHTML=tabsHtml([['all','All'],['active','Active'],['sold','Sold'],['removed','Removed']],lst,'lst')+'<input id="lq" placeholder="Search title or seller" value="'+esc(lq)+'"><div id="llist"><div class="em">Loading…</div></div><button id="lmore" data-more="listings" style="display:none;width:100%">Load more</button>';}
+  let q=sb.from('listings').select('id,seller_id,type,category,title,price_kobo,status,whatsapp,created_at,profiles(full_name,is_seller_verified,is_banned),listing_media(url,kind,position)').order('created_at',{ascending:false}).range(lpos,lpos+PG-1);
+  if(lst!=='all')q=q.eq('status',lst);
+  const {data,error}=await q;
+  if(error){$('llist').innerHTML='<div class="em">Could not load: '+esc(error.message)+'</div>';return;}
+  lrows=lrows.concat(data||[]);lpos+=PG;hasL=(data||[]).length===PG;renderListings();
+}
+function renderOrders(){
+  $('olist').innerHTML=orows.length?orows.map(o=>'<div class="card"><div class="nm">'+esc(o.listing_title||'Order')+'</div><div class="mt">'+kobo(o.amount_kobo)+(o.quantity>1?' · qty '+o.quantity:'')+' · '+esc(o.method||'')+' · <b>'+esc(o.payment_status||'not paid')+'</b><br>Buyer: '+esc(o.bn||'Unknown')+'<br>Seller: '+esc(o.sn||'Unknown')+'<br>'+when(o.created_at)+'</div></div>').join(''):'<div class="em">No orders yet.</div>';
+  $('omore').style.display=hasO?'block':'none';
+}
+async function loadOrders(more){
+  const el=$('pg-orders');
+  if(!more){orows=[];opos=0;el.innerHTML=tabsHtml([['all','All'],['paid','Paid'],['unpaid','Not paid']],ost,'ost')+'<div id="olist"><div class="em">Loading…</div></div><button id="omore" data-more="orders" style="display:none;width:100%">Load more</button>';}
+  let q=sb.from('orders').select('id,listing_title,seller_id,buyer_id,amount_kobo,quantity,method,payment_status,created_at').order('created_at',{ascending:false}).range(opos,opos+PG-1);
+  if(ost==='paid')q=q.eq('payment_status','paid');else if(ost==='unpaid')q=q.or('payment_status.is.null,payment_status.neq.paid');
+  const {data,error}=await q;
+  if(error){$('olist').innerHTML='<div class="em">Could not load: '+esc(error.message)+'</div>';return;}
+  const nm=await names((data||[]).flatMap(o=>[o.seller_id,o.buyer_id]));
+  (data||[]).forEach(o=>{o.sn=nm[o.seller_id];o.bn=nm[o.buyer_id];});
+  orows=orows.concat(data||[]);opos+=PG;hasO=(data||[]).length===PG;renderOrders();
+}
+async function loadReports(){
+  const el=$('pg-reports');el.innerHTML='<div class="em">Loading…</div>';
+  let r=await sb.from('reports').select('*').order('created_at',{ascending:false}).limit(100);
+  if(r.error)r=await sb.from('reports').select('*').limit(100);
+  if(r.error){el.innerHTML='<div class="em">Could not load: '+esc(r.error.message)+'</div>';return;}
+  const d=r.data||[],nm=await names(d.map(x=>x.reporter_id));
+  el.innerHTML=d.length?d.map(x=>'<div class="card" data-lid="'+esc(x.listing_id)+'"><div class="nm">'+esc(x.listing_title||'Listing')+'</div><div class="mt">Reason: '+esc(x.reason||'-')+'<br>Reported by: '+esc(nm[x.reporter_id]||'Unknown')+'<br>'+when(x.created_at)+'</div><div class="row"><button class="no" data-act="rmrep">Remove listing</button><button class="no" data-act="banrep">Ban seller</button></div></div>').join(''):'<div class="em">No reports. 🎉</div>';
+}
+async function loadAdmins(){
+  const el=$('pg-admins');el.innerHTML='<div class="em">Loading…</div>';
+  const {data,error}=await sb.from('admins').select('user_id');
+  if(error){el.innerHTML='<div class="em">Could not load: '+esc(error.message)+'</div>';return;}
+  const ids=(data||[]).map(a=>a.user_id);
+  const {data:ps}=ids.length?await sb.from('profiles').select('id,full_name').in('id',ids):{data:[]};
+  const nm={};(ps||[]).forEach(p=>nm[p.id]=p.full_name);
+  el.innerHTML=ids.map(i=>'<div class="card"><div class="nm">'+esc(nm[i]||'Admin')+(me&&i===me.id?' (you)':'')+'</div><div class="mt" style="margin:0">'+esc(i)+'</div></div>').join('')
+    +'<p class="em" style="margin-top:12px">To add or remove an admin, edit the admins table in Supabase.</p>';
 }
 document.addEventListener('click',async e=>{
+  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return;}
+  const k=e.target.closest('[data-kst]');if(k){kst=k.dataset.kst;loadSellers();return;}
+  const ls=e.target.closest('[data-lst]');if(ls){lst=ls.dataset.lst;loadListings();return;}
+  const os=e.target.closest('[data-ost]');if(os){ost=os.dataset.ost;loadOrders();return;}
+  const mr=e.target.closest('[data-more]');if(mr){mr.dataset.more==='orders'?loadOrders(true):loadListings(true);return;}
+  if(e.target.closest('#mn')){menu(true);return;}
+  if(e.target.id==='ov'){menu(false);return;}
   const b=e.target.closest('[data-act]');if(!b||!me)return;
-  const card=b.closest('.card'),uid=card.dataset.uid,act=b.dataset.act;
+  const card=b.closest('.card'),act=b.dataset.act;
   if(act==='view'){
     const show=async(path,label)=>{
       if(!path)return '<p class="mt"><b>'+label+':</b> not provided</p>';
@@ -81,22 +240,31 @@ document.addEventListener('click',async e=>{
     const html=(await show(b.dataset.path,'Student ID'))+(await show(b.dataset.selfie,'Selfie holding ID'));
     card.querySelector('.box').innerHTML=html+'<p class="mt">Check: the name, photo and matric on the ID match the selfie and the profile name.</p>';return;
   }
-  if((act==='ban'||act==='reject')&&!confirm(act==='ban'?'Ban this user and remove their listings?':'Reject this seller?'))return;
-  b.disabled=true;let err=null;const now=new Date().toISOString();
+  const ask={ban:'Ban this user and remove their listings?',banrep:'Ban this seller and remove their listings?',reject:'Reject this seller?',remove:'Remove this listing?',rmrep:'Remove this listing?'}[act];
+  if(ask&&!confirm(ask))return;
+  b.disabled=true;let err=null,uid=card.dataset.uid;const now=new Date().toISOString();
+  if(act==='banrep'){const {data:L}=await sb.from('listings').select('seller_id').eq('id',card.dataset.lid).maybeSingle();uid=L&&L.seller_id;if(!uid){toast('Listing not found');b.disabled=false;return;}}
   if(act==='approve')err=(await sb.from('kyc').update({status:'verified',reviewed_at:now}).eq('user_id',uid)).error||(await sb.from('profiles').update({is_seller_verified:true}).eq('id',uid)).error;
   else if(act==='reject')err=(await sb.from('kyc').update({status:'rejected',reviewed_at:now}).eq('user_id',uid)).error;
-  else if(act==='ban')err=(await sb.from('profiles').update({is_banned:true,is_seller_verified:false}).eq('id',uid)).error||(await sb.from('listings').update({status:'removed'}).eq('seller_id',uid)).error;
+  else if(act==='ban'||act==='banrep')err=(await sb.from('profiles').update({is_banned:true,is_seller_verified:false}).eq('id',uid)).error||(await sb.from('listings').update({status:'removed'}).eq('seller_id',uid)).error;
   else if(act==='unban')err=(await sb.from('profiles').update({is_banned:false}).eq('id',uid)).error;
+  else if(act==='remove'||act==='rmrep')err=(await sb.from('listings').update({status:'removed'}).eq('id',card.dataset.id||card.dataset.lid)).error;
+  else if(act==='restore')err=(await sb.from('listings').update({status:'active'}).eq('id',card.dataset.id)).error;
   if(err){toast('Failed: '+err.message);b.disabled=false;return;}
-  toast('✓ Done');load();
+  toast('✓ Done');
+  if(act==='remove'||act==='restore'){const r=lrows.find(x=>String(x.id)===card.dataset.id);if(r){r.status=act==='remove'?'removed':'active';renderListings();return;}}
+  load();
 });
-$('go').addEventListener('click',async()=>{
+document.addEventListener('input',e=>{if(e.target.id==='uq')renderUsers();if(e.target.id==='lq'){lq=e.target.value;renderListings();}});
+async function signin(){
   $('lerr').textContent='';const b=$('go');b.disabled=true;
   const {data,error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});
   b.disabled=false;
   if(error){$('lerr').textContent=error.message==='Invalid login credentials'?'Wrong email or password.':error.message;return;}
   enter(data.user);
-});
+}
+$('go').addEventListener('click',signin);
+$('pw').addEventListener('keydown',e=>{if(e.key==='Enter')signin();});
 $('out').addEventListener('click',async()=>{await sb.auth.signOut();location.reload();});
 sb.auth.getSession().then(({data})=>{if(data.session)enter(data.session.user);});
 </script></body></html>
