@@ -43,6 +43,7 @@ h2{font-size:15px;font-weight:800;margin:20px 0 10px}
 .tabs button.on{background:var(--p);border-color:var(--a);color:#fff}
 img.id{max-width:100%;border-radius:12px;border:1px solid var(--b);margin-bottom:10px;display:block}
 a{color:var(--a)}
+u{cursor:pointer;color:var(--a);text-decoration:none}
 img.th{width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-bottom:10px;display:block}
 .bar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--b);display:flex;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
 .bar button{flex:1;border:0;background:none;color:var(--m);font-size:11px;padding:6px 2px}
@@ -79,6 +80,9 @@ img.th{width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-bo
     <div class="pg" id="pg-listings"></div>
     <div class="pg" id="pg-orders"></div>
     <div class="pg" id="pg-reports"></div>
+    <div class="pg" id="pg-user"></div>
+    <div class="pg" id="pg-reviews"></div>
+    <div class="pg" id="pg-announce"></div>
     <div class="pg" id="pg-admins"></div>
   </main>
   <nav class="bar">
@@ -97,6 +101,8 @@ img.th{width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-bo
     <h3 style="margin-top:14px">MARKETPLACE</h3>
     <button data-go="listings">🛍️ Listings</button>
     <button data-go="reports">🚩 Reports</button>
+    <button data-go="reviews">⭐ Reviews</button>
+    <button data-go="announce">📣 Announcements</button>
     <h3 style="margin-top:14px">TRANSACTIONS</h3>
     <button data-go="orders">💳 Orders &amp; payments</button>
     <h3 style="margin-top:14px">ACCESS</h3>
@@ -110,7 +116,7 @@ const sb=window.supabase.createClient('https://dgzltdkaumkprxijuoqv.supabase.co'
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.x);toast.x=setTimeout(()=>t.style.display='none',3000);}
-const T={home:'Dashboard',sellers:'Seller verification',users:'Users',listings:'Listings',orders:'Orders & payments',reports:'Reports',admins:'Admins'};
+const T={home:'Dashboard',sellers:'Seller verification',users:'Users',listings:'Listings',orders:'Orders & payments',reports:'Reports',user:'User profile',reviews:'Reviews',announce:'Announcements',admins:'Admins'};
 let me=null,tab='home',kst='pending',ulist=[];
 function menu(o){$('dr').classList.toggle('open',o);$('ov').style.display=o?'block':'none';}
 function go(t){
@@ -119,7 +125,7 @@ function go(t){
   document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===t));
   $('ttl').textContent=T[t];menu(false);window.scrollTo(0,0);load();
 }
-function load(){({home:loadHome,sellers:loadSellers,users:loadUsers,listings:loadListings,orders:loadOrders,reports:loadReports,admins:loadAdmins})[tab]();}
+function load(){({home:async()=>{await loadHome();loadCharts();loadWatch();},user:loadUser,reviews:loadReviews,announce:loadAnnounce,sellers:loadSellers,users:loadUsers,listings:loadListings,orders:loadOrders,reports:loadReports,admins:loadAdmins})[tab]();}
 async function enter(user){
   const {data}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();
   if(!data){await sb.auth.signOut();$('lerr').textContent='This account is not an admin.';$('login').style.display='block';$('app').style.display='none';return;}
@@ -138,7 +144,7 @@ async function loadHome(){
     sb.from('profiles').select('id,full_name,created_at').order('created_at',{ascending:false}).limit(5)]);
   const st=(n,l,t)=>'<div class="st" data-go="'+t+'"><b>'+n+'</b><span>'+l+'</span></div>';
   el.innerHTML='<div class="grid">'+st(u,'Users','users')+st(v,'Verified sellers','sellers')+st(pe,'Waiting for approval','sellers')+st(bn,'Banned','users')+st(li,'Listings','listings')+st(rp,'Scam reports','reports')+st(od,'Orders','orders')+st(pd,'Paid orders','orders')+'</div>'
-    +'<h2>Latest sign-ups</h2>'+((rc.data&&rc.data.length)?rc.data.map(x=>'<div class="card"><div class="nm">'+esc(x.full_name||'Student')+'</div><div class="mt" style="margin:0">'+(x.created_at?new Date(x.created_at).toLocaleString():'')+'</div></div>').join(''):'<div class="em">No users yet.</div>');
+    +'<h2>Last 14 days</h2><div id="charts"><div class="em">Loading…</div></div><h2>Earnings</h2><div id="earn"></div><h2>Watchlist</h2><div id="watch"><div class="em">Loading…</div></div><h2>Latest sign-ups</h2>'+((rc.data&&rc.data.length)?rc.data.map(x=>'<div class="card"><div class="nm">'+esc(x.full_name||'Student')+'</div><div class="mt" style="margin:0">'+(x.created_at?new Date(x.created_at).toLocaleString():'')+'</div></div>').join(''):'<div class="em">No users yet.</div>');
 }
 async function loadSellers(){
   const el=$('pg-sellers');
@@ -154,7 +160,7 @@ async function loadSellers(){
 function renderUsers(){
   const q=($('uq')?$('uq').value:'').trim().toLowerCase();
   const l=ulist.filter(u=>!q||String(u.full_name||'').toLowerCase().includes(q));
-  $('ulist').innerHTML=l.length?l.map(u=>'<div class="card" data-uid="'+u.id+'"><div class="nm">'+esc(u.full_name||'Student')+(u.is_seller_verified?' ✓':'')+(u.is_banned?' · BANNED':'')+'</div><div class="row" style="margin-top:8px">'
+  $('ulist').innerHTML=l.length?l.map(u=>'<div class="card" data-uid="'+u.id+'"><div class="nm" data-user="'+u.id+'" style="cursor:pointer">'+esc(u.full_name||'Student')+(u.is_seller_verified?' ✓':'')+(u.is_banned?' · BANNED':'')+'</div><div class="row" style="margin-top:8px">'
     +(u.is_banned?'<button data-act="unban">Unban</button>':'<button class="no" data-act="ban">Ban</button>')+'</div></div>').join(''):'<div class="em">No users found.</div>';
 }
 async function loadUsers(){
@@ -173,7 +179,7 @@ function renderListings(){
   const l=lrows.filter(x=>!q||(String(x.title||'')+' '+String((x.profiles&&x.profiles.full_name)||'')).toLowerCase().includes(q));
   $('llist').innerHTML=l.length?l.map(x=>{const p=x.profiles||{},im=(x.listing_media||[]).filter(m=>m.kind==='image').sort((a,b)=>a.position-b.position)[0];
     return '<div class="card" data-id="'+esc(x.id)+'" data-uid="'+esc(x.seller_id)+'">'+(im?'<img class="th" src="'+esc(im.url)+'" alt="" loading="lazy">':'')
-    +'<div class="nm">'+esc(x.title||'Listing')+'</div><div class="mt">'+(x.price_kobo?kobo(x.price_kobo):(x.type==='trade'?'Trade':'Free'))+' · '+esc(x.category||'')+' · <b>'+esc(x.status||'')+'</b><br>Seller: '+esc(p.full_name||'Unknown')+(p.is_seller_verified?' ✓':' (not verified)')+(p.is_banned?' · BANNED':'')
+    +'<div class="nm">'+esc(x.title||'Listing')+'</div><div class="mt">'+(x.price_kobo?kobo(x.price_kobo):(x.type==='trade'?'Trade':'Free'))+' · '+esc(x.category||'')+' · <b>'+esc(x.status||'')+'</b><br>Seller: <u data-user="'+esc(x.seller_id)+'">'+esc(p.full_name||'Unknown')+'</u>'+(p.is_seller_verified?' ✓':' (not verified)')+(p.is_banned?' · BANNED':'')
     +'<br>WhatsApp: '+esc(x.whatsapp||'-')+'<br>'+when(x.created_at)+'</div><div class="row">'
     +(x.status==='removed'?'<button data-act="restore">Restore</button>':'<button class="no" data-act="remove">Remove</button>')+'<button class="no" data-act="ban">Ban seller</button></div></div>';}).join(''):'<div class="em">Nothing found.</div>';
   $('lmore').style.display=hasL?'block':'none';
@@ -188,7 +194,7 @@ async function loadListings(more){
   lrows=lrows.concat(data||[]);lpos+=PG;hasL=(data||[]).length===PG;renderListings();
 }
 function renderOrders(){
-  $('olist').innerHTML=orows.length?orows.map(o=>'<div class="card"><div class="nm">'+esc(o.listing_title||'Order')+'</div><div class="mt">'+kobo(o.amount_kobo)+(o.quantity>1?' · qty '+o.quantity:'')+' · '+esc(o.method||'')+' · <b>'+esc(o.payment_status||'not paid')+'</b><br>Buyer: '+esc(o.bn||'Unknown')+'<br>Seller: '+esc(o.sn||'Unknown')+'<br>'+when(o.created_at)+'</div></div>').join(''):'<div class="em">No orders yet.</div>';
+  $('olist').innerHTML=orows.length?orows.map(o=>'<div class="card" data-oid="'+esc(o.id)+'"><div class="nm">'+esc(o.listing_title||'Order')+'</div><div class="mt">'+kobo(o.amount_kobo)+(o.quantity>1?' · qty '+o.quantity:'')+' · '+esc(o.method||'')+' · <b>'+esc(o.payment_status||'not paid')+'</b><br>Buyer: <u data-user="'+esc(o.buyer_id)+'">'+esc(o.bn||'Unknown')+'</u><br>Seller: <u data-user="'+esc(o.seller_id)+'">'+esc(o.sn||'Unknown')+'</u>'+'<br>'+when(o.created_at)+'</div><div class="row">'+(o.payment_status==='paid'?'<button class="no" data-act="refund">Mark refunded</button>':o.payment_status==='refunded'?'':'<button class="ok" data-act="markpaid">Mark paid</button>')+'</div></div>').join(''):'<div class="em">No orders yet.</div>';
   $('omore').style.display=hasO?'block':'none';
 }
 async function loadOrders(more){
@@ -210,6 +216,66 @@ async function loadReports(){
   const d=r.data||[],nm=await names(d.map(x=>x.reporter_id));
   el.innerHTML=d.length?d.map(x=>'<div class="card" data-lid="'+esc(x.listing_id)+'"><div class="nm">'+esc(x.listing_title||'Listing')+'</div><div class="mt">Reason: '+esc(x.reason||'-')+'<br>Reported by: '+esc(nm[x.reporter_id]||'Unknown')+'<br>'+when(x.created_at)+'</div><div class="row"><button class="no" data-act="rmrep">Remove listing</button><button class="no" data-act="banrep">Ban seller</button></div></div>').join(''):'<div class="em">No reports. 🎉</div>';
 }
+let curUid=null,prevTab='home',gross=0;
+function openUser(id){curUid=id;prevTab=tab==='user'?prevTab:tab;go('user');}
+async function loadUser(){
+  const el=$('pg-user'),id=curUid,back='<button data-go="'+prevTab+'">← Back</button>';
+  el.innerHTML=back+'<div class="em" style="margin-top:12px">Loading…</div>';
+  const L=()=>sb.from('listings').select('id',{count:'exact',head:true}).eq('seller_id',id),O=c=>sb.from('orders').select('id',{count:'exact',head:true}).eq(c,id);
+  const [p,k,lt,la,lr,ob,os,ls]=await Promise.all([
+    sb.from('profiles').select('id,full_name,is_seller_verified,is_banned,created_at').eq('id',id).maybeSingle(),
+    sb.from('kyc').select('status,matric_no').eq('user_id',id).maybeSingle(),
+    cnt(L()),cnt(L().eq('status','active')),cnt(L().eq('status','removed')),cnt(O('buyer_id')),cnt(O('seller_id')),
+    sb.from('listings').select('id').eq('seller_id',id).limit(100)]);
+  const u=p.data;if(!u){el.innerHTML=back+'<div class="em" style="margin-top:12px">User not found.</div>';return;}
+  const ids=(ls.data||[]).map(x=>x.id),rp=ids.length?await cnt(sb.from('reports').select('listing_id',{count:'exact',head:true}).in('listing_id',ids)):0;
+  const st=(n,l)=>'<div class="st"><b>'+n+'</b><span>'+l+'</span></div>',kd=k.data||{};
+  el.innerHTML=back+'<div class="card" data-uid="'+esc(u.id)+'" style="margin-top:12px"><div class="nm">'+esc(u.full_name||'Student')+(u.is_seller_verified?' ✓':'')+(u.is_banned?' · BANNED':'')+'</div><div class="mt">Joined '+when(u.created_at)+'<br>Seller check: '+esc(kd.status||'none')+(kd.matric_no?' · Matric '+esc(kd.matric_no):'')+'</div><div class="row">'
+    +(u.is_banned?'<button data-act="unban">Unban</button>':'<button class="no" data-act="ban">Ban</button>')+'</div></div>'
+    +'<div class="grid">'+st(lt,'Listings')+st(la,'Active')+st(lr,'Removed')+st(rp,'Reports against')+st(ob,'Orders bought')+st(os,'Orders sold')+'</div>';
+}
+async function loadWatch(){
+  const [r,rm]=await Promise.all([sb.from('reports').select('listing_id').order('created_at',{ascending:false}).limit(100),sb.from('listings').select('seller_id').eq('status','removed').limit(500)]);
+  const ids=[...new Set((r.data||[]).map(x=>x.listing_id).filter(Boolean))],sel={};
+  if(ids.length)((await sb.from('listings').select('id,seller_id').in('id',ids)).data||[]).forEach(l=>sel[l.id]=l.seller_id);
+  const S={},add=(u,k)=>{if(u)(S[u]=S[u]||{r:0,d:0})[k]++;};
+  (r.data||[]).forEach(x=>add(sel[x.listing_id],'r'));(rm.data||[]).forEach(x=>add(x.seller_id,'d'));
+  const top=Object.entries(S).filter(([,v])=>v.r>=2||v.d>=2).sort((a,b)=>(b[1].r*2+b[1].d)-(a[1].r*2+a[1].d)).slice(0,8),nm=await names(top.map(t=>t[0])),w=$('watch');
+  if(w)w.innerHTML=top.length?top.map(([u,v])=>'<div class="card"><div class="nm"><u data-user="'+esc(u)+'">'+esc(nm[u]||'Seller')+'</u></div><div class="mt" style="margin:0">'+v.r+' recent reports · '+v.d+' removed listings</div></div>').join(''):'<div class="em">No repeat offenders. 🎉</div>';
+}
+function feeCalc(){const e=$('fee');if(!e)return;try{localStorage.setItem('sureoFee',e.value)}catch(x){}$('feeOut').textContent=kobo(gross*(parseFloat(e.value)||0)/100);}
+async function loadCharts(){
+  const t0=new Date(Date.now()-13*864e5);t0.setHours(0,0,0,0);const iso=t0.toISOString();
+  const [u,o,a]=await Promise.all([sb.from('profiles').select('created_at').gte('created_at',iso).limit(1000),sb.from('orders').select('created_at,amount_kobo').eq('payment_status','paid').gte('created_at',iso).limit(1000),sb.from('orders').select('created_at,amount_kobo').eq('payment_status','paid').limit(2000)]);
+  const days=[];for(let i=0;i<14;i++)days.push(new Date(t0.getTime()+i*864e5).toDateString());
+  const bucket=(rows,f)=>{const m={};days.forEach(d=>m[d]=0);(rows||[]).forEach(r=>{const k=new Date(r.created_at).toDateString();if(k in m)m[k]+=f(r);});return days.map(d=>m[d]);};
+  const bars=v=>{const mx=Math.max(...v,1);return '<svg viewBox="0 0 280 70" width="100%">'+v.map((n,i)=>'<rect x="'+(i*20+2)+'" y="'+(68-n/mx*64)+'" width="16" height="'+(n/mx*64)+'" rx="3" fill="#2fd0a0"/>').join('')+'</svg>';};
+  const su=bucket(u.data,()=>1),sa=bucket(o.data,r=>r.amount_kobo||0),sum=v=>v.reduce((x,y)=>x+y,0),c=$('charts');
+  if(c)c.innerHTML='<div class="card"><div class="mt" style="margin:0">Sign-ups · '+sum(su)+' in 14 days</div>'+bars(su)+'</div><div class="card"><div class="mt" style="margin:0">Paid sales · '+kobo(sum(sa))+' in 14 days</div>'+bars(sa)+'</div>';
+  gross=(a.data||[]).reduce((x,r)=>x+(r.amount_kobo||0),0);const wk=(a.data||[]).filter(r=>new Date(r.created_at)>Date.now()-7*864e5).reduce((x,r)=>x+(r.amount_kobo||0),0);let f=0;try{f=parseFloat(localStorage.getItem('sureoFee'))||0}catch(x){}
+  const e=$('earn');if(e){e.innerHTML='<div class="card"><div class="mt" style="margin:0">Paid sales (all time)</div><div class="nm" style="font-size:22px">'+kobo(gross)+'</div><div class="mt">Last 7 days: '+kobo(wk)+'</div><div class="mt" style="margin:0 0 6px">Your charge on sales (%)</div><input id="fee" type="number" min="0" max="100" step="0.5" value="'+f+'"><div class="mt" style="margin:0">Estimated Sureo earnings: <b id="feeOut"></b></div><div class="mt">Estimate only: orders do not record a fee, so type your real charge %. Uses up to 2,000 paid orders.</div></div>';feeCalc();}
+}
+async function chk(q){const r=await q.select('id');return r.error||(r.data&&r.data.length?null:{message:'Not allowed by database rules, or not found'});}
+async function loadReviews(){
+  const el=$('pg-reviews');el.innerHTML='<div class="em">Loading…</div>';
+  let r=await sb.from('reviews').select('*').order('created_at',{ascending:false}).limit(100);
+  if(r.error)r=await sb.from('reviews').select('*').limit(100);
+  if(r.error){el.innerHTML='<div class="em">Could not load: '+esc(r.error.message)+'</div>';return;}
+  const d=r.data||[],nm=await names(d.flatMap(x=>[x.reviewer_id,x.reviewee_id]));
+  el.innerHTML=d.length?d.map(x=>{const n=x.stars||x.rating||0;return '<div class="card" data-rid="'+esc(x.id)+'"><div class="nm">'+'★'.repeat(n)+'☆'.repeat(Math.max(0,5-n))+'</div><div class="mt"><u data-user="'+esc(x.reviewer_id)+'">'+esc(nm[x.reviewer_id]||'Unknown')+'</u> reviewed <u data-user="'+esc(x.reviewee_id)+'">'+esc(nm[x.reviewee_id]||'Unknown')+'</u><br>'+when(x.created_at)+'</div><button class="no" data-act="delreview">Delete review</button></div>';}).join(''):'<div class="em">No reviews yet.</div>';
+}
+function loadAnnounce(){
+  $('pg-announce').innerHTML='<div class="card"><div class="nm">Send an announcement</div><div class="mt">It appears in each user\u2019s notifications. Send it to yourself first to test.</div><input id="anT" placeholder="Title (e.g. Exam week deals)" maxlength="80"><input id="anB" placeholder="Message" maxlength="240"><div class="row"><button id="anTest">Send to me (test)</button><button class="ok" id="anAll">Send to everyone</button></div></div>';
+  $('anTest').onclick=()=>sendAnn(false);$('anAll').onclick=()=>sendAnn(true);
+}
+async function sendAnn(all){
+  const t=$('anT').value.trim(),b=$('anB').value.trim();if(!t||!b){toast('Add a title and a message');return;}
+  let ids=[me.id];
+  if(all){const r=await sb.from('profiles').select('id').or('is_banned.is.null,is_banned.eq.false').limit(5000);if(r.error){toast('Failed: '+r.error.message);return;}ids=(r.data||[]).map(x=>x.id);if(!confirm('Send to '+ids.length+' users?'))return;}
+  $('anTest').disabled=$('anAll').disabled=true;let n=0;
+  for(let i=0;i<ids.length;i+=500){const rows=ids.slice(i,i+500).map(u=>({user_id:u,type:'announcement',title:t,body:b,read:false}));const r=await sb.from('notifications').insert(rows);if(r.error){toast('Stopped after '+n+': '+r.error.message);$('anTest').disabled=$('anAll').disabled=false;return;}n+=rows.length;}
+  $('anTest').disabled=$('anAll').disabled=false;toast('✓ Sent to '+n);
+}
 async function loadAdmins(){
   const el=$('pg-admins');el.innerHTML='<div class="em">Loading…</div>';
   const {data,error}=await sb.from('admins').select('user_id');
@@ -226,6 +292,7 @@ document.addEventListener('click',async e=>{
   const ls=e.target.closest('[data-lst]');if(ls){lst=ls.dataset.lst;loadListings();return;}
   const os=e.target.closest('[data-ost]');if(os){ost=os.dataset.ost;loadOrders();return;}
   const mr=e.target.closest('[data-more]');if(mr){mr.dataset.more==='orders'?loadOrders(true):loadListings(true);return;}
+  const vu=e.target.closest('[data-user]');if(vu){openUser(vu.dataset.user);return;}
   if(e.target.closest('#mn')){menu(true);return;}
   if(e.target.id==='ov'){menu(false);return;}
   const b=e.target.closest('[data-act]');if(!b||!me)return;
@@ -240,7 +307,7 @@ document.addEventListener('click',async e=>{
     const html=(await show(b.dataset.path,'Student ID'))+(await show(b.dataset.selfie,'Selfie holding ID'));
     card.querySelector('.box').innerHTML=html+'<p class="mt">Check: the name, photo and matric on the ID match the selfie and the profile name.</p>';return;
   }
-  const ask={ban:'Ban this user and remove their listings?',banrep:'Ban this seller and remove their listings?',reject:'Reject this seller?',remove:'Remove this listing?',rmrep:'Remove this listing?'}[act];
+  const ask={ban:'Ban this user and remove their listings?',banrep:'Ban this seller and remove their listings?',reject:'Reject this seller?',remove:'Remove this listing?',rmrep:'Remove this listing?',markpaid:'Mark this order as paid?',refund:'Mark as refunded? This does NOT send money back. Refund through Paystack yourself.',delreview:'Delete this review?'}[act];
   if(ask&&!confirm(ask))return;
   b.disabled=true;let err=null,uid=card.dataset.uid;const now=new Date().toISOString();
   if(act==='banrep'){const {data:L}=await sb.from('listings').select('seller_id').eq('id',card.dataset.lid).maybeSingle();uid=L&&L.seller_id;if(!uid){toast('Listing not found');b.disabled=false;return;}}
@@ -250,12 +317,16 @@ document.addEventListener('click',async e=>{
   else if(act==='unban')err=(await sb.from('profiles').update({is_banned:false}).eq('id',uid)).error;
   else if(act==='remove'||act==='rmrep')err=(await sb.from('listings').update({status:'removed'}).eq('id',card.dataset.id||card.dataset.lid)).error;
   else if(act==='restore')err=(await sb.from('listings').update({status:'active'}).eq('id',card.dataset.id)).error;
+  else if(act==='markpaid'||act==='refund')err=await chk(sb.from('orders').update({payment_status:act==='markpaid'?'paid':'refunded'}).eq('id',card.dataset.oid));
+  else if(act==='delreview')err=await chk(sb.from('reviews').delete().eq('id',card.dataset.rid));
   if(err){toast('Failed: '+err.message);b.disabled=false;return;}
   toast('✓ Done');
   if(act==='remove'||act==='restore'){const r=lrows.find(x=>String(x.id)===card.dataset.id);if(r){r.status=act==='remove'?'removed':'active';renderListings();return;}}
+  if(act==='markpaid'||act==='refund'){const r=orows.find(x=>String(x.id)===card.dataset.oid);if(r){r.payment_status=act==='markpaid'?'paid':'refunded';renderOrders();return;}}
+  if(act==='delreview'){card.remove();return;}
   load();
 });
-document.addEventListener('input',e=>{if(e.target.id==='uq')renderUsers();if(e.target.id==='lq'){lq=e.target.value;renderListings();}});
+document.addEventListener('input',e=>{if(e.target.id==='uq')renderUsers();if(e.target.id==='lq'){lq=e.target.value;renderListings();}if(e.target.id==='fee')feeCalc();});
 async function signin(){
   $('lerr').textContent='';const b=$('go');b.disabled=true;
   const {data,error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});
