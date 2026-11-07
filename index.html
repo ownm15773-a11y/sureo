@@ -907,6 +907,21 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <button class="btn-auth" id="rsBtn"><span>Update password</span></button>
     </div>
 
+    <!-- CHANGE EMAIL -->
+    <div id="stepEmail" style="display:none">
+      <h2>Change your email ✉️</h2><p class="auth-sub">Enter your new email. We will send a confirmation link to it.</p>
+      <div class="field"><label>New email address</label><input type="email" id="ceEmail" placeholder="you@gmail.com" autocomplete="email"></div>
+      <p class="form-err" id="ceErr"></p>
+      <button class="btn-auth" id="ceSave"><span class="spin"></span><span>Send confirmation link</span></button>
+      <button class="btn-ghost" id="ceCancel" style="margin-top:10px">Cancel</button>
+    </div>
+    <div id="stepEmailDone" style="display:none;text-align:center;padding:20px 0">
+      <div style="font-size:54px" id="edIcon">✅</div>
+      <h2 style="margin-top:12px" id="edTitle">Email changed</h2>
+      <p class="auth-sub" id="edText"></p>
+      <button class="btn-auth" id="edBtn"><span>Done</span></button>
+    </div>
+
     <!-- KYC WIZARD -->
     <div id="stepWizard">
       <h2 id="wizTitle">Create your account 🎉</h2>
@@ -1150,14 +1165,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <button class="btn-auth" id="poSave"><span class="spin"></span><span>Save payout account</span></button>
 </div></div>
 
-<div class="modal" id="emailModal"><div class="modal-card sheet">
-  <div class="modal-head"><h3>Change email</h3><button class="modal-close" data-close="emailModal">×</button></div>
-  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Enter your new email. We'll send a confirmation link to it. Your email changes only after you tap that link.</p>
-  <div class="field"><label>New email address</label><input type="email" id="ceEmail" autocomplete="email" placeholder="you@example.com"></div>
-  <div id="ceErr" style="display:none;font-size:12px;color:var(--red);margin-bottom:10px"></div>
-  <button class="btn-auth" id="ceSave"><span class="spin"></span><span>Send confirmation link</span></button>
-</div></div>
-
 <div id="toast"></div>
 
 <script src="https://js.paystack.co/v2/inline.js"></script>
@@ -1269,7 +1276,7 @@ const authStorage={
   removeItem:k=>{try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch(e){}}
 };
 const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{storage:authStorage,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let lastAct=Date.now(),recovering=/type=recovery/.test(location.hash),pendingEmail='';
+let lastAct=Date.now(),recovering=/type=recovery/.test(location.hash),emailHash=location.hash,emailBack=/type=email_change/.test(location.hash)||/message=/.test(location.hash),pendingEmail='';
 let me=null,kycRow=null,loadErr=false;
 if(!SHOW_DEMO)ITEMS.length=0;
 const MIME_EXT={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','video/mp4':'mp4'};
@@ -1778,11 +1785,12 @@ const auth=$('auth');let wizStep=1,authMode='signup',idUploaded=false;
 function openAuth(mode){authMode=mode;auth.classList.add('open');document.body.classList.add('locked');showAuthStep();}
 function showAuthStep(){
   const seller=authMode==='seller',signin=authMode==='signin';
-  const reset=authMode==='reset';
+  const reset=authMode==='reset',em=authMode==='email',ed=authMode==='emaildone';
   $('stepReset').style.display=reset?'block':'none';$('stepVerified').style.display='none';$('stepCode').style.display='none';
+  $('stepEmail').style.display=em?'block':'none';$('stepEmailDone').style.display=ed?'block':'none';
   $('stepSignin').style.display=signin?'block':'none';
-  $('stepWizard').style.display=(signin||reset)?'none':'block';
-  if(signin||reset)return;
+  $('stepWizard').style.display=(signin||reset||em||ed)?'none':'block';
+  if(signin||reset||em||ed)return;
   const step=seller?wizStep:1;
   $('wz1').style.display=step===1?'block':'none';$('wz2').style.display=step===2?'block':'none';$('wz3').style.display=step===3?'block':'none';
   document.querySelector('.wiz-steps').style.display=seller?'flex':'none';
@@ -1885,7 +1893,7 @@ function finishAuth(name,email,restored){
   $('profileAv').textContent=first.charAt(0).toUpperCase();$('profileName').textContent=first;
   $('kycEmail').textContent=email;
   setSellerStatus(false);
-  if(!recovering){if(!restored&&auth.classList.contains('open')){auth.classList.add('closing');setTimeout(()=>{auth.classList.remove('open','closing');document.body.classList.remove('locked');},400);}else closeAuth();}document.body.classList.add('authed');window.scrollTo({top:0});
+  if(!recovering&&!emailBack){if(!restored&&auth.classList.contains('open')){auth.classList.add('closing');setTimeout(()=>{auth.classList.remove('open','closing');document.body.classList.remove('locked');},400);}else closeAuth();}document.body.classList.add('authed');window.scrollTo({top:0});
   let startView='market';
   if(restored){try{const sv=localStorage.getItem('sureoView');if(sv&&sv!=='boards'&&document.getElementById('view-'+sv))startView=sv;}catch(e){}}
   setView(startView);render();updateUnread();
@@ -2051,20 +2059,34 @@ $('eSave').addEventListener('click',async()=>{
 /* ---------- CHANGE EMAIL ---------- */
 $('changeEmailBtn').addEventListener('click',()=>{
   if(!me)return;
-  $('ceErr').style.display='none';$('ceEmail').value='';$('emailModal').classList.add('open');
+  $('ceErr').classList.remove('show');$('ceEmail').value='';openAuth('email');
 });
+$('ceCancel').addEventListener('click',closeAuth);
 $('ceSave').addEventListener('click',async()=>{
   const ne=$('ceEmail').value.trim().toLowerCase(),er=$('ceErr'),b=$('ceSave');
-  er.style.display='none';
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ne)){er.textContent='Enter a valid email address.';er.style.display='block';return;}
-  if(ne===(userEmail||'').toLowerCase()){er.textContent='That is already your email.';er.style.display='block';return;}
+  er.classList.remove('show');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(ne)){er.textContent='Enter a valid email address.';er.classList.add('show');return;}
+  if(ne===(userEmail||'').toLowerCase()){er.textContent='That is already your email.';er.classList.add('show');return;}
   b.classList.add('loading');
   const {error}=await sb.auth.updateUser({email:ne},{emailRedirectTo:location.origin+location.pathname});
   b.classList.remove('loading');
-  if(error){er.textContent=error.message||'Could not change email. Try again.';er.style.display='block';return;}
-  $('emailModal').classList.remove('open');
-  toast('✓ Check '+ne+' for the confirmation link.',5000);
+  if(error){er.textContent=error.message||'Could not change email. Try again.';er.classList.add('show');return;}
+  $('edIcon').textContent='📩';$('edTitle').textContent='Check your inbox';
+  $('edText').textContent='We sent a confirmation link to '+ne+'. Tap it to finish. If you also get a message at your old email, tap that link too.';
+  openAuth('emaildone');
 });
+$('edBtn').addEventListener('click',()=>{
+  if(emailBack){emailBack=false;location.replace(location.pathname);return;}
+  closeAuth();
+});
+if(emailBack)setTimeout(()=>{
+  const m=/message=/.test(emailHash);
+  $('edIcon').textContent=m?'⏳':'✅';
+  $('edTitle').textContent=m?'One more step':'Email changed';
+  $('edText').textContent=m?'Your confirmation was accepted, but the change is not final yet. Open the confirmation email sent to your OLD email address and tap its button too.':'Your new email is now active on your Sureo account.';
+  openAuth('emaildone');
+  try{history.replaceState(null,'',location.pathname);}catch(x){}
+},600);
 
 /* ---------- DELETE ACCOUNT ---------- */
 $('deleteAcctBtn').addEventListener('click',async()=>{
