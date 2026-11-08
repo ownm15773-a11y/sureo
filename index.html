@@ -65,13 +65,13 @@ header{position:sticky;top:0;z-index:100;background:var(--glass);backdrop-filter
 .mobile-nav.open{height:auto;padding:12px 20px 16px;border-bottom-width:1px;opacity:1;visibility:visible;transition-delay:0s}
 /* Items fade and slide in one after another */
 .mobile-nav a,.mobile-nav button{opacity:0;transform:translateY(-10px);
-  transition:opacity .3s ease,transform .3s ease,background .2s,color .2s}
+  transition:scale .3s ease,opacity .3s ease,transform .3s ease,background .2s,color .2s}
 .mobile-nav.open a,.mobile-nav.open button{opacity:1;transform:none;
-  transition:opacity .45s ease,transform .5s cubic-bezier(.22,1,.36,1),background .2s,color .2s}
-.mobile-nav.open span>:nth-child(1){transition-delay:.12s,.12s,0s,0s}
-.mobile-nav.open span>:nth-child(2){transition-delay:.18s,.18s,0s,0s}
-.mobile-nav.open span>:nth-child(3){transition-delay:.24s,.24s,0s,0s}
-.mobile-nav.open span>:nth-child(4){transition-delay:.30s,.30s,0s,0s}
+  transition:scale .45s cubic-bezier(.22,1,.36,1),opacity .45s ease,transform .5s cubic-bezier(.22,1,.36,1),background .2s,color .2s}
+.mobile-nav.open span>:nth-child(1){transition-delay:0s,.12s,.12s,0s,0s}
+.mobile-nav.open span>:nth-child(2){transition-delay:0s,.18s,.18s,0s,0s}
+.mobile-nav.open span>:nth-child(3){transition-delay:0s,.24s,.24s,0s,0s}
+.mobile-nav.open span>:nth-child(4){transition-delay:0s,.30s,.30s,0s,0s}
 /* Fallback for browsers without interpolate-size (older Safari/Firefox) */
 @supports not (interpolate-size:allow-keywords){
   .mobile-nav{height:auto;max-height:0;transition-property:max-height,padding,border-bottom-width,opacity,visibility}
@@ -593,6 +593,32 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .acct-link:active{transform:scale(.985)}
 .acct-link .kyc-info{flex:1;min-width:0}
 .acct-chev{font-size:24px;color:var(--muted);line-height:1}
+
+/* ===== TAP FEEL: quick press-in, soft spring back (same curve as the menu). Bottom-bar .bn-item keeps its own. ===== */
+:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box){-webkit-tap-highlight-color:transparent}
+/* add a scale transition to what each element already animates (elements on "all" already cover it) */
+.menu-btn,.logo,.legal-tab,.type-free,.type-rent,.type-trade,.legal-link{transition:scale .45s cubic-bezier(.22,1,.36,1)}
+.btn-primary,.btn-auth{transition:transform .25s var(--ease),box-shadow .25s var(--ease),background .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.btn-accent{transition:transform .25s var(--ease),filter .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.btn-ghost{transition:border-color .2s,background .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.btn-buy,.send-btn{transition:transform .2s var(--ease),background .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.btn-wa{transition:transform .2s var(--ease),filter .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.view-all,.footer-link{transition:opacity .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.back-btn{transition:transform .25s var(--ease),scale .45s cubic-bezier(.22,1,.36,1)}
+.modal-close{transition:color .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.tab-btn{transition:color .25s,background .25s,box-shadow .25s,scale .45s cubic-bezier(.22,1,.36,1)}
+.card{transition:transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s,scale .45s cubic-bezier(.22,1,.36,1)}
+.conv{transition:background .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+.notif{transition:transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s,background .4s,scale .45s cubic-bezier(.22,1,.36,1)}
+.acct-link{transition:transform .25s var(--ease),border-color .25s,scale .45s cubic-bezier(.22,1,.36,1)}
+.upload-box{transition:border-color .2s,background .2s,scale .45s cubic-bezier(.22,1,.36,1)}
+/* retire the older one-off press effects so every press feels the same */
+.btn-primary:active,.back-btn:active,.notif:active,.acct-link:active{transform:none}
+/* press */
+:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn):active{scale:.92;transition-duration:.12s}
+:is(.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button):active{scale:.96;transition-duration:.12s}
+:is(.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box):active:not(:has(:is(button,a):active)){scale:.985;transition-duration:.12s}
+@media (prefers-reduced-motion:reduce){:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box):active{scale:none}}
 </style>
 </head>
 <body>
@@ -2230,5 +2256,6 @@ sb.auth.getSession().then(async({data})=>{
   }
 }).catch(()=>{document.body.classList.remove('authed','restoring');});
 </script>
+<script>document.addEventListener('touchstart',function(){},{passive:true});</script>
 </body>
 </html>
