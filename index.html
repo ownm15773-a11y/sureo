@@ -2274,6 +2274,14 @@ document.addEventListener('touchstart',function(){},{passive:true});
     cur=el;t0=Date.now();clearTimeout(tm);el.classList.add('is-pressed');
   },{passive:true});
   ['pointerup','pointercancel','dragend'].forEach(function(ev){document.addEventListener(ev,release,{passive:true});});
+  /* iPhone: Safari can drop pointer events after the first tap, so mirror the press with touch events too */
+  document.addEventListener('touchstart',function(e){
+    var el=e.target.closest&&e.target.closest(SEL);
+    if(!el||el.disabled)return;
+    if(cur&&cur!==el)cur.classList.remove('is-pressed');
+    cur=el;t0=Date.now();clearTimeout(tm);el.classList.add('is-pressed');
+  },{passive:true});
+  ['touchend','touchcancel'].forEach(function(ev){document.addEventListener(ev,release,{passive:true});});
 })();
 </script>
 </body>
