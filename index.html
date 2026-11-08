@@ -400,6 +400,10 @@ body.authed footer{display:none}
 .field input:focus,.field select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(13,74,58,.1)}
 .field input.err{border-color:var(--red);box-shadow:0 0 0 4px rgba(220,38,38,.08)}
 .field .hint{font-size:11px;color:var(--muted);margin-top:5px}
+.auth-card .field input{font-size:16px}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:48px}
+.pw-eye{position:absolute;right:4px;top:0;bottom:0;width:44px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);background:none;border:0;cursor:pointer}
 .form-err{display:none;font-size:12.5px;color:var(--red);font-weight:500;margin:-4px 0 12px}
 .form-err.show{display:block}
 .btn-auth{width:100%;padding:14px;background:var(--primary);color:#fff;border-radius:11px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .25s var(--ease),box-shadow .25s var(--ease),background .2s}
@@ -947,8 +951,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <!-- SIGN IN -->
     <div id="stepSignin" style="display:none">
       <h2>Welcome back 👋</h2><p class="auth-sub">Sign in to your verified campus market.</p>
-      <div class="field"><label>Email address</label><input type="email" id="siEmail" placeholder="you@gmail.com"></div>
-      <div class="field"><label>Password</label><input type="password" id="siPass" placeholder="••••••••"></div>
+      <div class="field"><label>Email address</label><input type="email" id="siEmail" placeholder="you@gmail.com" autocomplete="username" autocapitalize="none" inputmode="email"></div>
+      <div class="field"><label>Password</label><input type="password" id="siPass" placeholder="••••••••" autocomplete="current-password"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin:-4px 0 12px;font-size:13px"><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="siRemember" checked> Remember me</label><button type="button" id="forgotBtn" style="color:var(--primary);font-weight:600;font-size:13px">Forgot password?</button></div>
       <p class="form-err" id="siErr">Please fill in both fields.</p>
       <button type="button" id="resendBtn" style="display:none;color:var(--primary);font-weight:600;font-size:13px;margin-bottom:10px">Resend confirmation email</button>
@@ -1699,6 +1703,17 @@ function setView(v){
 }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{if(document.body.classList.contains('authed'))setView(b.dataset.view);}));
 $('menuBtn').addEventListener('click',()=>$('mobileNav').classList.toggle('open'));
+/* show / hide password on every auth password field */
+document.querySelectorAll('#auth input[type="password"]').forEach(function(inp){
+  var w=document.createElement('div');w.className='pw-wrap';
+  inp.parentNode.insertBefore(w,inp);w.appendChild(inp);
+  var b=document.createElement('button');b.type='button';b.className='pw-eye';b.setAttribute('aria-label','Show password');b.textContent='👁️';
+  b.addEventListener('click',function(){
+    var show=inp.type==='password';inp.type=show?'text':'password';
+    b.textContent=show?'🙈':'👁️';b.setAttribute('aria-label',show?'Hide password':'Show password');
+  });
+  w.appendChild(b);
+});
 /* light / dark choice (saved on this device) */
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme',t);
