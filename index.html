@@ -615,10 +615,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* retire the older one-off press effects so every press feels the same */
 .btn-primary:active,.back-btn:active,.notif:active,.acct-link:active{transform:none}
 /* press */
-:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn):active{scale:.92;transition-duration:.12s}
-:is(.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button):active{scale:.96;transition-duration:.12s}
+:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn):is(:active,.is-pressed){scale:.92;transition-duration:.12s}
+:is(.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button):is(:active,.is-pressed){scale:.96;transition-duration:.12s}
 :is(.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box):active:not(:has(:is(button,a):active)){scale:.985;transition-duration:.12s}
-@media (prefers-reduced-motion:reduce){:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box):active{scale:none}}
+:is(.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box).is-pressed{scale:.985;transition-duration:.12s}
+@media (prefers-reduced-motion:reduce){:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box):is(:active,.is-pressed){scale:none}}
 </style>
 </head>
 <body>
@@ -2256,6 +2257,24 @@ sb.auth.getSession().then(async({data})=>{
   }
 }).catch(()=>{document.body.classList.remove('authed','restoring');});
 </script>
-<script>document.addEventListener('touchstart',function(){},{passive:true});</script>
+<script>
+document.addEventListener('touchstart',function(){},{passive:true});
+/* tap feel: same press on every tap, even very quick ones (does not rely on :active) */
+(function(){
+  var SEL='.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box',MIN=110,cur=null,t0=0,tm=0;
+  function release(){
+    if(!cur)return;var el=cur;cur=null;clearTimeout(tm);
+    tm=setTimeout(function(){el.classList.remove('is-pressed');},Math.max(0,MIN-(Date.now()-t0)));
+  }
+  document.addEventListener('pointerdown',function(e){
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    var el=e.target.closest&&e.target.closest(SEL);
+    if(!el||el.disabled)return;
+    if(cur&&cur!==el)cur.classList.remove('is-pressed');
+    cur=el;t0=Date.now();clearTimeout(tm);el.classList.add('is-pressed');
+  },{passive:true});
+  ['pointerup','pointercancel','dragend'].forEach(function(ev){document.addEventListener(ev,release,{passive:true});});
+})();
+</script>
 </body>
 </html>
