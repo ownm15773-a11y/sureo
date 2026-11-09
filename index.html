@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sureo | Verified Campus Marketplace</title>
 <meta name="description" content="Sureo is the campus marketplace for food, textbooks, gadgets, housing and gigs from verified students and vendors.">
-<meta name="theme-color" content="#0d4a3a" media="(prefers-color-scheme: light)">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0d4a3a" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b1210" media="(prefers-color-scheme: dark)">
 <meta property="og:title" content="Sureo | Verified Campus Marketplace">
 <meta property="og:description" content="Buy, sell, rent and trade on campus with verified sellers.">
@@ -655,6 +655,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <button class="btn-primary guest-only" id="joinBtn">Join Sureo</button>
       <div class="user-chip auth-only" data-view="profile" style="cursor:pointer" title="Your profile"><span class="avatar" id="avatar">S</span><span id="hello">Hi</span></div>
       <button class="btn-primary auth-only" id="sellBtn">+ Sell</button>
+      <button class="theme-btn" id="installBtn" style="display:none" aria-label="Install Sureo app">⬇️</button>
       <button class="theme-btn" id="themeBtn" aria-label="Switch light or dark mode"></button>
       <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
     </div>
@@ -743,6 +744,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <p>Search listings, course codes (MTH211) or ISBNs from verified students and vendors.</p>
       <div class="search-bar">
         <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <button type="button" class="chip" id="alertBtn" style="margin-bottom:10px">🔔 Alert me when this is listed</button>
         <input type="text" class="search-input" id="searchInput" placeholder="Search jollof, MTH211, ISBN 978-0538497909...">
       </div>
       <div class="pill-row scroll" id="filters">
@@ -788,6 +790,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <button class="chip active" data-board="housing">🏠 Housing / Sublet</button>
         <button class="chip" data-board="gigs">💼 Gig Economy</button>
         <button class="chip" data-board="lost">🔑 Lost & Found</button>
+        <button class="chip" data-board="wanted">🙋 Wanted</button>
       </div>
       <div class="board-list" id="boardList"></div>
     </section>
@@ -1370,6 +1373,7 @@ async function loadListings(){
   if(error){console.error(error);loadErr=true;render();return;}
   loadErr=false;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
+  setTimeout(()=>{try{checkAlerts();}catch(e){}},1500);
   const emo={food:'🍽️',books:'📚',gadgets:'🔌',fashion:'👔',services:'🛠️'};
   ITEMS.unshift(...data.map(l=>{
     const ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),im=ms.find(m=>m.kind==='image'),pr=l.profiles||{};
@@ -1485,7 +1489,7 @@ function render(){
     +(i.cd?'<div class="tag-row"><span class="cond-tag">'+i.cd+'</span>'+(i.code?'<span class="cond-tag mono" style="font-family:ui-monospace,monospace">'+i.code+'</span>':'')+'</div>':'')
     +'<div class="card-vendor">'+i.v+(i.vf?' <span class="tick">✓</span>':'')+' · <span class="rate">★ '+i.rt.toFixed(1)+' <span>('+i.rv+')</span></span></div>'
     +'<div class="card-foot"><span class="price'+(i.p===0?' freeprice':'')+'">'+price+(i.u?'<small>'+i.u+'</small>':'')+'</span>'
-    +'<span class="foot-btns"><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
+    +'<span class="foot-btns"><button class="icon-btn" title="Share" aria-label="Share listing" data-sh="'+esc(i.n)+'" data-shp="'+i.p+'">↗</button><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
     +'<button class="icon-btn" title="Message seller" aria-label="Message seller" data-msg="'+idx+'">✉</button>'
     +'<a class="btn-wa" aria-label="Chat on WhatsApp" target="_blank" rel="noopener" href="https://wa.me/'+(i0.ph||WA_DEFAULT)+'?text='+msg+'">💬</a>'
     +'<button class="btn-buy" data-buy="'+idx+'" data-name="'+i.n.replace(/"/g,'')+'" data-vendor="'+i.v.replace(/"/g,'')+'" data-price="'+i.p+'">'+(i.t==='eats'?'Order':'Buy')+'</button></span></div></div></article>';
@@ -1504,6 +1508,7 @@ $('resetBtn').addEventListener('click',()=>{state.cat='all';state.ty='all';state
 
 /* ---------- BOARDS ---------- */
 function renderBoard(){
+  if(state.board==='wanted'){renderWanted();return;}
   const list=BOARDS[state.board];
   $('boardList').innerHTML=list.map((b,idx)=>'<div class="board-card" data-d="'+(idx*80)+'ms">'
    +'<div class="board-emoji" style="background:'+b.bg+'">'+b.e+'</div>'
@@ -1714,6 +1719,67 @@ document.querySelectorAll('#auth input[type="password"]').forEach(function(inp){
   });
   w.appendChild(b);
 });
+/* ===== squeeze photos (saves data), share, alerts, wanted, install ===== */
+async function squeeze(f){
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type)||f.size<250000)return f;
+  try{
+    const bm=await createImageBitmap(f),k=Math.min(1,1280/Math.max(bm.width,bm.height));
+    const c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
+    c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.8));
+    return b&&b.size<f.size?new File([b],'p.jpg',{type:'image/jpeg'}):f;
+  }catch(e){return f;}
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-sh]');if(!b)return;
+  const url=location.origin+location.pathname,p=+b.dataset.shp,txt='Check this on Sureo: '+b.dataset.sh+(p?' for ₦'+p.toLocaleString():'')+' (verified campus students)';
+  if(navigator.share){navigator.share({title:'Sureo',text:txt,url:url}).catch(()=>{});}
+  else window.open('https://wa.me/?text='+encodeURIComponent(txt+' '+url),'_blank');
+});
+/* alerts: saved searches live on this device; checked each time listings load */
+const getAl=()=>{try{return JSON.parse(localStorage.getItem('sureoAlerts')||'[]');}catch(e){return[];}};
+$('alertBtn').addEventListener('click',()=>{
+  const q=($('searchInput').value||'').trim().toLowerCase();
+  if(q.length<2){toast('Type what you want in the search box first.',3000);return;}
+  const a=getAl();if(a.indexOf(q)<0){a.push(q);try{localStorage.setItem('sureoAlerts',JSON.stringify(a.slice(-10)));}catch(e){}}
+  toast('🔔 We\'ll tell you when "'+q+'" is listed.',3500);
+});
+function checkAlerts(){
+  try{
+    const a=getAl(),seen=JSON.parse(localStorage.getItem('sureoSeen')||'null'),ids=ITEMS.filter(x=>x.r).map(x=>x.id);
+    localStorage.setItem('sureoSeen',JSON.stringify(ids.slice(0,300)));
+    if(!seen||!a.length)return;
+    const nw=ITEMS.filter(x=>x.r&&seen.indexOf(x.id)<0&&a.some(q=>x.n.toLowerCase().indexOf(q)>-1));
+    if(nw.length)toast('🔔 New: '+nw[0].n+(nw.length>1?' +'+(nw.length-1)+' more':''),6000);
+  }catch(e){}
+}
+/* wanted board (needs the wanted table, see wanted.sql) */
+async function renderWanted(){
+  const L=$('boardList');
+  L.innerHTML='<div class="board-card" style="flex-direction:column;align-items:stretch;gap:8px"><b>🙋 Post what you need</b>'
+   +'<input id="wtT" class="search-input" style="padding:12px 16px" maxlength="80" placeholder="e.g. Mini fridge, fairly used">'
+   +'<input id="wtB" class="search-input" style="padding:12px 16px" inputmode="numeric" placeholder="Budget in ₦ (optional)">'
+   +'<input id="wtW" class="search-input" style="padding:12px 16px" inputmode="tel" placeholder="Your WhatsApp number">'
+   +'<button class="btn-auth" id="wtGo" style="margin:0"><span>Post request</span></button></div><div id="wtList"></div>';
+  $('wtGo').onclick=async()=>{
+    if(!me){openAuth('signin');return;}
+    const t=$('wtT').value.trim(),w=waNum($('wtW').value);
+    if(t.length<3||!w){toast('Add what you need and your WhatsApp number.',3500);return;}
+    const {error}=await sb.from('wanted').insert({user_id:me.id,title:t,budget_kobo:(parseInt($('wtB').value,10)||0)*100,whatsapp:w});
+    if(error){toast('Could not post: '+error.message,4000);return;}
+    toast('✓ Request posted.');renderWanted();
+  };
+  const {data,error}=await sb.from('wanted').select('id,user_id,title,budget_kobo,whatsapp').order('created_at',{ascending:false}).limit(40);
+  $('wtList').innerHTML=error?'<p class="auth-sub" style="text-align:center">Wanted board is not set up yet.</p>':(data.length?data.map(w=>'<div class="board-card" style="margin-top:12px"><div class="board-emoji" style="background:var(--primary-light)">🙋</div><div class="board-info"><div class="board-title">'+esc(w.title)+'</div><div class="board-meta"><span>'+(w.budget_kobo?'Budget ₦'+Math.round(w.budget_kobo/100).toLocaleString():'Open budget')+'</span></div></div>'
+   +(me&&me.id===w.user_id?'<button class="btn-wa" data-wdel="'+w.id+'">🗑</button>':'<a class="btn-wa" target="_blank" rel="noopener" href="https://wa.me/'+w.whatsapp+'?text='+encodeURIComponent('Hi! I have "'+w.title+'" (saw it on Sureo Wanted).')+'">💬 I have it</a>')+'</div>').join(''):'<p class="auth-sub" style="text-align:center;margin-top:14px">No requests yet. Be the first!</p>');
+  document.querySelectorAll('[data-wdel]').forEach(b=>b.onclick=async()=>{await sb.from('wanted').delete().eq('id',b.dataset.wdel);renderWanted();});
+}
+/* install as app */
+let dip=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;$('installBtn').style.display='flex';});
+$('installBtn').addEventListener('click',async()=>{if(!dip)return;dip.prompt();await dip.userChoice;dip=null;$('installBtn').style.display='none';});
+if(/iphone|ipad/i.test(navigator.userAgent)&&!navigator.standalone&&!localStorage.getItem('sureoIos')){setTimeout(()=>{toast('Install Sureo: tap Share, then "Add to Home Screen".',7000);try{localStorage.setItem('sureoIos','1');}catch(e){}},4000);}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 /* light / dark choice (saved on this device) */
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme',t);
@@ -1884,7 +1950,7 @@ $('sSubmit').addEventListener('click',async()=>{
     if(error)throw error;
     const rows=[];
     for(let i=0;i<files.length;i++){
-      const f=files[i],path=me.id+'/'+l.id+'/'+i+'.'+MIME_EXT[f.type];
+      const f=await squeeze(files[i]),path=me.id+'/'+l.id+'/'+i+'.'+MIME_EXT[f.type];
       const up=await sb.storage.from('listing-media').upload(path,f,{contentType:f.type});
       if(up.error)throw up.error;
       rows.push({listing_id:l.id,url:sb.storage.from('listing-media').getPublicUrl(path).data.publicUrl,kind:f.type.startsWith('video')?'video':'image',position:i});
