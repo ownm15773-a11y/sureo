@@ -1961,8 +1961,14 @@ function applySellCategory(){
 }
 $('sCat').addEventListener('change',applySellCategory);
 applySellCategory();
+const CAT_LBL={food:'🍔 Food',books:'📚 Books',gadgets:'💻 Gadgets',fashion:'👕 Fashion',services:'🛠️ Services'};
+const CAT_BY_TYPE={sell:['food','books','gadgets','fashion','services'],rent:['books','gadgets','fashion'],trade:['books','gadgets','fashion'],free:['food','books','gadgets','fashion']};
 function applySellType(){
   const free=$('sType').value==='free';
+  const al=CAT_BY_TYPE[$('sType').value]||CAT_BY_TYPE.sell,sc=$('sCat'),cur=sc.value;
+  sc.innerHTML=al.map(k=>'<option value="'+k+'">'+CAT_LBL[k]+'</option>').join('');
+  sc.value=al.indexOf(cur)>-1?cur:al[0];
+  applySellCategory();
   $('sPrice').closest('.field').style.display=free?'none':'';
   if(free)$('sPrice').value='';
 }
