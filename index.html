@@ -94,7 +94,7 @@ header{position:sticky;top:0;z-index:100;background:var(--glass);backdrop-filter
 body.authed .bottom-nav{display:block!important}
 body.authed{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
 .bn-inner{position:relative;display:grid;grid-template-columns:repeat(4,1fr);max-width:520px;margin:0 auto;height:64px}
-.bn-ind{position:absolute;top:0;left:0;width:25%;height:3px;display:flex;justify-content:center;pointer-events:none;transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .3s;opacity:0}
+.bn-ind{position:absolute;top:0;left:0;width:25%;height:3px;display:flex;justify-content:center;pointer-events:none;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .2s;opacity:0}
 .bn-ind::after{content:'';width:32px;height:3px;border-radius:0 0 4px 4px;background:var(--primary)}
 .bottom-nav[data-active="0"] .bn-ind{opacity:1;transform:translateX(0)}
 .bottom-nav[data-active="1"] .bn-ind{opacity:1;transform:translateX(100%)}
@@ -102,7 +102,7 @@ body.authed{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
 .bn-item{cursor:pointer;touch-action:manipulation;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#9ca3af;font-size:11px;font-weight:600;letter-spacing:.1px;-webkit-tap-highlight-color:transparent;transition:color .3s var(--ease)}
 .bn-item:hover{color:var(--text)}
 .bn-item.active{color:var(--primary)}
-.bn-item svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .35s cubic-bezier(.22,1,.36,1),fill .3s}
+.bn-item svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s cubic-bezier(.22,1,.36,1),fill .2s}
 .bn-item.active svg{fill:var(--primary-light);transform:translateY(-1px) scale(1.06)}
 .bn-item:active svg{transform:scale(.88)}
 .bn-ic{position:relative;display:flex}
@@ -135,7 +135,7 @@ body.authed #toast{bottom:84px}
 
 /* ============ VIEWS ============ */
 .view{display:none}
-.view.active{display:block;animation:viewIn .55s cubic-bezier(.22,1,.36,1)}
+.view.active{display:block;animation:viewIn .2s cubic-bezier(.22,1,.36,1)}
 @keyframes viewIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 #app{display:none}
 body.authed #app{display:block}
@@ -1699,13 +1699,14 @@ function setView(v){
   $('bottomNav').dataset.active=['market','messages','notifications','profile'].indexOf(nv);
   $('mobileNav').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
-  try{
+  /* paint the tab change first, then do the heavy rendering so taps feel instant */
+  requestAnimationFrame(()=>setTimeout(()=>{try{
     if(v==='boards')renderBoard();
     if(v==='notifications'){renderNotifs();loadNotifs();}
     if(v==='messages'){renderConvs();renderChat();loadConvs();}
     if(v==='profile')loadMyListings();
     if(v==='market')requestAnimationFrame(moveTabInd);
-  }catch(e){console.error(e);}
+  }catch(e){console.error(e);}},0));
   if(v==='safety')$('hubGrid').querySelectorAll('.hub').forEach(h=>io.observe(h));
 }
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{if(document.body.classList.contains('authed'))setView(b.dataset.view);}));
@@ -1763,6 +1764,7 @@ async function renderWanted(){
    +'<input id="wtB" class="search-input" style="padding:12px 16px" inputmode="numeric" placeholder="Budget in ₦ (optional)">'
    +'<input id="wtW" class="search-input" style="padding:12px 16px" inputmode="tel" placeholder="Your WhatsApp number">'
    +'<button class="btn-auth" id="wtGo" style="margin:0"><span>Post request</span></button></div><div id="wtList"></div>';
+  L.querySelectorAll('.board-card').forEach(c=>io.observe(c));
   $('wtGo').onclick=async()=>{
     if(!me){openAuth('signin');return;}
     const t=$('wtT').value.trim(),w=waNum($('wtW').value);
@@ -1774,6 +1776,7 @@ async function renderWanted(){
   const {data,error}=await sb.from('wanted').select('id,user_id,title,budget_kobo,whatsapp').order('created_at',{ascending:false}).limit(40);
   $('wtList').innerHTML=error?'<p class="auth-sub" style="text-align:center">Wanted board is not set up yet.</p>':(data.length?data.map(w=>'<div class="board-card" style="margin-top:12px"><div class="board-emoji" style="background:var(--primary-light)">🙋</div><div class="board-info"><div class="board-title">'+esc(w.title)+'</div><div class="board-meta"><span>'+(w.budget_kobo?'Budget ₦'+Math.round(w.budget_kobo/100).toLocaleString():'Open budget')+'</span></div></div>'
    +(me&&me.id===w.user_id?'<button class="btn-wa" data-wdel="'+w.id+'">🗑</button>':'<a class="btn-wa" target="_blank" rel="noopener" href="https://wa.me/'+w.whatsapp+'?text='+encodeURIComponent('Hi! I have "'+w.title+'" (saw it on Sureo Wanted).')+'">💬 I have it</a>')+'</div>').join(''):'<p class="auth-sub" style="text-align:center;margin-top:14px">No requests yet. Be the first!</p>');
+  L.querySelectorAll('.board-card').forEach(c=>io.observe(c));
   document.querySelectorAll('[data-wdel]').forEach(b=>b.onclick=async()=>{await sb.from('wanted').delete().eq('id',b.dataset.wdel);renderWanted();});
 }
 /* install as app */
