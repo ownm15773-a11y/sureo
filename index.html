@@ -776,6 +776,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
           <button class="view-all" id="resetBtn">View All →</button>
         </div>
       </div>
+      <div id="wantedStrip" style="display:none;margin:0 0 18px"></div>
       <div class="grid" id="grid"></div>
     </section>
   </div>
@@ -1375,7 +1376,7 @@ async function loadListings(){
   if(error){console.error(error);loadErr=true;render();return;}
   loadErr=false;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
-  setTimeout(()=>{try{checkAlerts();}catch(e){}},1500);
+  setTimeout(()=>{try{checkAlerts();loadWantedStrip();}catch(e){}},1500);
   const emo={food:'🍽️',books:'📚',gadgets:'🔌',fashion:'👔',services:'🛠️'};
   ITEMS.unshift(...data.map(l=>{
     const ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),im=ms.find(m=>m.kind==='image'),pr=l.profiles||{};
@@ -1771,13 +1772,26 @@ async function renderWanted(){
     if(t.length<3||!w){toast('Add what you need and your WhatsApp number.',3500);return;}
     const {error}=await sb.from('wanted').insert({user_id:me.id,title:t,budget_kobo:(parseInt($('wtB').value,10)||0)*100,whatsapp:w});
     if(error){toast('Could not post: '+error.message,4000);return;}
-    toast('✓ Request posted.');renderWanted();
+    toast('✓ Request posted.');renderWanted();loadWantedStrip();
   };
   const {data,error}=await sb.from('wanted').select('id,user_id,title,budget_kobo,whatsapp').order('created_at',{ascending:false}).limit(40);
   $('wtList').innerHTML=error?'<p class="auth-sub" style="text-align:center">Wanted board is not set up yet.</p>':(data.length?data.map(w=>'<div class="board-card" style="margin-top:12px"><div class="board-emoji" style="background:var(--primary-light)">🙋</div><div class="board-info"><div class="board-title">'+esc(w.title)+'</div><div class="board-meta"><span>'+(w.budget_kobo?'Budget ₦'+Math.round(w.budget_kobo/100).toLocaleString():'Open budget')+'</span></div></div>'
    +(me&&me.id===w.user_id?'<button class="btn-wa" data-wdel="'+w.id+'">🗑</button>':'<a class="btn-wa" target="_blank" rel="noopener" href="https://wa.me/'+w.whatsapp+'?text='+encodeURIComponent('Hi! I have "'+w.title+'" (saw it on Sureo Wanted).')+'">💬 I have it</a>')+'</div>').join(''):'<p class="auth-sub" style="text-align:center;margin-top:14px">No requests yet. Be the first!</p>');
   L.querySelectorAll('.board-card').forEach(c=>io.observe(c));
-  document.querySelectorAll('[data-wdel]').forEach(b=>b.onclick=async()=>{await sb.from('wanted').delete().eq('id',b.dataset.wdel);renderWanted();});
+  document.querySelectorAll('[data-wdel]').forEach(b=>b.onclick=async()=>{await sb.from('wanted').delete().eq('id',b.dataset.wdel);renderWanted();loadWantedStrip();});
+}
+/* wanted strip on the market page */
+function openWanted(){state.board='wanted';document.querySelectorAll('#boardTabs .chip').forEach(x=>x.classList.toggle('active',x.dataset.board==='wanted'));setView('boards');}
+async function loadWantedStrip(){
+  const el=$('wantedStrip');if(!el||!me)return;
+  try{
+    const {data,error}=await sb.from('wanted').select('title,budget_kobo').order('created_at',{ascending:false}).limit(6);
+    if(error||!data||!data.length){el.style.display='none';return;}
+    el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:14px">🙋 Students are looking for</b><button type="button" class="view-all" id="wsAll">See all →</button></div>'
+     +'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+data.map(w=>'<button type="button" class="chip" data-ws="1" style="flex-shrink:0;white-space:nowrap">'+esc(w.title)+(w.budget_kobo?' · ₦'+Math.round(w.budget_kobo/100).toLocaleString():'')+'</button>').join('')+'</div>';
+    el.style.display='block';
+    el.querySelectorAll('#wsAll,[data-ws]').forEach(b=>b.onclick=openWanted);
+  }catch(e){el.style.display='none';}
 }
 /* install as app */
 let dip=null;
