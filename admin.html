@@ -88,6 +88,7 @@ img.th{width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-bo
     <div class="pg" id="pg-announce"></div>
     <div class="pg" id="pg-activity"></div>
     <div class="pg" id="pg-admins"></div>
+    <div class="pg" id="pg-disputes"></div>
   </main>
   <nav class="bar">
     <button data-go="home"><i>🏠</i>Home</button>
@@ -109,6 +110,7 @@ img.th{width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-bo
     <button data-go="announce">📣 Announcements</button>
     <h3 style="margin-top:14px">TRANSACTIONS</h3>
     <button data-go="orders">💳 Orders &amp; payments</button>
+    <button data-go="disputes">⚠️ Disputes</button>
     <h3 style="margin-top:14px">ACCESS</h3>
     <button data-go="activity">📜 Activity log</button>
     <button data-go="admins">🛡️ Admins</button>
@@ -121,7 +123,7 @@ const sb=window.supabase.createClient('https://dgzltdkaumkprxijuoqv.supabase.co'
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.x);toast.x=setTimeout(()=>t.style.display='none',3000);}
-const T={home:'Dashboard',sellers:'Seller verification',users:'Users',listings:'Listings',orders:'Orders & payments',reports:'Reports',user:'User profile',reviews:'Reviews',announce:'Announcements',activity:'Activity log',admins:'Admins'};
+const T={home:'Dashboard',sellers:'Seller verification',users:'Users',listings:'Listings',orders:'Orders & payments',reports:'Reports',user:'User profile',reviews:'Reviews',announce:'Announcements',activity:'Activity log',admins:'Admins',disputes:'Disputes'};
 let me=null,tab='home',kst='pending',ulist=[];
 function menu(o){$('dr').classList.toggle('open',o);$('ov').style.display=o?'block':'none';}
 function go(t){
@@ -130,7 +132,7 @@ function go(t){
   document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===t));
   $('ttl').textContent=T[t];menu(false);window.scrollTo(0,0);load();
 }
-function load(){({home:async()=>{await loadHome();loadCharts();loadWatch();},user:loadUser,reviews:loadReviews,announce:loadAnnounce,activity:loadActivity,sellers:loadSellers,users:loadUsers,listings:loadListings,orders:loadOrders,reports:loadReports,admins:loadAdmins})[tab]();}
+function load(){({home:async()=>{await loadHome();loadCharts();loadWatch();},user:loadUser,reviews:loadReviews,announce:loadAnnounce,activity:loadActivity,sellers:loadSellers,users:loadUsers,listings:loadListings,orders:loadOrders,reports:loadReports,admins:loadAdmins,disputes:loadDisputes})[tab]();}
 async function enter(user){
   const {data}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();
   if(!data){await sb.auth.signOut();$('lerr').textContent='This account is not an admin.';$('login').style.display='block';$('app').style.display='none';return;}
@@ -220,6 +222,14 @@ async function loadReports(){
   if(r.error){el.innerHTML='<div class="em">Could not load: '+esc(r.error.message)+'</div>';return;}
   const d=r.data||[],nm=await names(d.map(x=>x.reporter_id));
   el.innerHTML=d.length?d.map(x=>'<div class="card" data-lid="'+esc(x.listing_id)+'"><div class="nm">'+esc(x.listing_title||'Listing')+'</div><div class="mt">Reason: '+esc(x.reason||'-')+'<br>Reported by: '+esc(nm[x.reporter_id]||'Unknown')+'<br>'+when(x.created_at)+'</div><div class="row"><button class="no" data-act="rmrep">Remove listing</button><button class="no" data-act="banrep">Ban seller</button></div></div>').join(''):'<div class="em">No reports. 🎉</div>';
+}
+async function loadDisputes(){
+  const el=$('pg-disputes');el.innerHTML='<div class="em">Loading…</div>';
+  const r=await sb.from('disputes').select('*').order('created_at',{ascending:false}).limit(100);
+  if(r.error){el.innerHTML='<div class="em">Could not load: '+esc(r.error.message)+'</div>';return;}
+  const d=r.data||[],nm=await names(d.map(x=>x.opened_by));
+  el.innerHTML=d.length?d.map(x=>'<div class="card"><div class="nm">Order '+esc(x.order_id)+(x.status==='open'?'':' · resolved')+'</div><div class="mt">'+esc(x.reason)+'<br>Reported by: '+esc(nm[x.opened_by]||'Unknown')+'<br>'+when(x.created_at)+'</div>'+(x.status==='open'?'<div class="row"><button class="no" data-res="'+esc(x.id)+'">Mark resolved</button></div>':'')+'</div>').join(''):'<div class="em">No disputes yet.</div>';
+  el.querySelectorAll('[data-res]').forEach(b=>b.onclick=async()=>{await sb.from('disputes').update({status:'resolved'}).eq('id',b.dataset.res);logAct('dispute_resolved',b.dataset.res);loadDisputes();});
 }
 let curUid=null,prevTab='home',gross=0;
 function openUser(id){curUid=id;prevTab=tab==='user'?prevTab:tab;go('user');}

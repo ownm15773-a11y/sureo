@@ -1380,7 +1380,7 @@ async function loadListings(){
   if(error){console.error(error);loadErr=true;render();return;}
   loadErr=false;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
-  setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();enablePush(true);}catch(e){}},1500);
+  setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();checkAdmin();enablePush(true);}catch(e){}},1500);
   const emo={food:'🍽️',books:'📚',gadgets:'🔌',fashion:'👔',services:'🛠️'};
   ITEMS.unshift(...data.filter(l=>!l.created_at||Date.now()-new Date(l.created_at)<60*864e5).map(l=>{
     const ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),im=ms.find(m=>m.kind==='image'),pr=l.profiles||{};
@@ -1711,7 +1711,7 @@ function setView(v){
     if(v==='boards')renderBoard();
     if(v==='notifications'){renderNotifs();loadNotifs();}
     if(v==='messages'){renderConvs();renderChat();loadConvs();}
-    if(v==='profile')loadMyListings();
+    if(v==='profile'){loadMyListings();loadOrders();}
     if(v==='market')requestAnimationFrame(moveTabInd);
   }catch(e){console.error(e);}},0));
   if(v==='safety')$('hubGrid').querySelectorAll('.hub').forEach(h=>io.observe(h));
@@ -1845,6 +1845,50 @@ async function enablePush(quiet){
 }
 $('refBtn').insertAdjacentHTML('afterend','<button type="button" class="btn-outline" id="pushBtn" style="margin:0 0 14px">🔔 Turn on notifications</button>');
 $('pushBtn').addEventListener('click',()=>enablePush(false));
+/* ===== orders: handover code + problem reports; admin panel ===== */
+$('myList').insertAdjacentHTML('beforebegin','<div id="ordersBox"></div>');
+const fmtN=k=>'₦'+Math.round((k||0)/100).toLocaleString();
+async function loadOrders(){
+  const box=$('ordersBox');if(!box||!me)return;
+  const {data,error}=await sb.from('orders').select('id,listing_title,amount_kobo,seller_id,buyer_id,handover_status').or('buyer_id.eq.'+me.id+',seller_id.eq.'+me.id).order('created_at',{ascending:false}).limit(20);
+  if(error||!data||!data.length){box.innerHTML='';return;}
+  let codes={};
+  const mine=data.filter(o=>o.buyer_id===me.id).map(o=>String(o.id));
+  if(mine.length){const r=await sb.from('handover_codes').select('order_id,code').in('order_id',mine);(r.data||[]).forEach(c=>codes[c.order_id]=c.code);}
+  box.innerHTML='<h3 style="margin:6px 0 10px">My orders</h3>'+data.map(o=>{
+    const buyer=o.buyer_id===me.id,done=o.handover_status==='confirmed';
+    return '<div class="board-card" style="flex-direction:column;align-items:stretch;gap:8px;margin-bottom:10px"><b>'+esc(o.listing_title)+' · '+fmtN(o.amount_kobo)+'</b>'
+     +'<small>'+(buyer?'You are buying':'You are selling')+' · '+(done?'✅ Handed over':'⏳ Waiting for handover')+'</small>'
+     +(done?'':(buyer?'<div style="padding:10px;border-radius:10px;background:var(--primary-light)">Your handover code: <b style="font-size:20px;letter-spacing:3px">'+esc(codes[String(o.id)]||'······')+'</b><br><small>Give this code to the seller only when you have the item in your hand.</small></div>'
+       :'<div style="display:flex;gap:8px"><input class="search-input" style="padding:10px 14px" inputmode="numeric" maxlength="6" placeholder="Buyer\'s 6-digit code" data-hc="'+esc(o.id)+'"><button class="btn-buy" data-hcb="'+esc(o.id)+'">Confirm</button></div>'))
+     +'<button class="view-all" data-prob="'+esc(o.id)+'" style="align-self:flex-start">⚠️ Report a problem</button></div>';
+  }).join('');
+}
+document.addEventListener('click',async e=>{
+  const hb=e.target.closest('[data-hcb]');
+  if(hb){
+    const id=hb.dataset.hcb,inp=document.querySelector('[data-hc="'+id+'"]');
+    const {data,error}=await sb.rpc('confirm_handover',{p_order:id,p_code:(inp&&inp.value)||''});
+    const msg={ok:'✅ Handover confirmed.',wrong:'Wrong code. Ask the buyer to check.',locked:'Too many wrong tries. Contact support.',already:'Already confirmed.',not_allowed:'Only the seller can confirm.'};
+    toast(error?('Could not confirm: '+error.message):(msg[data]||'Could not confirm.'),4000);loadOrders();return;
+  }
+  const pb=e.target.closest('[data-prob]');
+  if(pb){
+    const r=(prompt('What went wrong? (min. 5 letters)')||'').trim();if(r.length<5)return;
+    const {error}=await sb.from('disputes').insert({order_id:pb.dataset.prob,opened_by:me.id,reason:r});
+    toast(error?('Could not send: '+error.message):'Problem reported. We will review it.',4000);
+  }
+});
+/* admin panel: only shows for users listed in the admins table */
+async function checkAdmin(){
+  try{
+    const {data}=await sb.rpc('is_admin');
+    if(data&&!$('adminOpen')){
+      $('mobileNav').insertAdjacentHTML('beforeend','<button id="adminOpen">🛡️ Admin</button>');
+      $('adminOpen').addEventListener('click',()=>{location.href='admin.html';});
+    }
+  }catch(e){}
+}
 let WANTED=[];
 async function haveIt(w){
   if(!w)return;if(!me){openAuth('signin');return;}
@@ -2038,8 +2082,16 @@ function applySellType(){
 }
 $('sType').addEventListener('change',applySellType);
 applySellType();
+function badListingText(t){
+  t=String(t||'').toLowerCase();
+  if(/(\+?234|\b0)[\s.-]?[789][01]\d[\s.-]?\d{3}[\s.-]?\d{4}/.test(t)||/\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d/.test(t))return 'Please remove phone numbers from the title. Buyers contact you through Sureo.';
+  if(/whatsapp|telegram|call me|dm me|@gmail|@yahoo/.test(t))return 'Please remove contact details from the title.';
+  if(/\b(weed|cocaine|heroin|tramadol|codeine|molly|loud|gun|pistol|rifle|ammo|exam\s*(leak|runz|expo)|leaked\s*(questions|exam)|fake\s*(id|certificate|result))\b/.test(t))return 'This kind of item is not allowed on Sureo.';
+  return '';
+}
 $('sSubmit').addEventListener('click',async()=>{
   const n=$('sName');if(!n.value.trim()){n.classList.add('err');return;}n.classList.remove('err');
+  const bad=badListingText(n.value);if(bad){n.classList.add('err');toast(bad,5000);return;}
   const ty=$('sType').value,cat=$('sCat').value,p=Math.max(0,Math.round(+$('sPrice').value||0));
   const ph=waNum($('sPhone').value);if(!ph){$('sPhone').classList.add('err');toast('Enter a valid WhatsApp number, e.g. 08012345678');return;}$('sPhone').classList.remove('err');
   const files=Array.from($('mediaFile').files).slice(0,5);
