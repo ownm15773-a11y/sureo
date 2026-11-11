@@ -1378,7 +1378,7 @@ async function loadListings(){
   if(error){console.error(error);loadErr=true;render();return;}
   loadErr=false;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
-  setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();}catch(e){}},1500);
+  setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();enablePush(true);}catch(e){}},1500);
   const emo={food:'🍽️',books:'📚',gadgets:'🔌',fashion:'👔',services:'🛠️'};
   ITEMS.unshift(...data.filter(l=>!l.created_at||Date.now()-new Date(l.created_at)<60*864e5).map(l=>{
     const ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),im=ms.find(m=>m.kind==='image'),pr=l.profiles||{};
@@ -1826,6 +1826,23 @@ $('refBtn').addEventListener('click',()=>{
   if(navigator.share)navigator.share({title:'Sureo',text:txt,url:url}).catch(()=>{});
   else{try{navigator.clipboard.writeText(txt+url);toast('Invite link copied.');}catch(e){window.open('https://wa.me/?text='+encodeURIComponent(txt+url),'_blank');}}
 });
+/* push notifications (needs push.sql, the push Edge Function and the messages webhook) */
+const VAPID='BIcGhOAajf2Jv_7dyEIB7vnC4d9bQk3flamBIBhPaWdzQYi7eLlvOrXAkzObH2r0v-U5E1LaAb2eTsLw_E-SGHs';
+function b64u(s){const b=(s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b);return Uint8Array.from(Array.from(r).map(c=>c.charCodeAt(0)));}
+async function enablePush(quiet){
+  if(!me)return;
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){if(!quiet)toast(/iphone|ipad/i.test(navigator.userAgent)?'On iPhone: tap Share, then Add to Home Screen, then open Sureo from your home screen and try again.':'This browser does not support notifications.',7000);return;}
+  try{
+    if(Notification.permission!=='granted'){if(quiet)return;const p=await Notification.requestPermission();if(p!=='granted'){toast('Notifications are blocked. Allow them in your phone settings.',5000);return;}}
+    const reg=await navigator.serviceWorker.ready;
+    const sub=(await reg.pushManager.getSubscription())||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID)});
+    const {error}=await sb.rpc('save_push',{p_endpoint:sub.endpoint,p_sub:sub.toJSON()});
+    if(error)throw error;
+    $('pushBtn').textContent='🔔 Notifications on';if(!quiet)toast('🔔 Notifications are on.');
+  }catch(e){if(!quiet)toast('Could not turn on notifications: '+(e.message||e),6000);}
+}
+$('refBtn').insertAdjacentHTML('afterend','<button type="button" class="btn-outline" id="pushBtn" style="margin:0 0 14px">🔔 Turn on notifications</button>');
+$('pushBtn').addEventListener('click',()=>enablePush(false));
 let WANTED=[];
 async function haveIt(w){
   if(!w)return;if(!me){openAuth('signin');return;}
