@@ -911,7 +911,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   </div>
 
   <div class="view" id="view-orders">
-    <section class="profile-wrap container">
+    <section class="profile-wrap container" style="padding-left:16px;padding-right:16px">
       <div class="acct-top">
         <button type="button" class="back-btn" data-view="profile" aria-label="Back to profile">←</button>
         <h2>My orders</h2>
@@ -1886,6 +1886,12 @@ async function loadOrders(){
   if(mine.length){const r=await sb.from('handover_codes').select('order_id,code').in('order_id',mine);(r.data||[]).forEach(c=>codes[c.order_id]=c.code);}
   const sIds=data.filter(o=>o.seller_id===me.id).map(o=>String(o.id));
   if(sIds.length){const r=await sb.from('disputes').select('id,order_id,reason,seller_reply').in('order_id',sIds);(r.data||[]).forEach(d=>{(dm[d.order_id]=dm[d.order_id]||[]).push(d);});}
+  OC={data,codes,dm};drawOrders();
+}
+let OC=null;
+function drawOrders(){
+  if(!OC)return;
+  const {data,codes,dm}=OC,box=$('ordersBox'),sub=$('ordSub');
   const conf=o=>o.handover_status==='confirmed';
   const autoClosed=o=>o.receipt==='assumed'||(o.receipt==null&&conf(o)&&o.handover_at&&Date.now()-new Date(o.handover_at)>7*864e5);
   const isDone=o=>o.buyer_id===me.id?(conf(o)&&(o.receipt!=null||autoClosed(o))):conf(o);
@@ -1916,9 +1922,11 @@ async function loadOrders(){
     return '<details class="ord"><summary><span class="ord-ic">'+(b?'🛍️':'🏷️')+'</span><span class="ord-t"><b>'+esc(o.listing_title)+'</b><small>'+(b?'Buying':'Selling')+' · '+fmtN(o.amount_kobo)+'</small></span><span class="ob'+(bd[1]?' act':'')+'">'+bd[0]+'</span></summary><div class="ord-body">'+body+'</div></details>';
   };
   box.innerHTML='<div class="seg">'+seg+'</div>'+(list.length?list.map(row).join(''):'<p class="auth-sub" style="text-align:center;margin:26px 0">'+(ORD.f==='action'?'Nothing needs your attention 🎉':'No orders here.')+'</p>')+(data.length>=ORD.n?'<button type="button" class="btn-outline" id="ordMore" style="width:100%;margin:4px 0 14px">Load more orders</button>':'');
-  box.querySelectorAll('[data-of]').forEach(b=>b.onclick=()=>{ORD.f=b.dataset.of;loadOrders();});
-  const mb=$('ordMore');if(mb)mb.onclick=()=>{ORD.n+=20;loadOrders();};
 }
+$('ordersBox').addEventListener('click',e=>{
+  if(e.target.closest('[data-of]')){ORD.f=e.target.closest('[data-of]').dataset.of;drawOrders();return;}
+  if(e.target.closest('#ordMore')){ORD.n+=20;loadOrders();}
+});
 document.addEventListener('click',async e=>{
   const hb=e.target.closest('[data-hcb]');
   if(hb){
