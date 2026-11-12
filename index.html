@@ -1851,6 +1851,7 @@ $('myList').closest('.kyc-card').insertAdjacentHTML('beforebegin',
  '<button type="button" class="kyc-card acct-link" data-view="orders"><span class="kyc-ic">📦</span><span class="kyc-info"><b>My orders</b><span id="ordSub">Handover codes and receipts</span></span><span class="acct-chev" aria-hidden="true">›</span></button>'
 +'<button type="button" class="kyc-card acct-link" id="pushBtn"><span class="kyc-ic">🔔</span><span class="kyc-info"><b>Notifications</b><span id="pushSub">Turn on alerts for messages</span></span><span class="acct-chev" aria-hidden="true">›</span></button>'
 +'<button type="button" class="kyc-card acct-link" id="refBtn"><span class="kyc-ic">🎁</span><span class="kyc-info"><b>Invite friends</b><span>Share your Sureo link</span></span><span class="acct-chev" aria-hidden="true">›</span></button>');
+document.querySelector('.acct-link[data-view="orders"]').addEventListener('click',()=>{if(document.body.classList.contains('authed'))setView('orders');});
 $('refBtn').addEventListener('click',()=>{
   if(!me)return;const url=location.origin+location.pathname+'?ref='+me.id,txt='Join me on Sureo, the verified campus marketplace: ';
   if(navigator.share)navigator.share({title:'Sureo',text:txt,url:url}).catch(()=>{});
