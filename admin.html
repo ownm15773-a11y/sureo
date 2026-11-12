@@ -227,8 +227,19 @@ async function loadDisputes(){
   const el=$('pg-disputes');el.innerHTML='<div class="em">Loading…</div>';
   const r=await sb.from('disputes').select('*').order('created_at',{ascending:false}).limit(100);
   if(r.error){el.innerHTML='<div class="em">Could not load: '+esc(r.error.message)+'</div>';return;}
-  const d=r.data||[],nm=await names(d.map(x=>x.opened_by));
-  el.innerHTML=d.length?d.map(x=>'<div class="card"><div class="nm">Order '+esc(x.order_id)+(x.status==='open'?'':' · resolved')+'</div><div class="mt">'+esc(x.reason)+'<br>Reported by: '+esc(nm[x.opened_by]||'Unknown')+'<br>'+when(x.created_at)+'</div>'+(x.status==='open'?'<div class="row"><button class="no" data-res="'+esc(x.id)+'">Mark resolved</button></div>':'')+'</div>').join(''):'<div class="em">No disputes yet.</div>';
+  const d=r.data||[],ids=[...new Set(d.map(x=>x.order_id))];
+  const od=ids.length?(await sb.from('orders').select('id,listing_title,amount_kobo,buyer_id,seller_id,handover_status,handover_at,receipt,created_at').in('id',ids)).data||[]:[];
+  const om={};od.forEach(o=>om[String(o.id)]=o);
+  const nm=await names(od.flatMap(o=>[o.buyer_id,o.seller_id]));
+  const iso=new Date(Date.now()-7*864e5).toISOString(),ig={};
+  await Promise.all([...new Set(od.map(o=>o.buyer_id))].slice(0,20).map(async b=>{const q=await sb.from('orders').select('id',{count:'exact',head:true}).eq('buyer_id',b).eq('handover_status','confirmed').lt('handover_at',iso).or('receipt.is.null,receipt.eq.assumed');ig[b]=q.count||0;}));
+  const cb={},cs={};d.forEach(x=>{const o=om[x.order_id];if(!o)return;cb[o.buyer_id]=(cb[o.buyer_id]||0)+1;cs[o.seller_id]=(cs[o.seller_id]||0)+1;});
+  el.innerHTML=d.length?d.map(x=>{const o=om[x.order_id]||{};
+    return '<div class="card"><div class="nm">'+esc(o.listing_title||('Order '+x.order_id))+(x.status==='open'?'':' · resolved')+'</div><div class="mt">'
+    +'Buyer: '+esc(nm[o.buyer_id]||'?')+' ('+(cb[o.buyer_id]||0)+' disputes, '+(ig[o.buyer_id]||0)+' ignored)<br>Seller: '+esc(nm[o.seller_id]||'?')+' ('+(cs[o.seller_id]||0)+' disputes against)<br>'
+    +'Handover code: '+(o.handover_status==='confirmed'?'<b>✅ confirmed '+when(o.handover_at)+'</b>':'not confirmed')+'<br>Buyer says: '+(o.receipt==='received'?'received':o.receipt==='not_received'?'NOT received':o.receipt==='assumed'?'no answer (assumed received)':'no answer yet')+'<br><br>'
+    +'<b>Buyer:</b> '+esc(x.reason)+'<br><b>Seller:</b> '+(x.seller_reply?esc(x.seller_reply):'<i>no reply yet</i>')+'<br>'+when(x.created_at)+'</div>'
+    +(x.status==='open'?'<div class="row"><button class="no" data-res="'+esc(x.id)+'">Mark resolved</button></div>':'')+'</div>';}).join(''):'<div class="em">No disputes yet.</div>';
   el.querySelectorAll('[data-res]').forEach(b=>b.onclick=async()=>{await sb.from('disputes').update({status:'resolved'}).eq('id',b.dataset.res);logAct('dispute_resolved',b.dataset.res);loadDisputes();});
 }
 let curUid=null,prevTab='home',gross=0;
