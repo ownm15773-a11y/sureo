@@ -1863,6 +1863,8 @@ async function loadOrders(){
        :'<div style="display:flex;gap:8px"><input class="search-input" style="padding:10px 14px" inputmode="numeric" maxlength="6" placeholder="Buyer\'s 6-digit code" data-hc="'+esc(o.id)+'"><button class="btn-buy" data-hcb="'+esc(o.id)+'">Confirm</button></div>'))
      +'<button class="view-all" data-prob="'+esc(o.id)+'" style="align-self:flex-start">⚠️ Report a problem</button></div>';
   }).join('');
+  box.querySelectorAll('.board-card').forEach(c=>io.observe(c));
+  box.querySelectorAll('.board-card').forEach(c=>io.observe(c));
 }
 document.addEventListener('click',async e=>{
   const hb=e.target.closest('[data-hcb]');
