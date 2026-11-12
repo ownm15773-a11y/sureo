@@ -560,6 +560,20 @@ body{overflow-x:clip;max-width:100%}
 .adm-empty{color:var(--muted);font-size:13.5px;padding:10px 0}
 .adm-id{display:block;max-width:100%;border-radius:12px;margin:0 0 10px;border:1px solid var(--border)}
 #adminBtn{display:none;margin-top:12px;padding:10px 16px;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;font-size:13.5px}
+.seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--primary-light);margin:4px 0 14px}
+.seg button{flex:1;padding:9px 4px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--card);color:var(--primary);box-shadow:var(--shadow-sm)}
+.ord{border:1px solid var(--border);border-radius:14px;background:var(--card);margin-bottom:10px;overflow:hidden}
+.ord summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer}
+.ord summary::-webkit-details-marker{display:none}
+.ord-ic{width:40px;height:40px;border-radius:12px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.ord-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ord-t b{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ord-t small{font-size:12px;color:var(--muted)}
+.ob{font-size:11px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap;background:var(--primary-light);color:var(--primary)}
+.ob.act{background:rgba(245,158,11,.16);color:#b45309}
+.ord-body{padding:14px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border)}
+.ord-box{padding:12px;border-radius:12px;background:var(--primary-light);font-size:13px}
 .my-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--border);flex-wrap:wrap}
 .my-info{min-width:0;flex:1 1 180px}.my-info b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .my-info span{font-size:12px;color:var(--muted)}
@@ -893,6 +907,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <span class="kyc-info"><b>Identity &amp; account</b><span>Verification, log out, delete account</span></span>
         <span class="acct-chev" aria-hidden="true">›</span>
       </button>
+    </section>
+  </div>
+
+  <div class="view" id="view-orders">
+    <section class="profile-wrap container">
+      <div class="acct-top">
+        <button type="button" class="back-btn" data-view="profile" aria-label="Back to profile">←</button>
+        <h2>My orders</h2>
+      </div>
+      <div id="ordersBox"></div>
     </section>
   </div>
 
@@ -1712,6 +1736,7 @@ function setView(v){
     if(v==='notifications'){renderNotifs();loadNotifs();}
     if(v==='messages'){renderConvs();renderChat();loadConvs();}
     if(v==='profile'){loadMyListings();loadOrders();}
+    if(v==='orders')loadOrders();
     if(v==='market')requestAnimationFrame(moveTabInd);
   }catch(e){console.error(e);}},0));
   if(v==='safety')$('hubGrid').querySelectorAll('.hub').forEach(h=>io.observe(h));
@@ -1822,7 +1847,10 @@ async function claimRef(){
   try{const r=localStorage.getItem('sureoRef');if(!r||!me||r===me.id)return;
     await sb.from('profiles').update({referred_by:r}).eq('id',me.id);localStorage.removeItem('sureoRef');}catch(e){}
 }
-$('myList').insertAdjacentHTML('beforebegin','<button type="button" class="btn-outline" id="refBtn" style="margin:0 0 14px">🎁 Invite friends</button>');
+$('myList').closest('.kyc-card').insertAdjacentHTML('beforebegin',
+ '<button type="button" class="kyc-card acct-link" data-view="orders"><span class="kyc-ic">📦</span><span class="kyc-info"><b>My orders</b><span id="ordSub">Handover codes and receipts</span></span><span class="acct-chev" aria-hidden="true">›</span></button>'
++'<button type="button" class="kyc-card acct-link" id="pushBtn"><span class="kyc-ic">🔔</span><span class="kyc-info"><b>Notifications</b><span id="pushSub">Turn on alerts for messages</span></span><span class="acct-chev" aria-hidden="true">›</span></button>'
++'<button type="button" class="kyc-card acct-link" id="refBtn"><span class="kyc-ic">🎁</span><span class="kyc-info"><b>Invite friends</b><span>Share your Sureo link</span></span><span class="acct-chev" aria-hidden="true">›</span></button>');
 $('refBtn').addEventListener('click',()=>{
   if(!me)return;const url=location.origin+location.pathname+'?ref='+me.id,txt='Join me on Sureo, the verified campus marketplace: ';
   if(navigator.share)navigator.share({title:'Sureo',text:txt,url:url}).catch(()=>{});
@@ -1840,43 +1868,53 @@ async function enablePush(quiet){
     const sub=(await reg.pushManager.getSubscription())||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID)});
     const {error}=await sb.rpc('save_push',{p_endpoint:sub.endpoint,p_sub:sub.toJSON()});
     if(error)throw error;
-    $('pushBtn').textContent='🔔 Notifications on';if(!quiet)toast('🔔 Notifications are on.');
+    $('pushSub').textContent='On';if(!quiet)toast('🔔 Notifications are on.');
   }catch(e){if(!quiet)toast('Could not turn on notifications: '+(e.message||e),6000);}
 }
-$('refBtn').insertAdjacentHTML('afterend','<button type="button" class="btn-outline" id="pushBtn" style="margin:0 0 14px">🔔 Turn on notifications</button>');
 $('pushBtn').addEventListener('click',()=>enablePush(false));
 /* ===== orders: handover code + problem reports; admin panel ===== */
-$('myList').insertAdjacentHTML('beforebegin','<div id="ordersBox"></div>');
 let ORD={f:'action',n:20};
 const fmtN=k=>'₦'+Math.round((k||0)/100).toLocaleString();
 async function loadOrders(){
   const box=$('ordersBox');if(!box||!me)return;
+  const sub=$('ordSub');
   const {data,error}=await sb.from('orders').select('id,listing_title,amount_kobo,seller_id,buyer_id,handover_status,handover_at,receipt').or('buyer_id.eq.'+me.id+',seller_id.eq.'+me.id).order('created_at',{ascending:false}).limit(ORD.n);
-  if(error||!data||!data.length){box.innerHTML='';return;}
-  let codes={};
+  if(error||!data||!data.length){box.innerHTML='<p class="auth-sub" style="text-align:center;margin:30px 0">No orders yet.</p>';if(sub)sub.textContent='No orders yet';return;}
+  let codes={},dm={};
   const mine=data.filter(o=>o.buyer_id===me.id).map(o=>String(o.id));
   if(mine.length){const r=await sb.from('handover_codes').select('order_id,code').in('order_id',mine);(r.data||[]).forEach(c=>codes[c.order_id]=c.code);}
-  let dm={};
   const sIds=data.filter(o=>o.seller_id===me.id).map(o=>String(o.id));
   if(sIds.length){const r=await sb.from('disputes').select('id,order_id,reason,seller_reply').in('order_id',sIds);(r.data||[]).forEach(d=>{(dm[d.order_id]=dm[d.order_id]||[]).push(d);});}
-  const recv=(o,b)=>!b?'':(o.receipt==='received'?'<small>✅ You confirmed you received it</small>':o.receipt==='not_received'?'<small>❌ You reported it was not received</small>':autoClosed(o)?'<small>🕒 Closed automatically (no answer after 7 days). Something wrong? Tap Report a problem.</small>':'<div>📦 <b>Did you receive your item?</b><div style="display:flex;gap:8px;margin-top:6px"><button class="btn-buy" data-rcy="'+esc(o.id)+'">Yes</button><button class="view-all" data-rcn="'+esc(o.id)+'">No</button></div></div>');
-  const disp=o=>(dm[String(o.id)]||[]).map(d=>'<div style="padding:10px;border-radius:10px;background:var(--primary-light)">⚠️ <b>Buyer reported:</b> '+esc(d.reason)+'<br>'+(d.seller_reply?'<small>Your reply: '+esc(d.seller_reply)+'</small>':'<button class="view-all" data-srep="'+esc(d.id)+'" style="margin-top:6px">Reply with your side</button>')+'</div>').join('');
-  const autoClosed=o=>o.receipt==='assumed'||(o.receipt==null&&o.handover_status==='confirmed'&&o.handover_at&&Date.now()-new Date(o.handover_at)>7*864e5);
-  const isDone=o=>o.buyer_id===me.id?(o.receipt!=null||autoClosed(o)):o.handover_status==='confirmed';
-  const needsAct=o=>!isDone(o)||(o.seller_id===me.id&&(dm[String(o.id)]||[]).some(d=>!d.seller_reply));
+  const conf=o=>o.handover_status==='confirmed';
+  const autoClosed=o=>o.receipt==='assumed'||(o.receipt==null&&conf(o)&&o.handover_at&&Date.now()-new Date(o.handover_at)>7*864e5);
+  const isDone=o=>o.buyer_id===me.id?(conf(o)&&(o.receipt!=null||autoClosed(o))):conf(o);
+  const unreplied=o=>o.seller_id===me.id&&(dm[String(o.id)]||[]).some(d=>!d.seller_reply);
+  const needsAct=o=>!isDone(o)||unreplied(o);
   const nAct=data.filter(needsAct).length;
+  if(sub)sub.textContent=nAct?nAct+' need'+(nAct===1?'s':'')+' your attention':'All up to date';
+  const badge=o=>{const b=o.buyer_id===me.id;
+    if(unreplied(o))return['Reply needed',1];
+    if(isDone(o))return['Done',0];
+    if(!conf(o))return[b?'Share code':'Enter code',1];
+    return['Confirm receipt',1];};
   const list=data.filter(o=>ORD.f==='action'?needsAct(o):ORD.f==='selling'?o.seller_id===me.id:ORD.f==='buying'?o.buyer_id===me.id:isDone(o));
-  const chips=[['action','Needs action'+(nAct?' ('+nAct+')':'')],['selling','Selling'],['buying','Buying'],['done','Done']].map(c=>'<button type="button" class="chip'+(ORD.f===c[0]?' active':'')+'" data-of="'+c[0]+'">'+c[1]+'</button>').join('');
-  box.innerHTML='<h3 style="margin:6px 0 10px">My orders</h3><div class="pill-row" style="margin-bottom:12px">'+chips+'</div>'+(list.length?'':'<p class="auth-sub" style="margin:8px 0 14px">'+(ORD.f==='action'?'Nothing needs your attention 🎉':'No orders here.')+'</p>')+list.map(o=>{
-    const buyer=o.buyer_id===me.id,done=o.handover_status==='confirmed';
-    const card='<div class="board-card" style="flex-direction:column;align-items:stretch;gap:8px;margin-bottom:10px"><b>'+esc(o.listing_title)+' · '+fmtN(o.amount_kobo)+'</b>'
-     +'<small>'+(buyer?'You are buying':'You are selling')+' · '+(done?'✅ Handed over':'⏳ Waiting for handover')+'</small>'+recv(o,buyer)+disp(o)
-     +(done?'':(buyer?'<div style="padding:10px;border-radius:10px;background:var(--primary-light)">Your handover code: <b style="font-size:20px;letter-spacing:3px">'+esc(codes[String(o.id)]||'······')+'</b><br><small>Give this code to the seller only when you have the item in your hand.</small></div>'
-       :'<div style="display:flex;gap:8px"><input class="search-input" style="padding:10px 14px" inputmode="numeric" maxlength="6" placeholder="Buyer\'s 6-digit code" data-hc="'+esc(o.id)+'"><button class="btn-buy" data-hcb="'+esc(o.id)+'">Confirm</button></div>'))
-     +'<button class="view-all" data-prob="'+esc(o.id)+'" style="align-self:flex-start">⚠️ Report a problem</button></div>';
-    return (isDone(o)&&(ORD.f==='selling'||ORD.f==='buying'))?'<details style="margin-bottom:10px"><summary style="cursor:pointer;padding:10px 0">✅ '+esc(o.listing_title)+' · '+fmtN(o.amount_kobo)+' · Done</summary>'+card+'</details>':card;
-  }).join('')+(data.length>=ORD.n?'<button type="button" class="btn-outline" id="ordMore" style="margin:4px 0 14px">Load more orders</button>':'');
-  box.querySelectorAll('.board-card').forEach(c=>io.observe(c));
+  const seg=[['action','To do'+(nAct?' '+nAct:'')],['selling','Selling'],['buying','Buying'],['done','Done']].map(c=>'<button type="button" class="'+(ORD.f===c[0]?'on':'')+'" data-of="'+c[0]+'">'+c[1]+'</button>').join('');
+  const row=o=>{
+    const b=o.buyer_id===me.id,id=esc(o.id),bd=badge(o);let body='';
+    if(b&&!conf(o))body+='<div class="ord-box">Your handover code<br><b style="font-size:24px;letter-spacing:4px">'+esc(codes[String(o.id)]||'······')+'</b><br><small>Give this code to the seller only when the item is in your hand.</small></div>';
+    if(!b&&!conf(o))body+='<div style="display:flex;gap:8px"><input class="search-input" style="padding:10px 14px" inputmode="numeric" maxlength="6" placeholder="Buyer\'s 6-digit code" data-hc="'+id+'"><button class="btn-buy" data-hcb="'+id+'">Confirm</button></div>';
+    if(b&&conf(o)){
+      if(o.receipt==='received')body+='<div class="ord-box">✅ You confirmed you received this item.</div>';
+      else if(o.receipt==='not_received')body+='<div class="ord-box">❌ You reported this item as not received.</div>';
+      else if(autoClosed(o))body+='<div class="ord-box">🕒 Closed automatically after 7 days with no answer. If something is wrong, tap Report a problem.</div>';
+      else body+='<div class="ord-box">📦 <b>Did you receive your item?</b><div style="display:flex;gap:8px;margin-top:8px"><button class="btn-buy" data-rcy="'+id+'">Yes</button><button class="view-all" data-rcn="'+id+'">No</button></div></div>';
+    }
+    if(!b&&conf(o))body+='<div class="ord-box">✅ Handover confirmed.</div>';
+    body+=(dm[String(o.id)]||[]).map(d=>'<div class="ord-box">⚠️ <b>Buyer reported:</b> '+esc(d.reason)+'<br>'+(d.seller_reply?'<small>Your reply: '+esc(d.seller_reply)+'</small>':'<button class="view-all" data-srep="'+esc(d.id)+'" style="margin-top:8px">Reply with your side</button>')+'</div>').join('');
+    body+='<button class="view-all" data-prob="'+id+'" style="align-self:flex-start">⚠️ Report a problem</button>';
+    return '<details class="ord"><summary><span class="ord-ic">'+(b?'🛍️':'🏷️')+'</span><span class="ord-t"><b>'+esc(o.listing_title)+'</b><small>'+(b?'Buying':'Selling')+' · '+fmtN(o.amount_kobo)+'</small></span><span class="ob'+(bd[1]?' act':'')+'">'+bd[0]+'</span></summary><div class="ord-body">'+body+'</div></details>';
+  };
+  box.innerHTML='<div class="seg">'+seg+'</div>'+(list.length?list.map(row).join(''):'<p class="auth-sub" style="text-align:center;margin:26px 0">'+(ORD.f==='action'?'Nothing needs your attention 🎉':'No orders here.')+'</p>')+(data.length>=ORD.n?'<button type="button" class="btn-outline" id="ordMore" style="width:100%;margin:4px 0 14px">Load more orders</button>':'');
   box.querySelectorAll('[data-of]').forEach(b=>b.onclick=()=>{ORD.f=b.dataset.of;loadOrders();});
   const mb=$('ordMore');if(mb)mb.onclick=()=>{ORD.n+=20;loadOrders();};
 }
@@ -1897,7 +1935,7 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('click',async e=>{
   const y=e.target.closest('[data-rcy]'),n=e.target.closest('[data-rcn]'),r=e.target.closest('[data-srep]');
-  if(y){const {data,error}=await sb.rpc('buyer_receipt',{p_order:y.dataset.rcy,p_ok:true,p_note:''});toast(error?('Could not save: '+error.message):(data==='ok'?'✅ Thanks for confirming.':'Could not save.'),3500);loadOrders();}
+  if(y){const {data,error}=await sb.rpc('buyer_receipt',{p_order:y.dataset.rcy,p_ok:true,p_note:''});toast(error?('Could not save: '+error.message):(data==='ok'?'✅ Thanks for confirming.':data==='need_code'?'The seller must enter your handover code first.':'Could not save.'),3500);loadOrders();}
   if(n){const note=(prompt('Tell us what happened (optional)')||'').trim();
     if(!confirm('Report that you did NOT receive this item? We will review it.'))return;
     const {data,error}=await sb.rpc('buyer_receipt',{p_order:n.dataset.rcn,p_ok:false,p_note:note});toast(error?('Could not send: '+error.message):(data==='ok'?'Reported. We will review it.':'Could not send.'),4000);loadOrders();}
