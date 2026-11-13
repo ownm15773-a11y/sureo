@@ -7,7 +7,7 @@
 <meta name="description" content="Buy and sell safely with verified campus students on Sureo.">
 <meta property="og:title" content="Sureo: verified campus marketplace">
 <meta property="og:description" content="Buy and sell safely with verified campus students.">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="/icon-192.png">
 <style>
 :root{--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--primary:#0d4a3a;--pl:#e8f3ef;--border:#e5e7eb;--accent:#0d4a3a}
 @media(prefers-color-scheme:dark){:root{--bg:#0b1210;--card:#131c19;--text:#e8f0ed;--muted:#8fa39b;--pl:#183029;--border:#243630;--accent:#5fd0ab}}
@@ -55,8 +55,8 @@ function gone(){
   $('bar').hidden=true;
 }
 (async function(){
-  const q=new URLSearchParams(location.search).get('id')||(location.hash.match(/^#l=([\w-]+)$/)||[])[1]||'';
-  if(!/^[0-9a-f-]{36}$/i.test(q)){gone();return;}
+  const q=(location.pathname.match(/\/l\/([0-9a-f-]{8,36})/i)||[])[1]||new URLSearchParams(location.search).get('id')||(location.hash.match(/^#l=([\w-]+)$/)||[])[1]||'';
+  if(!/^[0-9a-f-]{8,36}$/i.test(q)){gone();return;}
   let l=null;
   try{
     const r=await fetch(SB+'/rest/v1/rpc/public_listing',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:q})});

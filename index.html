@@ -1492,6 +1492,7 @@ function waNum(p){const d=String(p||'').replace(/\D/g,'');if(/^0\d{10}$/.test(d)
 let toastT;function toast(msg,ms){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),ms||3200);}
 
 /* ---------- SCROLL REVEAL ---------- */
+(function(){var m=location.pathname.match(/^\/l\/([0-9a-f-]{36})\/?$/i);if(m)location.replace('/listing.html?id='+m[1]);})();
 let SHARED=null;
 try{const m=location.hash.match(/^#l=([\w-]+)$/);if(m){SHARED=m[1];localStorage.setItem('sureoLink',SHARED);}else SHARED=localStorage.getItem('sureoLink');}catch(e){}
 if(SHARED)setTimeout(()=>{try{toast('🔗 Opening shared listing…',2500);}catch(e){}},1200);
@@ -1793,7 +1794,7 @@ async function squeeze(f){
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-sh]');if(!b)return;
-  const url=location.origin+(b.dataset.shi?'/listing.html?id='+encodeURIComponent(b.dataset.shi):location.pathname),p=+b.dataset.shp,txt='Check this on Sureo: '+b.dataset.sh+(p?' for ₦'+p.toLocaleString():'')+' (verified campus students)';
+  const url=location.origin+(b.dataset.shi?'/l/'+String(b.dataset.shi).slice(0,8):location.pathname),p=+b.dataset.shp,txt='Check this on Sureo: '+b.dataset.sh+(p?' for ₦'+p.toLocaleString():'')+' (verified campus students)';
   if(navigator.share){navigator.share({title:'Sureo',text:txt,url:url}).catch(()=>{});}
   else window.open('https://wa.me/?text='+encodeURIComponent(txt+' '+url),'_blank');
 });
