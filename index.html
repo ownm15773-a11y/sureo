@@ -796,7 +796,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
           <button class="view-all" id="resetBtn">View All →</button>
         </div>
       </div>
-      <div id="sharedBanner" style="display:none;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin:0 0 14px;border-radius:12px;background:var(--primary-light)"><span>📎 Showing a shared listing</span><button type="button" class="view-all" id="sharedAll">See all listings →</button></div>
+      <div id="sharedBanner" style="scroll-margin-top:90px;display:none;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin:0 0 14px;border-radius:12px;background:var(--primary-light)"><span>📎 Showing a shared listing</span><button type="button" class="view-all" id="sharedAll">See all listings →</button></div>
       <div id="wantedStrip" style="display:none;margin:0 0 18px"></div>
       <div class="grid" id="grid"></div>
     </section>
@@ -1507,6 +1507,11 @@ function applyShared(){
   state.focus=String(it.id);state.tab=it.t;
   document.querySelectorAll('#tabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===it.t));
   clearShared();setView('market');render();
+  setTimeout(()=>{
+    const b=document.getElementById('sharedBanner');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});
+    const c=document.querySelector('#grid .card');
+    if(c){c.style.transition='box-shadow .4s';c.style.boxShadow='0 0 0 3px var(--primary)';setTimeout(()=>{c.style.boxShadow='';},3000);}
+  },300);
 }
 let FAV=new Set();try{FAV=new Set(JSON.parse(localStorage.getItem('sureoFav')||'[]'));}catch(e){}
 const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const el=en.target;el.style.animationDelay=el.dataset.d||'0ms';el.classList.add('anim');if(el.classList.contains('stat-num'))countUp(el);io.unobserve(el);});},{threshold:.1,rootMargin:'0px 0px -30px 0px'});
@@ -1788,7 +1793,7 @@ async function squeeze(f){
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-sh]');if(!b)return;
-  const url=location.origin+location.pathname+(b.dataset.shi?'#l='+encodeURIComponent(b.dataset.shi):''),p=+b.dataset.shp,txt='Check this on Sureo: '+b.dataset.sh+(p?' for ₦'+p.toLocaleString():'')+' (verified campus students)';
+  const url=location.origin+(b.dataset.shi?'/listing.html?id='+encodeURIComponent(b.dataset.shi):location.pathname),p=+b.dataset.shp,txt='Check this on Sureo: '+b.dataset.sh+(p?' for ₦'+p.toLocaleString():'')+' (verified campus students)';
   if(navigator.share){navigator.share({title:'Sureo',text:txt,url:url}).catch(()=>{});}
   else window.open('https://wa.me/?text='+encodeURIComponent(txt+' '+url),'_blank');
 });
