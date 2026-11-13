@@ -1494,6 +1494,11 @@ let toastT;function toast(msg,ms){const t=$('toast');t.textContent=msg;t.classLi
 /* ---------- SCROLL REVEAL ---------- */
 let SHARED=null;
 try{const m=location.hash.match(/^#l=([\w-]+)$/);if(m){SHARED=m[1];localStorage.setItem('sureoLink',SHARED);}else SHARED=localStorage.getItem('sureoLink');}catch(e){}
+if(SHARED)setTimeout(()=>{try{toast('🔗 Opening shared listing…',2500);}catch(e){}},1200);
+window.addEventListener('hashchange',()=>{
+  const m=location.hash.match(/^#l=([\w-]+)$/);
+  if(m){SHARED=m[1];try{localStorage.setItem('sureoLink',SHARED);}catch(e){}toast('🔗 Opening shared listing…',2500);if(typeof ITEMS!=='undefined'&&ITEMS.some(x=>x.r))applyShared();}
+});
 function clearShared(){SHARED=null;try{localStorage.removeItem('sureoLink');if(/^#l=/.test(location.hash))history.replaceState(null,'',location.pathname);}catch(e){}}
 function applyShared(){
   if(!SHARED)return;
