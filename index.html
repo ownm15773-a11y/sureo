@@ -761,10 +761,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <section class="mkt-hero"><div class="container">
       <h1>Hey <span id="heroName">there</span> 👋 <em>What do you need today?</em></h1>
       <p>Search listings, course codes (MTH211) or ISBNs from verified students and vendors.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 12px">
+        <button type="button" class="chip" id="favBtn">♡ Saved</button>
+        <button type="button" class="chip" id="alertBtn">🔔 Alert me when this is listed</button>
+        </div>
       <div class="search-bar">
         <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <button type="button" class="chip" id="favBtn" style="margin-bottom:10px">♡ Saved</button>
-        <button type="button" class="chip" id="alertBtn" style="margin-bottom:10px">🔔 Alert me when this is listed</button>
         <input type="text" class="search-input" id="searchInput" placeholder="Search jollof, MTH211, ISBN 978-0538497909...">
       </div>
       <div class="pill-row scroll" id="filters">
@@ -794,6 +796,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
           <button class="view-all" id="resetBtn">View All →</button>
         </div>
       </div>
+      <div id="sharedBanner" style="display:none;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin:0 0 14px;border-radius:12px;background:var(--primary-light)"><span>📎 Showing a shared listing</span><button type="button" class="view-all" id="sharedAll">See all listings →</button></div>
       <div id="wantedStrip" style="display:none;margin:0 0 18px"></div>
       <div class="grid" id="grid"></div>
     </section>
@@ -1489,6 +1492,17 @@ function waNum(p){const d=String(p||'').replace(/\D/g,'');if(/^0\d{10}$/.test(d)
 let toastT;function toast(msg,ms){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),ms||3200);}
 
 /* ---------- SCROLL REVEAL ---------- */
+let SHARED=null;
+try{const m=location.hash.match(/^#l=([\w-]+)$/);if(m){SHARED=m[1];localStorage.setItem('sureoLink',SHARED);}else SHARED=localStorage.getItem('sureoLink');}catch(e){}
+function clearShared(){SHARED=null;try{localStorage.removeItem('sureoLink');if(/^#l=/.test(location.hash))history.replaceState(null,'',location.pathname);}catch(e){}}
+function applyShared(){
+  if(!SHARED)return;
+  const it=ITEMS.find(x=>x.r&&String(x.id)===SHARED);
+  if(!it){if(ITEMS.some(x=>x.r)){toast('That listing is no longer available.',4000);clearShared();}return;}
+  state.focus=String(it.id);state.tab=it.t;
+  document.querySelectorAll('#tabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===it.t));
+  clearShared();setView('market');render();
+}
 let FAV=new Set();try{FAV=new Set(JSON.parse(localStorage.getItem('sureoFav')||'[]'));}catch(e){}
 const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const el=en.target;el.style.animationDelay=el.dataset.d||'0ms';el.classList.add('anim');if(el.classList.contains('stat-num'))countUp(el);io.unobserve(el);});},{threshold:.1,rootMargin:'0px 0px -30px 0px'});
 function countUp(el){const tg=+el.dataset.count,sf=el.dataset.suffix||'',dur=1300,t0=performance.now();(function tick(t){const k=Math.min((t-t0)/dur,1),e=1-Math.pow(1-k,3);el.textContent=Math.round(tg*e)+sf;if(k<1)requestAnimationFrame(tick);})(t0);}
@@ -1505,8 +1519,10 @@ function setStat(id,n){const el=$(id);if(!el)return;el.dataset.count=n;el.datase
 /* ---------- MARKET RENDER ---------- */
 function render(){
   const q=state.query.trim().toLowerCase();
-  const list=ITEMS.filter(i=>(!state.fav||FAV.has(String(i.id)))&&i.t===state.tab&&(state.cat==='all'||i.c===state.cat)&&((state.ty==='all')||((i.ty||'sell')===state.ty))&&(!q||(i.n+' '+i.v+' '+(i.code||'')).toLowerCase().includes(q)));
+  const list=ITEMS.filter(i=>state.focus?String(i.id)===state.focus:((!state.fav||FAV.has(String(i.id)))&&i.t===state.tab&&(state.cat==='all'||i.c===state.cat)&&((state.ty==='all')||((i.ty||'sell')===state.ty))&&(!q||(i.n+' '+i.v+' '+(i.code||'')).toLowerCase().includes(q))));
   $('countBadge').textContent=list.length+' listing'+(list.length===1?'':'s');
+  $('sharedBanner').style.display=state.focus?'flex':'none';
+  if(SHARED)setTimeout(applyShared,0);
   if(!list.length){grid.innerHTML=loadErr?'<div class="empty">Couldn\'t load listings. Check your connection.<br><button class="btn-primary" id="retryBtn" style="margin-top:12px">Retry</button></div>':'<div class="empty">No items match. Try another category, type or search term.</div>';if(loadErr)$('retryBtn').addEventListener('click',loadListings);return;}
   grid.innerHTML=list.map((i0,idx)=>{const i=Object.assign({},i0,{n:esc(i0.n),v:esc(i0.v),cd:i0.cd?esc(i0.cd):i0.cd,code:i0.code?esc(i0.code):i0.code});
     const ty=i.ty||'sell',msg=encodeURIComponent('Hi! I saw "'+i0.n+'" by '+i0.v+' on Sureo. Is it still available?');
@@ -1521,7 +1537,7 @@ function render(){
     +(i.cd?'<div class="tag-row"><span class="cond-tag">'+i.cd+'</span>'+(i.code?'<span class="cond-tag mono" style="font-family:ui-monospace,monospace">'+i.code+'</span>':'')+'</div>':'')
     +'<div class="card-vendor">'+i.v+(i.vf?' <span class="tick">✓</span>':'')+' · <span class="rate">★ '+i.rt.toFixed(1)+' <span>('+i.rv+')</span></span></div>'
     +'<div class="card-foot"><span class="price'+(i.p===0?' freeprice':'')+'">'+price+(i.u?'<small>'+i.u+'</small>':'')+'</span>'
-    +'<span class="foot-btns"><button class="icon-btn" data-fav="'+i.id+'" aria-label="Save listing">'+(FAV.has(String(i.id))?'♥':'♡')+'</button>'+(i.c==='food'?'':'<button class="icon-btn" title="Make an offer" aria-label="Make an offer" data-off="'+i.id+'">🤝</button>')+'<button class="icon-btn" title="Share" aria-label="Share listing" data-sh="'+esc(i.n)+'" data-shp="'+i.p+'">↗</button><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
+    +'<span class="foot-btns"><button class="icon-btn" data-fav="'+i.id+'" aria-label="Save listing">'+(FAV.has(String(i.id))?'♥':'♡')+'</button>'+(i.c==='food'?'':'<button class="icon-btn" title="Make an offer" aria-label="Make an offer" data-off="'+i.id+'">🤝</button>')+'<button class="icon-btn" title="Share" aria-label="Share listing" data-sh="'+esc(i.n)+'" data-shp="'+i.p+'" data-shi="'+(i.r?esc(i.id):'')+'">↗</button><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
     +'<button class="icon-btn" title="Message seller" aria-label="Message seller" data-msg="'+idx+'">✉</button>'
     +'<a class="btn-wa" aria-label="Chat on WhatsApp" target="_blank" rel="noopener" href="https://wa.me/'+(i0.ph||WA_DEFAULT)+'?text='+msg+'">💬</a>'
     +'<button class="btn-buy" data-buy="'+idx+'" data-name="'+i.n.replace(/"/g,'')+'" data-vendor="'+i.v.replace(/"/g,'')+'" data-price="'+i.p+'">'+(i.t==='eats'?'Order':'Buy')+'</button></span></div></div></article>';
@@ -1537,7 +1553,7 @@ $('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab-btn');if(b
 $('filters').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#filters .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.cat=c.dataset.cat;if(state.cat!=='all'&&CAT_TAB[state.cat]!==state.tab){state.tab=CAT_TAB[state.cat];document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tab));}refreshGrid();});
 $('typeFilters').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#typeFilters .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.ty=c.dataset.ty;refreshGrid();});
 $('searchInput').addEventListener('input',e=>{state.query=e.target.value;clearTimeout(window._st);window._st=setTimeout(render,180);});
-$('resetBtn').addEventListener('click',()=>{state.cat='all';state.ty='all';state.query='';$('searchInput').value='';document.querySelectorAll('#filters .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));document.querySelectorAll('#typeFilters .chip').forEach(c=>c.classList.toggle('active',c.dataset.ty==='all'));refreshGrid();});
+$('resetBtn').addEventListener('click',()=>{state.focus=null;state.cat='all';state.ty='all';state.query='';$('searchInput').value='';document.querySelectorAll('#filters .chip').forEach(c=>c.classList.toggle('active',c.dataset.cat==='all'));document.querySelectorAll('#typeFilters .chip').forEach(c=>c.classList.toggle('active',c.dataset.ty==='all'));refreshGrid();});
 
 /* ---------- BOARDS ---------- */
 function renderBoard(){
@@ -1767,7 +1783,7 @@ async function squeeze(f){
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-sh]');if(!b)return;
-  const url=location.origin+location.pathname,p=+b.dataset.shp,txt='Check this on Sureo: '+b.dataset.sh+(p?' for ₦'+p.toLocaleString():'')+' (verified campus students)';
+  const url=location.origin+location.pathname+(b.dataset.shi?'#l='+encodeURIComponent(b.dataset.shi):''),p=+b.dataset.shp,txt='Check this on Sureo: '+b.dataset.sh+(p?' for ₦'+p.toLocaleString():'')+' (verified campus students)';
   if(navigator.share){navigator.share({title:'Sureo',text:txt,url:url}).catch(()=>{});}
   else window.open('https://wa.me/?text='+encodeURIComponent(txt+' '+url),'_blank');
 });
@@ -1823,6 +1839,7 @@ const vo=new IntersectionObserver(es=>{es.forEach(en=>{
   sb.rpc('add_view',{lid:id}).then(()=>{},()=>{});
 });},{threshold:.6});
 function trackViews(g){g.querySelectorAll('.card').forEach(c=>{const f=c.querySelector('[data-fav]');if(f){c.dataset.lid=f.dataset.fav;vo.observe(c);}});}
+$('sharedAll').addEventListener('click',()=>{state.focus=null;render();});
 /* favourites, offers, referral */
 document.addEventListener('click',async e=>{
   const f=e.target.closest('[data-fav]');
