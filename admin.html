@@ -233,14 +233,15 @@ async function loadDisputes(){
   const nm=await names(od.flatMap(o=>[o.buyer_id,o.seller_id]));
   const iso=new Date(Date.now()-7*864e5).toISOString(),ig={};
   await Promise.all([...new Set(od.map(o=>o.buyer_id))].slice(0,20).map(async b=>{const q=await sb.from('orders').select('id',{count:'exact',head:true}).eq('buyer_id',b).eq('handover_status','confirmed').lt('handover_at',iso).or('receipt.is.null,receipt.eq.assumed');ig[b]=q.count||0;}));
-  const cb={},cs={};d.forEach(x=>{const o=om[x.order_id];if(!o)return;cb[o.buyer_id]=(cb[o.buyer_id]||0)+1;cs[o.seller_id]=(cs[o.seller_id]||0)+1;});
+  const cb={},cs={},cu={};d.forEach(x=>{const o=om[x.order_id];if(!o)return;cb[o.buyer_id]=(cb[o.buyer_id]||0)+1;cs[o.seller_id]=(cs[o.seller_id]||0)+1;if(x.outcome==='buyer_right')cu[o.seller_id]=(cu[o.seller_id]||0)+1;});
+  const OUTL={seller_right:'seller was right',buyer_right:'buyer was right',no_fault:'no fault'};
   el.innerHTML=d.length?d.map(x=>{const o=om[x.order_id]||{};
-    return '<div class="card"><div class="nm">'+esc(o.listing_title||('Order '+x.order_id))+(x.status==='open'?'':' · resolved')+'</div><div class="mt">'
-    +'Buyer: '+esc(nm[o.buyer_id]||'?')+' ('+(cb[o.buyer_id]||0)+' disputes, '+(ig[o.buyer_id]||0)+' ignored)<br>Seller: '+esc(nm[o.seller_id]||'?')+' ('+(cs[o.seller_id]||0)+' disputes against)<br>'
+    return '<div class="card"><div class="nm">'+esc(o.listing_title||('Order '+x.order_id))+(x.status==='open'?'':' · resolved'+(x.outcome?' ('+OUTL[x.outcome]+')':''))+'</div><div class="mt">'
+    +'Buyer: '+esc(nm[o.buyer_id]||'?')+' ('+(cb[o.buyer_id]||0)+' disputes, '+(ig[o.buyer_id]||0)+' ignored)<br>Seller: '+esc(nm[o.seller_id]||'?')+' ('+(cs[o.seller_id]||0)+' disputes against, '+(cu[o.seller_id]||0)+' upheld)<br>'
     +'Handover code: '+(o.handover_status==='confirmed'?'<b>✅ confirmed '+when(o.handover_at)+'</b>':'not confirmed')+'<br>Buyer says: '+(o.receipt==='received'?'received':o.receipt==='not_received'?'NOT received':o.receipt==='assumed'?'no answer (assumed received)':'no answer yet')+'<br><br>'
     +'<b>Buyer:</b> '+esc(x.reason)+'<br><b>Seller:</b> '+(x.seller_reply?esc(x.seller_reply):'<i>no reply yet</i>')+'<br>'+when(x.created_at)+'</div>'
-    +(x.status==='open'?'<div class="row"><button class="no" data-res="'+esc(x.id)+'">Mark resolved</button></div>':'')+'</div>';}).join(''):'<div class="em">No disputes yet.</div>';
-  el.querySelectorAll('[data-res]').forEach(b=>b.onclick=async()=>{await sb.from('disputes').update({status:'resolved'}).eq('id',b.dataset.res);logAct('dispute_resolved',b.dataset.res);loadDisputes();});
+    +(x.status==='open'?'<div class="row"><button class="ok" data-res="'+esc(x.id)+'" data-out="seller_right">Seller was right</button><button class="no" data-res="'+esc(x.id)+'" data-out="buyer_right">Buyer was right</button><button data-res="'+esc(x.id)+'" data-out="no_fault">No fault</button></div>':'')+'</div>';}).join(''):'<div class="em">No disputes yet.</div>';
+  el.querySelectorAll('[data-res]').forEach(b=>b.onclick=async()=>{const r=await sb.from('disputes').update({status:'resolved',outcome:b.dataset.out}).eq('id',b.dataset.res);if(r.error){toast('Could not save: '+r.error.message);return;}logAct('dispute_resolved',b.dataset.res+' '+b.dataset.out);loadDisputes();});
 }
 let curUid=null,prevTab='home',gross=0;
 function openUser(id){curUid=id;prevTab=tab==='user'?prevTab:tab;go('user');}
