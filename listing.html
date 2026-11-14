@@ -72,7 +72,7 @@ function gone(){
   const rated=l.rating_count>0?' · ★ '+(+l.rating).toFixed(1)+' ('+l.rating_count+')':'';
   $('app').innerHTML=gal
    +'<div class="card"><h1>'+esc(l.title)+'</h1><div class="price">'+price+'</div><div class="chips">'+chips+'</div></div>'
-   +'<div class="card seller"><div class="av">'+esc(l.seller.charAt(0).toUpperCase())+'</div><div><b>'+esc(l.seller)+(l.tier==='trusted'?' 🏅':l.verified?' ✅':'')+'</b><small>'+(l.tier==='trusted'?'Trusted seller':l.verified?'Verified seller':'New seller')+rated+'</small></div></div>'
+   +'<div class="card seller"><div class="av">'+esc(l.seller.charAt(0).toUpperCase())+'</div><div><b>'+esc(l.seller)+(l.tier==='trusted'?' 🏅':l.verified?' ✅':'')+'</b><small>'+(l.tier==='trusted'?'Trusted seller':l.verified?'Verified seller':'New seller')+rated+'</small>'+(l.seller_key?'<a href="/s/'+esc(l.seller.toLowerCase().replace(/[^a-z0-9]/g,'')||'shop')+'-'+esc(l.seller_key)+'" style="display:block;margin-top:4px;font-size:13px;font-weight:700;color:var(--accent);text-decoration:none">See all listings →</a>':'')+'</div></div>'
    +'<div class="card"><ul class="trust"><li>🔒<span>Pay safely online with Paystack, or pay on delivery</span></li><li>📍<span>Meet at a campus safety hub</span></li><li>🔑<span>Handover codes confirm every sale</span></li><li>🏅<span><b>Trusted</b> sellers are ID-verified, with 3 or more confirmed handovers and no open disputes</span></li></ul></div>';
   $('cta').href='/#l='+encodeURIComponent(l.id);
   $('bar').hidden=false;
