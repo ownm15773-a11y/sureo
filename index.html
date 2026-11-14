@@ -215,10 +215,10 @@ body.authed footer{display:none}
 .fade-item.anim{opacity:1;animation:fadeUp .65s var(--ease) backwards}
 
 /* ============ MARKET VIEW ============ */
-.mkt-hero{padding:40px 0 26px;text-align:center;background:linear-gradient(to bottom,var(--card),var(--bg))}
+.mkt-hero{padding:30px 0 8px;text-align:center;background:linear-gradient(to bottom,var(--card),var(--bg))}
 .mkt-hero h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;letter-spacing:-1.2px;margin-bottom:8px}
 .mkt-hero h1 em{font-style:normal;color:var(--primary)}
-.mkt-hero p{color:var(--muted);font-size:14.5px;margin-bottom:24px}
+.mkt-hero p{color:var(--muted);font-size:14.5px;margin-bottom:16px}
 .search-bar{max-width:620px;margin:0 auto;position:relative}
 .search-input{width:100%;padding:15px 20px 15px 50px;border-radius:50px;border:1px solid var(--border);font-size:14.5px;background:var(--card);box-shadow:var(--shadow-sm);outline:none;transition:border-color .25s,box-shadow .25s}
 .search-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(13,74,58,.1)}
@@ -240,7 +240,7 @@ body.authed footer{display:none}
 .flash h3{font-size:14.5px;font-weight:700;margin-bottom:2px}
 .flash p{font-size:12.5px;opacity:.95}
 .flash-timer{background:rgba(255,255,255,.2);border-radius:10px;padding:7px 13px;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.market-section{padding:34px 0 80px}
+.market-section{padding:14px 0 80px}
 .section-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap}
 .tabs{display:flex;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;gap:4px}
 .tab-btn{padding:9px 20px;border-radius:9px;font-size:14px;font-weight:600;color:var(--muted);transition:color .25s,background .25s,box-shadow .25s;touch-action:manipulation}
@@ -623,7 +623,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .acct-chev{font-size:24px;color:var(--muted);line-height:1}
 
 /* ===== TAP FEEL: quick press-in, soft spring back (same curve as the menu). Bottom-bar .bn-item keeps its own. ===== */
-:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box){-webkit-tap-highlight-color:transparent}
+:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.theme-btn,.pw-eye,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.seg button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box,.ord summary){-webkit-tap-highlight-color:transparent}
 /* add a scale transition to what each element already animates (elements on "all" already cover it) */
 .menu-btn,.logo,.legal-tab,.type-free,.type-rent,.type-trade,.legal-link{transition:scale .45s cubic-bezier(.22,1,.36,1)}
 .btn-primary,.btn-auth{transition:transform .25s var(--ease),box-shadow .25s var(--ease),background .2s,scale .45s cubic-bezier(.22,1,.36,1)}
@@ -643,11 +643,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* retire the older one-off press effects so every press feels the same */
 .btn-primary:active,.back-btn:active,.notif:active,.acct-link:active{transform:none}
 /* press */
-:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn):is(:active,.is-pressed){scale:.92;transition-duration:.12s}
-:is(.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button):is(:active,.is-pressed){scale:.96;transition-duration:.12s}
-:is(.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box):active:not(:has(:is(button,a):active)){scale:.985;transition-duration:.12s}
-:is(.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box).is-pressed{scale:.985;transition-duration:.12s}
-@media (prefers-reduced-motion:reduce){:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box):is(:active,.is-pressed){scale:none}}
+:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.theme-btn,.pw-eye):is(:active,.is-pressed){scale:.92;transition-duration:.12s}
+:is(.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.seg button):is(:active,.is-pressed){scale:.96;transition-duration:.12s}
+:is(.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box,.ord summary):active:not(:has(:is(button,a):active)){scale:.985;transition-duration:.12s}
+:is(.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box,.ord summary).is-pressed{scale:.985;transition-duration:.12s}
+@media (prefers-reduced-motion:reduce){:is(.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.theme-btn,.pw-eye,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.seg button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box,.ord summary):is(:active,.is-pressed){scale:none}}
 </style>
 </head>
 <body>
@@ -2625,7 +2625,7 @@ sb.auth.getSession().then(async({data})=>{
 document.addEventListener('touchstart',function(){},{passive:true});
 /* tap feel: same press on every tap, even very quick ones (does not rely on :active) */
 (function(){
-  var SEL='.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box',MIN=110,cur=null,t0=0,tm=0;
+  var SEL='.menu-btn,.back-btn,.icon-btn,.modal-close,.send-btn,.theme-btn,.pw-eye,.btn-primary,.btn-accent,.btn-outline,.btn-ghost,.btn-auth,.btn-buy,.btn-wa,.view-all,.nav-link,.logo,.chip,.tab-btn,.legal-tab,.type-free,.type-rent,.type-trade,.footer-link,.legal-link,.mobile-nav a,.mobile-nav button,.seg button,.card,.conv,.notif,.acct-link,.kyc-card,.pay-opt,.rep-opt,.upload-box,.ord summary',MIN=110,cur=null,t0=0,tm=0;
   function release(){
     if(!cur)return;var el=cur;cur=null;clearTimeout(tm);
     tm=setTimeout(function(){el.classList.remove('is-pressed');},Math.max(0,MIN-(Date.now()-t0)));
