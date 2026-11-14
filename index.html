@@ -1192,6 +1192,24 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
 
 <!-- ================= SELL MODAL ================= -->
+<div class="modal" id="askModal"><div class="modal-card sheet">
+  <div class="modal-head"><h3 id="askT"></h3><button class="modal-close" id="askX" type="button">✕</button></div>
+  <p id="askH" class="auth-sub" style="margin:0 0 12px"></p>
+  <div class="field" id="askF"><textarea id="askTxt" rows="4" maxlength="500" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:inherit;font:inherit;resize:none"></textarea></div>
+  <p id="askE" style="color:#dc2626;font-size:13px;min-height:18px;margin:0 0 8px"></p>
+  <div style="display:flex;gap:10px"><button class="btn-outline" id="askNo" type="button" style="flex:1">Cancel</button><button class="btn-auth" id="askOk" type="button" style="flex:1;margin:0"><span id="askOkT">Send</span></button></div>
+</div></div>
+
+<div class="modal" id="offerModal"><div class="modal-card sheet">
+  <div class="modal-head"><h3>Make an offer</h3><button class="modal-close" data-close="offerModal">✕</button></div>
+  <div class="ord-box" id="ofItem" style="margin-bottom:14px"></div>
+  <div class="field"><label>Your offer (₦)</label><input type="number" id="ofAmt" inputmode="numeric" placeholder="e.g. 40000"></div>
+  <div class="seg" id="ofQuick"><button type="button" data-pct="10">10% off</button><button type="button" data-pct="20">20% off</button><button type="button" data-pct="30">30% off</button></div>
+  <div class="field"><label>Message <span style="color:var(--muted);font-weight:500">(optional)</span></label><input type="text" id="ofNote" maxlength="120" placeholder="e.g. I can pick up today"></div>
+  <p id="ofHint" class="auth-sub" style="min-height:20px;margin:0 0 10px"></p>
+  <button class="btn-auth" id="ofSend"><span>Send offer →</span></button>
+</div></div>
+
 <div class="modal" id="sellModal"><div class="modal-card sheet">
   <div class="modal-head"><h3>List on Sureo</h3><button class="modal-close" data-close="sellModal">×</button></div>
   <div class="field"><label>Listing type</label><select id="sType"><option value="sell">🏷️ Sell</option><option value="rent">🔑 Rent</option><option value="trade">🔁 Trade</option><option value="free">🎁 Give away free</option></select></div>
@@ -1548,7 +1566,7 @@ function render(){
     +(i.cd?'<div class="tag-row"><span class="cond-tag">'+i.cd+'</span>'+(i.code?'<span class="cond-tag mono" style="font-family:ui-monospace,monospace">'+i.code+'</span>':'')+'</div>':'')
     +'<div class="card-vendor">'+i.v+(i.vf?' <span class="tick">✓</span>':'')+' · <span class="rate">★ '+i.rt.toFixed(1)+' <span>('+i.rv+')</span></span></div>'
     +'<div class="card-foot"><span class="price'+(i.p===0?' freeprice':'')+'">'+price+(i.u?'<small>'+i.u+'</small>':'')+'</span>'
-    +'<span class="foot-btns"><button class="icon-btn" data-fav="'+i.id+'" aria-label="Save listing">'+(FAV.has(String(i.id))?'♥':'♡')+'</button>'+(i.c==='food'?'':'<button class="icon-btn" title="Make an offer" aria-label="Make an offer" data-off="'+i.id+'">🤝</button>')+'<button class="icon-btn" title="Share" aria-label="Share listing" data-sh="'+esc(i.n)+'" data-shp="'+i.p+'" data-shi="'+(i.r?esc(i.id):'')+'">↗</button><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
+    +'<span class="foot-btns"><button class="icon-btn" data-fav="'+i.id+'" aria-label="Save listing">'+(FAV.has(String(i.id))?'♥':'♡')+'</button>'+(i.c==='food'||!i.p?'':'<button class="icon-btn" title="Make an offer" aria-label="Make an offer" data-off="'+i.id+'">🤝</button>')+'<button class="icon-btn" title="Share" aria-label="Share listing" data-sh="'+esc(i.n)+'" data-shp="'+i.p+'" data-shi="'+(i.r?esc(i.id):'')+'">↗</button><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
     +'<button class="icon-btn" title="Message seller" aria-label="Message seller" data-msg="'+idx+'">✉</button>'
     +'<a class="btn-wa" aria-label="Chat on WhatsApp" target="_blank" rel="noopener" href="https://wa.me/'+(i0.ph||WA_DEFAULT)+'?text='+msg+'">💬</a>'
     +'<button class="btn-buy" data-buy="'+idx+'" data-name="'+i.n.replace(/"/g,'')+'" data-vendor="'+i.v.replace(/"/g,'')+'" data-price="'+i.p+'">'+(i.t==='eats'?'Order':'Buy')+'</button></span></div></div></article>';
@@ -1861,13 +1879,65 @@ document.addEventListener('click',async e=>{
   if(o){
     if(!me){openAuth('signin');return;}
     const it=ITEMS.find(x=>String(x.id)===o.dataset.off);if(!it)return;
-    const amt=parseInt(String(prompt('Your offer for "'+it.n+'" (₦)')||'').replace(/\D/g,''),10);
-    if(!amt)return;
-    const c=await startChat(it);if(!c)return;
-    const {error}=await sb.from('messages').insert({conversation_id:c.id,sender_id:me.id,body:'Hi! Would you take ₦'+amt.toLocaleString()+' for "'+it.n+'"?'});
-    if(error){toast('Could not send offer: '+error.message,4000);return;}
-    await loadConvs();const k=CONVS.find(x=>x.id===c.id)||c;sortConvs(k);setView('messages');selectConv(CONVS.indexOf(k));
+    openOffer(it);
   }
+});
+/* one reusable sheet for questions and confirmations (replaces the browser pop-ups) */
+let askRes=null,askMin=0;
+function askClose(v){$('askModal').classList.remove('open');const r=askRes;askRes=null;if(r)r(v);}
+function askText(o){
+  return new Promise(res=>{
+    if(askRes)askRes(null);
+    askRes=res;askMin=o.min||0;
+    $('askT').textContent=o.title;$('askH').textContent=o.help||'';
+    $('askF').style.display=o.noText?'none':'block';
+    $('askTxt').value='';$('askTxt').placeholder=o.placeholder||'';
+    $('askE').textContent='';$('askOkT').textContent=o.ok||'Send';
+    $('askOk').style.background=o.danger?'#dc2626':'';
+    $('askModal').classList.add('open');
+    if(!o.noText)setTimeout(()=>{try{$('askTxt').focus();}catch(e){}},200);
+  });
+}
+$('askNo').addEventListener('click',()=>askClose(null));
+$('askX').addEventListener('click',()=>askClose(null));
+$('askModal').addEventListener('click',e=>{if(e.target===$('askModal'))askClose(null);});
+$('askOk').addEventListener('click',()=>{
+  const t=$('askTxt').value.trim();
+  if($('askF').style.display!=='none'&&t.length<askMin){$('askE').textContent='Please write at least '+askMin+' characters.';return;}
+  askClose(t);
+});
+/* offer sheet */
+let OFFER_IT=null;
+function openOffer(it){
+  OFFER_IT=it;
+  $('ofItem').innerHTML='<b>'+esc(it.n)+'</b><br><small>Asking price: ₦'+Number(it.p||0).toLocaleString()+'</small>';
+  $('ofAmt').value='';$('ofNote').value='';$('ofHint').textContent='';
+  $('offerModal').classList.add('open');
+  setTimeout(()=>{try{$('ofAmt').focus();}catch(e){}},200);
+}
+function offerHint(){
+  const a=parseInt($('ofAmt').value,10),p=OFFER_IT?Number(OFFER_IT.p||0):0;
+  $('ofHint').textContent=!a||!p?'':a>=p?'This is at or above the asking price.':a<p*0.4?'This is far below the asking price. Sellers may ignore very low offers.':'';
+}
+$('ofAmt').addEventListener('input',offerHint);
+$('ofQuick').addEventListener('click',e=>{
+  const b=e.target.closest('[data-pct]');if(!b||!OFFER_IT)return;
+  $('ofAmt').value=Math.max(50,Math.round(Number(OFFER_IT.p||0)*(1-b.dataset.pct/100)/50)*50);offerHint();
+});
+$('ofSend').addEventListener('click',async()=>{
+  const it=OFFER_IT,amt=parseInt($('ofAmt').value,10);
+  if(!me){openAuth('signin');return;}
+  if(!it)return;
+  if(!amt||amt<=0){toast('Enter the amount you want to offer.',3000);return;}
+  const note=$('ofNote').value.trim(),btn=$('ofSend');
+  btn.disabled=true;
+  try{
+    const c=await startChat(it);if(!c)return;
+    const {error}=await sb.from('messages').insert({conversation_id:c.id,sender_id:me.id,body:'Hi! Would you take ₦'+amt.toLocaleString()+' for "'+it.n+'"?'+(note?' '+note:'')});
+    if(error){toast('Could not send offer: '+error.message,4000);return;}
+    $('offerModal').classList.remove('open');
+    await loadConvs();const k=CONVS.find(x=>x.id===c.id)||c;sortConvs(k);setView('messages');selectConv(CONVS.indexOf(k));
+  }finally{btn.disabled=false;}
 });
 $('favBtn').addEventListener('click',()=>{state.fav=!state.fav;$('favBtn').classList.toggle('active',!!state.fav);render();});
 try{const r=new URLSearchParams(location.search).get('ref');if(r)localStorage.setItem('sureoRef',r);}catch(e){}
@@ -1965,7 +2035,7 @@ document.addEventListener('click',async e=>{
   }
   const pb=e.target.closest('[data-prob]');
   if(pb){
-    const r=(prompt('What went wrong? (min. 5 letters)')||'').trim();if(r.length<5)return;
+    const r=await askText({title:'Report a problem',help:'Tell us what went wrong with this order. We will review it.',placeholder:'Describe the problem…',min:5,ok:'Send report'});if(r===null)return;
     const {error}=await sb.from('disputes').insert({order_id:pb.dataset.prob,opened_by:me.id,reason:r});
     toast(error?('Could not send: '+error.message):'Problem reported. We will review it.',4000);
   }
@@ -1973,10 +2043,10 @@ document.addEventListener('click',async e=>{
 document.addEventListener('click',async e=>{
   const y=e.target.closest('[data-rcy]'),n=e.target.closest('[data-rcn]'),r=e.target.closest('[data-srep]');
   if(y){const {data,error}=await sb.rpc('buyer_receipt',{p_order:y.dataset.rcy,p_ok:true,p_note:''});toast(error?('Could not save: '+error.message):(data==='ok'?'✅ Thanks for confirming.':data==='need_code'?'The seller must enter your handover code first.':'Could not save.'),3500);loadOrders();}
-  if(n){const note=(prompt('Tell us what happened (optional)')||'').trim();
-    if(!confirm('Report that you did NOT receive this item? We will review it.'))return;
+  if(n){const note=await askText({title:'Item not received?',help:'This opens a dispute that we will review. Tell us what happened.',placeholder:'Optional: add details…',ok:'Report not received',danger:true});
+    if(note===null)return;
     const {data,error}=await sb.rpc('buyer_receipt',{p_order:n.dataset.rcn,p_ok:false,p_note:note});toast(error?('Could not send: '+error.message):(data==='ok'?'Reported. We will review it.':'Could not send.'),4000);loadOrders();}
-  if(r){const t=(prompt('Tell us your side (e.g. where and when you handed it over)')||'').trim();if(t.length<5)return;
+  if(r){const t=await askText({title:'Your side of the story',help:'Say where and when you handed over the item. We read both sides before deciding.',placeholder:'e.g. I handed it over at the library on Tuesday…',min:5,ok:'Send reply'});if(t===null)return;
     const {data,error}=await sb.rpc('seller_reply',{p_dispute:r.dataset.srep,p_text:t});toast(error?('Could not send: '+error.message):(data==='ok'?'Reply sent.':'Could not send.'),3500);loadOrders();}
 });
 /* admin panel: only shows for users listed in the admins table */
@@ -2522,7 +2592,7 @@ $('myList').addEventListener('click',async e=>{
     loadMyListings();loadListings();return;
   }
   if(b.dataset.ma==='del'){
-    if(!confirm('Delete "'+l.title+'" permanently?'))return;
+    if(await askText({title:'Delete this listing?',help:'"'+l.title+'" will be removed permanently.',noText:true,ok:'Delete',danger:true})===null)return;
     const {error}=await sb.from('listings').delete().eq('id',l.id).eq('seller_id',me.id);
     if(error){toast('Could not delete: '+error.message,4000);return;}
     rmFolder('listing-media',me.id+'/'+l.id);
