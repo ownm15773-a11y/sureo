@@ -264,6 +264,10 @@ body.authed footer{display:none}
 .type-tag.rent{background:var(--blue)}
 .type-tag.trade{background:var(--purple)}
 .type-tag.free{background:var(--accent)}
+.tier{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;vertical-align:middle;white-space:nowrap;margin-left:2px}
+.tier.trusted{background:rgba(245,158,11,.18);color:#b45309}
+.tier.verified{background:var(--primary-light);color:var(--primary)}
+.tier.new{background:rgba(100,116,139,.14);color:var(--muted)}
 .verified{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .media-count{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.55);color:#fff;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:600;display:flex;align-items:center;gap:4px}
 .card-body{padding:16px 18px 18px;display:flex;flex-direction:column;flex-grow:1}
@@ -1426,10 +1430,12 @@ async function loadListings(){
   loadErr=false;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
   setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();checkAdmin();enablePush(true);}catch(e){}},1500);
+  let TM={};
+  try{const tq=await sb.from('seller_tiers').select('seller_id,tier').in('seller_id',[...new Set(data.map(l=>l.seller_id))]);(tq.data||[]).forEach(x=>TM[x.seller_id]=x.tier);}catch(e){}
   const emo={food:'🍽️',books:'📚',gadgets:'🔌',fashion:'👔',services:'🛠️'};
   ITEMS.unshift(...data.filter(l=>!l.created_at||Date.now()-new Date(l.created_at)<60*864e5).map(l=>{
     const ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),im=ms.find(m=>m.kind==='image'),pr=l.profiles||{};
-    return {r:1,id:l.id,t:CAT_TAB[l.category],c:l.category,e:emo[l.category],n:l.title,v:pr.full_name||'Student',vf:pr.is_seller_verified?1:0,ph:waNum(l.whatsapp),sid:l.seller_id,p:Math.round(l.price_kobo/100),ty:l.type,rt:+pr.rating_avg||0,rv:pr.rating_count||0,md:ms.length,cd:l.condition||undefined,code:l.course_code||undefined,img:im&&im.url};
+    return {r:1,id:l.id,t:CAT_TAB[l.category],c:l.category,e:emo[l.category],n:l.title,v:pr.full_name||'Student',vf:pr.is_seller_verified?1:0,tier:TM[l.seller_id],ph:waNum(l.whatsapp),sid:l.seller_id,p:Math.round(l.price_kobo/100),ty:l.type,rt:+pr.rating_avg||0,rv:pr.rating_count||0,md:ms.length,cd:l.condition||undefined,code:l.course_code||undefined,img:im&&im.url};
   }));
   render();
 }
@@ -1532,6 +1538,10 @@ function applyShared(){
     if(c){c.style.transition='box-shadow .4s';c.style.boxShadow='0 0 0 3px var(--primary)';setTimeout(()=>{c.style.boxShadow='';},3000);}
   },300);
 }
+const TIER_TXT={trusted:'🏅 Trusted',verified:'✓ Verified',new:'New'};
+const TIER_HELP={trusted:'Trusted: ID verified, 3 or more confirmed handovers and no open disputes.',verified:'Verified: this seller’s ID was checked by Sureo.',new:'New: this seller has not been verified yet.'};
+function tierOf(i){return i.tier||(i.vf?'verified':'new');}
+function tierBadge(i){const t=tierOf(i);return ' <span class="tier '+t+'" data-tier="'+t+'">'+TIER_TXT[t]+'</span>';}
 let FAV=new Set();try{FAV=new Set(JSON.parse(localStorage.getItem('sureoFav')||'[]'));}catch(e){}
 const io=new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting)return;const el=en.target;el.style.animationDelay=el.dataset.d||'0ms';el.classList.add('anim');if(el.classList.contains('stat-num'))countUp(el);io.unobserve(el);});},{threshold:.1,rootMargin:'0px 0px -30px 0px'});
 function countUp(el){const tg=+el.dataset.count,sf=el.dataset.suffix||'',dur=1300,t0=performance.now();(function tick(t){const k=Math.min((t-t0)/dur,1),e=1-Math.pow(1-k,3);el.textContent=Math.round(tg*e)+sf;if(k<1)requestAnimationFrame(tick);})(t0);}
@@ -1564,7 +1574,7 @@ function render(){
     +(i0.img?'':'<span class="thumb-emoji">'+i.e+'</span>')+'</div>'
     +'<div class="card-body"><h3 class="card-title">'+i.n+'</h3>'
     +(i.cd?'<div class="tag-row"><span class="cond-tag">'+i.cd+'</span>'+(i.code?'<span class="cond-tag mono" style="font-family:ui-monospace,monospace">'+i.code+'</span>':'')+'</div>':'')
-    +'<div class="card-vendor">'+i.v+(i.vf?' <span class="tick">✓</span>':'')+' · <span class="rate">★ '+i.rt.toFixed(1)+' <span>('+i.rv+')</span></span></div>'
+    +'<div class="card-vendor">'+i.v+tierBadge(i)+' · <span class="rate">★ '+i.rt.toFixed(1)+' <span>('+i.rv+')</span></span></div>'
     +'<div class="card-foot"><span class="price'+(i.p===0?' freeprice':'')+'">'+price+(i.u?'<small>'+i.u+'</small>':'')+'</span>'
     +'<span class="foot-btns"><button class="icon-btn" data-fav="'+i.id+'" aria-label="Save listing">'+(FAV.has(String(i.id))?'♥':'♡')+'</button>'+(i.c==='food'||!i.p?'':'<button class="icon-btn" title="Make an offer" aria-label="Make an offer" data-off="'+i.id+'">🤝</button>')+'<button class="icon-btn" title="Share" aria-label="Share listing" data-sh="'+esc(i.n)+'" data-shp="'+i.p+'" data-shi="'+(i.r?esc(i.id):'')+'">↗</button><button class="icon-btn" title="Report listing" aria-label="Report listing" data-ri="'+idx+'">⚑</button>'
     +'<button class="icon-btn" title="Message seller" aria-label="Message seller" data-msg="'+idx+'">✉</button>'
@@ -1882,6 +1892,7 @@ document.addEventListener('click',async e=>{
     openOffer(it);
   }
 });
+document.addEventListener('click',e=>{const t=e.target.closest('[data-tier]');if(t)toast(TIER_HELP[t.dataset.tier],4500);});
 /* one reusable sheet for questions and confirmations (replaces the browser pop-ups) */
 let askRes=null,askMin=0;
 function askClose(v){$('askModal').classList.remove('open');const r=askRes;askRes=null;if(r)r(v);}
