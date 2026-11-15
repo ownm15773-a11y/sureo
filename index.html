@@ -564,6 +564,9 @@ body{overflow-x:clip;max-width:100%}
 .adm-empty{color:var(--muted);font-size:13.5px;padding:10px 0}
 .adm-id{display:block;max-width:100%;border-radius:12px;margin:0 0 10px;border:1px solid var(--border)}
 #adminBtn{display:none;margin-top:12px;padding:10px 16px;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;font-size:13.5px}
+.cp-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 6px;border-bottom:1px solid var(--border);cursor:pointer}
+.cp-row b{font-size:14.5px}.cp-row small{color:var(--muted);font-size:12px;white-space:nowrap}
+.cp-row.me b{color:var(--primary)}
 .seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--primary-light);margin:4px 0 14px}
 .seg button{flex:1;padding:9px 4px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .seg button.on{background:var(--card);color:var(--primary);box-shadow:var(--shadow-sm)}
@@ -766,9 +769,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <h1>Hey <span id="heroName">there</span> 👋 <em>What do you need today?</em></h1>
       <p>Search listings, course codes (MTH211) or ISBNs from verified students and vendors.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 12px">
+        <button type="button" class="chip" id="campBtn" style="display:none"></button>
         <button type="button" class="chip" id="favBtn">♡ Saved</button>
         <button type="button" class="chip" id="alertBtn">🔔 Alert me when this is listed</button>
         </div>
+      <div id="campBanner" style="display:none;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin:0 0 12px;border-radius:12px;background:var(--primary-light);font-size:13.5px"><span id="campBannerTx"></span><button type="button" class="view-all" id="campBack">My campus →</button></div>
       <div class="search-bar">
         <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="search-input" id="searchInput" placeholder="Search jollof, MTH211, ISBN 978-0538497909...">
@@ -1196,6 +1201,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
 
 <!-- ================= SELL MODAL ================= -->
+<div class="modal" id="campModal"><div class="modal-card sheet">
+  <div class="modal-head"><h3 id="cpT">Choose campus</h3><button class="modal-close" id="cpX" type="button">✕</button></div>
+  <p id="cpH" class="auth-sub" style="margin:0 0 10px"></p>
+  <div class="field"><input type="text" id="cpQ" placeholder="Search your university" autocomplete="off"></div>
+  <div id="cpList" style="max-height:48vh;overflow:auto"></div>
+</div></div>
+
 <div class="modal" id="askModal"><div class="modal-card sheet">
   <div class="modal-head"><h3 id="askT"></h3><button class="modal-close" id="askX" type="button">✕</button></div>
   <p id="askH" class="auth-sub" style="margin:0 0 12px"></p>
@@ -1429,13 +1441,15 @@ async function loadListings(){
   if(error){console.error(error);loadErr=true;render();return;}
   loadErr=false;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
-  setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();checkAdmin();enablePush(true);}catch(e){}},1500);
+  setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();initCampus();checkAdmin();enablePush(true);}catch(e){}},1500);
+  let CM={};
+  try{const cq=await sb.from('listings').select('id,campus_id').eq('status','active').limit(500);(cq.data||[]).forEach(x=>CM[x.id]=x.campus_id);}catch(e){}
   let TM={};
   try{const tq=await sb.from('seller_tiers').select('seller_id,tier').in('seller_id',[...new Set(data.map(l=>l.seller_id))]);(tq.data||[]).forEach(x=>TM[x.seller_id]=x.tier);}catch(e){}
   const emo={food:'🍽️',books:'📚',gadgets:'🔌',fashion:'👔',services:'🛠️'};
   ITEMS.unshift(...data.filter(l=>!l.created_at||Date.now()-new Date(l.created_at)<60*864e5).map(l=>{
     const ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),im=ms.find(m=>m.kind==='image'),pr=l.profiles||{};
-    return {r:1,id:l.id,t:CAT_TAB[l.category],c:l.category,e:emo[l.category],n:l.title,v:pr.full_name||'Student',vf:pr.is_seller_verified?1:0,tier:TM[l.seller_id],ph:waNum(l.whatsapp),sid:l.seller_id,p:Math.round(l.price_kobo/100),ty:l.type,rt:+pr.rating_avg||0,rv:pr.rating_count||0,md:ms.length,cd:l.condition||undefined,code:l.course_code||undefined,img:im&&im.url};
+    return {r:1,id:l.id,t:CAT_TAB[l.category],c:l.category,e:emo[l.category],n:l.title,v:pr.full_name||'Student',vf:pr.is_seller_verified?1:0,tier:TM[l.seller_id],cid:CM[l.id],ph:waNum(l.whatsapp),sid:l.seller_id,p:Math.round(l.price_kobo/100),ty:l.type,rt:+pr.rating_avg||0,rv:pr.rating_count||0,md:ms.length,cd:l.condition||undefined,code:l.course_code||undefined,img:im&&im.url};
   }));
   render();
 }
@@ -1558,9 +1572,10 @@ function setStat(id,n){const el=$(id);if(!el)return;el.dataset.count=n;el.datase
 /* ---------- MARKET RENDER ---------- */
 function render(){
   const q=state.query.trim().toLowerCase();
-  const list=ITEMS.filter(i=>state.focus?String(i.id)===state.focus:((!state.fav||FAV.has(String(i.id)))&&i.t===state.tab&&(state.cat==='all'||i.c===state.cat)&&((state.ty==='all')||((i.ty||'sell')===state.ty))&&(!q||(i.n+' '+i.v+' '+(i.code||'')).toLowerCase().includes(q))));
+  const list=ITEMS.filter(i=>state.focus?String(i.id)===state.focus:((!state.fav||FAV.has(String(i.id)))&&campusOK(i)&&i.t===state.tab&&(state.cat==='all'||i.c===state.cat)&&((state.ty==='all')||((i.ty||'sell')===state.ty))&&(!q||(i.n+' '+i.v+' '+(i.code||'')).toLowerCase().includes(q))));
   $('countBadge').textContent=list.length+' listing'+(list.length===1?'':'s');
   $('sharedBanner').style.display=state.focus?'flex':'none';
+  updateCampUI();
   if(SHARED)setTimeout(applyShared,0);
   if(!list.length){grid.innerHTML=loadErr?'<div class="empty">Couldn\'t load listings. Check your connection.<br><button class="btn-primary" id="retryBtn" style="margin-top:12px">Retry</button></div>':'<div class="empty">No items match. Try another category, type or search term.</div>';if(loadErr)$('retryBtn').addEventListener('click',loadListings);return;}
   grid.innerHTML=list.map((i0,idx)=>{const i=Object.assign({},i0,{n:esc(i0.n),v:esc(i0.v),cd:i0.cd?esc(i0.cd):i0.cd,code:i0.code?esc(i0.code):i0.code});
@@ -1893,6 +1908,72 @@ document.addEventListener('click',async e=>{
   }
 });
 document.addEventListener('click',e=>{const t=e.target.closest('[data-tier]');if(t)toast(TIER_HELP[t.dataset.tier],4500);});
+/* ===== multi-campus ===== */
+let CAMPUSES=[],MYCAMP=null,CAMP_CONF=false,CAMP_USER=null,cpMode='browse';
+const campName=id=>(CAMPUSES.find(c=>c.id===id)||{}).name||'';
+function campusOK(i){return !state.campus||state.campus==='all'||!i.r||!i.cid||i.cid===state.campus;}
+function updateCampUI(){
+  const b=$('campBtn'),bn=$('campBanner');if(!b||!bn)return;
+  if(!MYCAMP){b.style.display='none';bn.style.display='none';return;}
+  const cur=state.campus==='all'?'All campuses':campName(state.campus||MYCAMP);
+  b.style.display='';b.textContent='📍 '+(cur||'Campus')+' ▾';
+  const away=state.campus&&state.campus!==MYCAMP;
+  bn.style.display=away?'flex':'none';
+  if(away)$('campBannerTx').textContent=state.campus==='all'?'Showing every campus. Pickup is on the seller’s campus.':'Browsing '+cur+'. Pickup is on that campus.';
+}
+async function initCampus(){
+  if(!me||CAMP_USER===me.id)return;
+  try{
+    const {data:p,error}=await sb.from('profiles').select('campus_id,campus_confirmed').eq('id',me.id).maybeSingle();
+    if(error)return;
+    if(!CAMPUSES.length){const c=await sb.from('campuses').select('id,name,type').order('name');if(c.error||!c.data)return;CAMPUSES=c.data;}
+    CAMP_USER=me.id;MYCAMP=p&&p.campus_id||null;CAMP_CONF=!!(p&&p.campus_confirmed);
+    state.campus=MYCAMP||'all';render();
+    if(!MYCAMP)openCampus('mine',true);
+    else if(!CAMP_CONF)confirmCampus();
+  }catch(e){}
+}
+async function confirmCampus(){
+  const r=await askText({title:'Is this your campus?',help:'We placed you on '+campName(MYCAMP)+'. Is that right?',noText:true,ok:'Yes, that’s my campus'});
+  if(r===null){openCampus('mine',false);return;}
+  const {data}=await sb.rpc('set_my_campus',{p_campus:MYCAMP});if(data==='ok')CAMP_CONF=true;
+}
+function openCampus(mode,force){
+  cpMode=mode;
+  $('cpT').textContent=mode==='mine'?(force?'Choose your campus':'Change my campus'):'Browse a campus';
+  $('cpH').textContent=mode==='mine'?(force?'Pick the university you study at. You can change it later, once every 30 days.':'You can change your campus once every 30 days.'):'Your campus comes first. Other campuses are for browsing; pickup is on the seller’s campus.';
+  $('cpX').style.display=force?'none':'';
+  $('campModal').dataset.force=force?'1':'';
+  $('cpQ').value='';drawCampus();$('campModal').classList.add('open');
+}
+function drawCampus(){
+  const q=$('cpQ').value.trim().toLowerCase(),cnt={};
+  ITEMS.forEach(x=>{if(x.r&&x.cid)cnt[x.cid]=(cnt[x.cid]||0)+1;});
+  let rows=CAMPUSES.filter(c=>!q||c.name.toLowerCase().includes(q));
+  if(!q&&cpMode==='browse')rows=rows.filter(c=>c.id===MYCAMP||cnt[c.id]);
+  rows.sort((a,b)=>(b.id===MYCAMP)-(a.id===MYCAMP)||(cnt[b.id]||0)-(cnt[a.id]||0)||a.name.localeCompare(b.name));
+  let h='';
+  if(cpMode==='browse'&&!q)h+='<div class="cp-row" data-camp="all"><b>🌍 All campuses</b><small></small></div>';
+  h+=rows.map(c=>'<div class="cp-row'+(c.id===MYCAMP?' me':'')+'" data-camp="'+esc(c.id)+'"><b>'+esc(c.name)+'</b><small>'+(c.id===MYCAMP?'Your campus':(cpMode==='browse'?(cnt[c.id]||0)+' listing'+((cnt[c.id]||0)===1?'':'s'):c.type))+'</small></div>').join('');
+  $('cpList').innerHTML=h||'<p class="auth-sub" style="padding:14px 0">No campus found. Try another word, or pick “Other campus (not listed)”.</p>';
+}
+$('cpQ').addEventListener('input',drawCampus);
+$('cpX').addEventListener('click',()=>$('campModal').classList.remove('open'));
+$('cpList').addEventListener('click',async e=>{
+  const r=e.target.closest('[data-camp]');if(!r)return;const id=r.dataset.camp;
+  if(cpMode==='browse'){state.campus=id;$('campModal').classList.remove('open');render();return;}
+  const {data,error}=await sb.rpc('set_my_campus',{p_campus:id});
+  if(error){toast('Could not save: '+error.message,4000);return;}
+  if(data==='wait'){toast('You can change your campus once every 30 days.',4500);return;}
+  if(data!=='ok'){toast('Could not save your campus.',3500);return;}
+  MYCAMP=id;CAMP_CONF=true;state.campus=id;$('campModal').classList.remove('open');
+  const t=$('campTileSub');if(t)t.textContent=campName(id);
+  render();toast('📍 Campus set to '+campName(id));
+});
+$('campBtn').addEventListener('click',()=>openCampus('browse',false));
+$('campBack').addEventListener('click',()=>{state.campus=MYCAMP;render();});
+$('myList').closest('.kyc-card').insertAdjacentHTML('beforebegin','<button type="button" class="kyc-card acct-link" id="campTile"><span class="kyc-ic">📍</span><span class="kyc-info"><b>My campus</b><span id="campTileSub">Choose your university</span></span><span class="acct-chev" aria-hidden="true">›</span></button>');
+$('campTile').addEventListener('click',()=>{if(!CAMPUSES.length){toast('Campuses are not set up yet.',3000);return;}openCampus('mine',false);const t=$('campTileSub');if(t&&MYCAMP)t.textContent=campName(MYCAMP);});
 /* one reusable sheet for questions and confirmations (replaces the browser pop-ups) */
 let askRes=null,askMin=0;
 function askClose(v){$('askModal').classList.remove('open');const r=askRes;askRes=null;if(r)r(v);}
