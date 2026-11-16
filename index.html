@@ -1909,7 +1909,7 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('click',e=>{const t=e.target.closest('[data-tier]');if(t)toast(TIER_HELP[t.dataset.tier],4500);});
 /* ===== multi-campus ===== */
-let CAMPUSES=[],MYCAMP=null,CAMP_CONF=false,CAMP_USER=null,cpMode='browse';
+let CAMPUSES=[],MYCAMP=null,CAMP_CONF=false,CAMP_USER=null,cpMode='browse',CAMP_FORCE=false;
 const campName=id=>(CAMPUSES.find(c=>c.id===id)||{}).name||'';
 function campusOK(i){return !state.campus||state.campus==='all'||!i.r||!i.cid||i.cid===state.campus;}
 function updateCampUI(){
@@ -1939,7 +1939,7 @@ async function confirmCampus(){
   const {data}=await sb.rpc('set_my_campus',{p_campus:MYCAMP});if(data==='ok')CAMP_CONF=true;
 }
 function openCampus(mode,force){
-  cpMode=mode;
+  cpMode=mode;CAMP_FORCE=!!force;
   $('cpT').textContent=mode==='mine'?(force?'Choose your campus':'Change my campus'):'Browse a campus';
   $('cpH').textContent=mode==='mine'?(force?'Pick the university you study at. You can change it later, once every 30 days.':'You can change your campus once every 30 days.'):'Your campus comes first. Other campuses are for browsing; pickup is on the seller’s campus.';
   $('cpX').style.display=force?'none':'';
@@ -1958,6 +1958,9 @@ function drawCampus(){
   $('cpList').innerHTML=h||'<p class="auth-sub" style="padding:14px 0">No campus found. Try another word, or pick “Other campus (not listed)”.</p>';
 }
 $('cpQ').addEventListener('input',drawCampus);
+/* a forced pick cannot be dismissed: ignore taps outside and re-open if anything closes it */
+$('campModal').addEventListener('click',e=>{if(CAMP_FORCE&&e.target===$('campModal')){e.stopImmediatePropagation();e.stopPropagation();}},true);
+new MutationObserver(()=>{if(CAMP_FORCE&&!$('campModal').classList.contains('open'))$('campModal').classList.add('open');}).observe($('campModal'),{attributes:true,attributeFilter:['class']});
 $('cpX').addEventListener('click',()=>$('campModal').classList.remove('open'));
 $('cpList').addEventListener('click',async e=>{
   const r=e.target.closest('[data-camp]');if(!r)return;const id=r.dataset.camp;
@@ -1966,7 +1969,7 @@ $('cpList').addEventListener('click',async e=>{
   if(error){toast('Could not save: '+error.message,4000);return;}
   if(data==='wait'){toast('You can change your campus once every 30 days.',4500);return;}
   if(data!=='ok'){toast('Could not save your campus.',3500);return;}
-  MYCAMP=id;CAMP_CONF=true;state.campus=id;$('campModal').classList.remove('open');
+  MYCAMP=id;CAMP_CONF=true;CAMP_FORCE=false;state.campus=id;$('campModal').classList.remove('open');
   const t=$('campTileSub');if(t)t.textContent=campName(id);
   render();toast('📍 Campus set to '+campName(id));
 });
