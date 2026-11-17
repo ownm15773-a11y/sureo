@@ -282,6 +282,13 @@ body.authed footer{display:none}
 .price{font-size:16px;font-weight:800;color:var(--primary);letter-spacing:-.3px}
 .price small{font-size:10.5px;font-weight:500;color:var(--muted)}
 .price.freeprice{color:var(--accent)}
+.foot-ico{display:flex;gap:6px}
+.card-acts{display:flex;gap:8px;margin-top:12px;width:100%}
+.card-acts>*{flex:1;height:42px;border-radius:12px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;white-space:nowrap}
+.card-acts .icon-btn{width:auto;color:var(--text)}
+#filters,#typeFilters{margin-top:12px}
+.kyc-card.acct-link{padding:14px 18px;margin-bottom:10px;border-radius:16px}
+.acct-link .kyc-ic{width:38px;height:38px}
 .foot-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:100%}
 .card-foot{flex-wrap:wrap;row-gap:8px}
 .card-foot .price{flex:1 0 100%}
@@ -767,11 +774,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div class="view active" id="view-market">
     <section class="mkt-hero"><div class="container">
       <h1>Hey <span id="heroName">there</span> 👋 <em>What do you need today?</em></h1>
-      <p>Search listings, course codes (MTH211) or ISBNs from verified students and vendors.</p>
+      <p>Search listings, course codes or ISBNs.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 12px">
         <button type="button" class="chip" id="campBtn" style="display:none"></button>
         <button type="button" class="chip" id="favBtn">♡ Saved</button>
-        <button type="button" class="chip" id="alertBtn">🔔 Alert me when this is listed</button>
+        <button type="button" class="chip" id="alertBtn">🔔 Alert me</button>
         </div>
       <div id="campBanner" style="display:none;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin:0 0 12px;border-radius:12px;background:var(--primary-light);font-size:13.5px"><span id="campBannerTx"></span><button type="button" class="view-all" id="campBack">My campus →</button></div>
       <div class="search-bar">
@@ -786,7 +793,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <button class="chip" data-cat="fashion">👕 Fashion</button>
         <button class="chip" data-cat="services">🛠️ Services</button>
       </div>
-      <div class="pill-row" id="typeFilters">
+      <div class="pill-row scroll" id="typeFilters">
         <button class="chip active" data-ty="all">All types</button>
         <button class="chip" data-ty="sell">🏷️ Sell</button>
         <button class="chip type-rent" data-ty="rent">🔑 Rent</button>
@@ -1596,11 +1603,21 @@ function render(){
     +'<a class="btn-wa" aria-label="Chat on WhatsApp" target="_blank" rel="noopener" href="https://wa.me/'+(i0.ph||WA_DEFAULT)+'?text='+msg+'">💬</a>'
     +'<button class="btn-buy" data-buy="'+idx+'" data-name="'+i.n.replace(/"/g,'')+'" data-vendor="'+i.v.replace(/"/g,'')+'" data-price="'+i.p+'">'+(i.t==='eats'?'Order':'Buy')+'</button></span></div></div></article>';
   }).join('');
+  tidyCards(grid);
   grid.querySelectorAll('.card').forEach(c=>io.observe(c));
   grid.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>openPay(b.dataset.name,b.dataset.vendor,+b.dataset.price,list[+b.dataset.buy])));
   grid.querySelectorAll('[data-msg]').forEach(b=>b.addEventListener('click',()=>openChatFor(list[+b.dataset.msg])));
   trackViews(grid);
   grid.querySelectorAll('[data-ri]').forEach(b=>b.addEventListener('click',()=>{state.repObj=list[+b.dataset.ri];$('repModal').classList.add('open');}));
+}
+function tidyCards(g){
+  g.querySelectorAll('.card-foot').forEach(f=>{
+    const fb=f.querySelector('.foot-btns');if(!fb)return;
+    const ico=document.createElement('span');ico.className='foot-ico';
+    fb.querySelectorAll('.icon-btn').forEach(b=>{if(b.hasAttribute('data-msg')){b.textContent='✉ Message';}else ico.appendChild(b);});
+    const wa=fb.querySelector('.btn-wa');if(wa)wa.textContent='💬 WhatsApp';
+    f.appendChild(ico);fb.className='card-acts';f.insertAdjacentElement('afterend',fb);
+  });
 }
 function refreshGrid(){grid.classList.remove('swap');void grid.offsetWidth;render();grid.classList.add('swap');moveTabInd();}
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('.tab-btn');if(b&&b.dataset.tab!==state.tab)setTab(b.dataset.tab);});
@@ -1914,6 +1931,7 @@ const campName=id=>(CAMPUSES.find(c=>c.id===id)||{}).name||'';
 function campusOK(i){return !state.campus||state.campus==='all'||!i.r||!i.cid||i.cid===state.campus;}
 function updateCampUI(){
   const b=$('campBtn'),bn=$('campBanner');if(!b||!bn)return;
+  const ts=$('campTileSub');if(ts&&MYCAMP)ts.textContent=campName(MYCAMP);
   if(!MYCAMP){b.style.display='none';bn.style.display='none';return;}
   const cur=state.campus==='all'?'All campuses':campName(state.campus||MYCAMP);
   b.style.display='';b.textContent='📍 '+(cur||'Campus')+' ▾';
