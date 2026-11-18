@@ -282,6 +282,12 @@ body.authed footer{display:none}
 .price{font-size:16px;font-weight:800;color:var(--primary);letter-spacing:-.3px}
 .price small{font-size:10.5px;font-weight:500;color:var(--muted)}
 .price.freeprice{color:var(--accent)}
+@media(max-width:700px){
+.grid{grid-template-columns:1fr 1fr;gap:12px}
+.card-foot{flex-wrap:wrap}.foot-ico{width:100%;margin-top:6px}
+.card-acts{gap:6px}.card-acts>*{height:38px;font-size:15px;padding:0}
+}
+.my-more{font-size:18px;font-weight:800;padding:2px 12px;border-radius:8px;background:var(--primary-light);color:var(--primary)}
 .foot-ico{display:flex;gap:6px}
 .card-acts{display:flex;gap:8px;margin-top:12px;width:100%}
 .card-acts>*{flex:1;height:42px;border-radius:12px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;white-space:nowrap}
@@ -815,6 +821,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div id="sharedBanner" style="scroll-margin-top:90px;display:none;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin:0 0 14px;border-radius:12px;background:var(--primary-light)"><span>📎 Showing a shared listing</span><button type="button" class="view-all" id="sharedAll">See all listings →</button></div>
       <div id="wantedStrip" style="display:none;margin:0 0 18px"></div>
       <div class="grid" id="grid"></div>
+      <div id="moreWrap" style="display:none;text-align:center;margin:18px 0"><button type="button" class="btn-outline" id="moreBtn">Load more listings</button></div>
     </section>
   </div>
 
@@ -1444,9 +1451,9 @@ let me=null,kycRow=null,loadErr=false;
 if(!SHOW_DEMO)ITEMS.length=0;
 const MIME_EXT={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','video/mp4':'mp4'};
 async function loadListings(){
-  const {data,error}=await sb.from('listings').select('id,created_at,seller_id,type,category,title,price_kobo,condition,course_code,whatsapp,profiles(full_name,is_seller_verified,rating_avg,rating_count),listing_media(url,kind,position)').eq('status','active').order('created_at',{ascending:false}).limit(100);
+  let lq=sb.from('listings').select('id,created_at,seller_id,type,category,title,price_kobo,condition,course_code,whatsapp,profiles(full_name,is_seller_verified,rating_avg,rating_count),listing_media(url,kind,position)').eq('status','active');if(state.campus&&state.campus!=='all')lq=lq.eq('campus_id',state.campus);const {data,error}=await lq.order('created_at',{ascending:false}).limit(LIM);
   if(error){console.error(error);loadErr=true;render();return;}
-  loadErr=false;
+  loadErr=false;MORE=data.length>=LIM;
   for(let k=ITEMS.length-1;k>=0;k--)if(ITEMS[k].r)ITEMS.splice(k,1);
   setTimeout(()=>{try{checkAlerts();loadWantedStrip();claimRef();initCampus();checkAdmin();enablePush(true);}catch(e){}},1500);
   let CM={};
@@ -1538,6 +1545,7 @@ let toastT;function toast(msg,ms){const t=$('toast');t.textContent=msg;t.classLi
 
 /* ---------- SCROLL REVEAL ---------- */
 (function(){var m=location.pathname.match(/^\/l\/([0-9a-f-]{36})\/?$/i);if(m)location.replace('/listing.html?id='+m[1]);})();
+let LIM=40,MORE=false;
 let SHARED=null;
 try{const m=location.hash.match(/^#l=([\w-]+)$/);if(m){SHARED=m[1];localStorage.setItem('sureoLink',SHARED);}else SHARED=localStorage.getItem('sureoLink');}catch(e){}
 if(SHARED)setTimeout(()=>{try{toast('🔗 Opening shared listing…',2500);}catch(e){}},1200);
@@ -1583,6 +1591,7 @@ function render(){
   $('countBadge').textContent=list.length+' listing'+(list.length===1?'':'s');
   $('sharedBanner').style.display=state.focus?'flex':'none';
   updateCampUI();
+  const mw=$('moreWrap');if(mw)mw.style.display=MORE?'block':'none';
   if(SHARED)setTimeout(applyShared,0);
   if(!list.length){grid.innerHTML=loadErr?'<div class="empty">Couldn\'t load listings. Check your connection.<br><button class="btn-primary" id="retryBtn" style="margin-top:12px">Retry</button></div>':'<div class="empty">No items match. Try another category, type or search term.</div>';if(loadErr)$('retryBtn').addEventListener('click',loadListings);return;}
   grid.innerHTML=list.map((i0,idx)=>{const i=Object.assign({},i0,{n:esc(i0.n),v:esc(i0.v),cd:i0.cd?esc(i0.cd):i0.cd,code:i0.code?esc(i0.code):i0.code});
@@ -1610,12 +1619,32 @@ function render(){
   trackViews(grid);
   grid.querySelectorAll('[data-ri]').forEach(b=>b.addEventListener('click',()=>{state.repObj=list[+b.dataset.ri];$('repModal').classList.add('open');}));
 }
+let MYTAB='active',MYALL=false;
+function tidyMine(){
+  const L=$('myList');if(!L)return;
+  const rows=[...L.querySelectorAll('.my-row')];if(!rows.length)return;
+  rows.forEach(r=>{const b=r.querySelector('.my-btns');if(!b||r.dataset.t)return;r.dataset.t=1;b.style.display='none';
+    const m=document.createElement('button');m.type='button';m.className='my-more';m.textContent='⋯';m.setAttribute('aria-label','Listing actions');
+    m.onclick=()=>{b.style.display=b.style.display==='none'?'flex':'none';};r.insertBefore(m,b);});
+  if(!$('myTabs')){L.insertAdjacentHTML('afterbegin','<div class="seg" id="myTabs"><button type="button" data-mt="active">Active</button><button type="button" data-mt="sold">Sold</button></div>');
+    $('myTabs').onclick=e=>{const t=e.target.closest('[data-mt]');if(t){MYTAB=t.dataset.mt;MYALL=false;applyMine();}};}
+  if(!$('myAll')){L.insertAdjacentHTML('beforeend','<button type="button" class="btn-outline" id="myAll" style="width:100%;margin:10px 0 4px">Show all</button>');
+    $('myAll').onclick=()=>{MYALL=true;applyMine();};}
+  applyMine();
+}
+function applyMine(){
+  const L=$('myList');let n=0,shown=0;
+  L.querySelectorAll('.my-row').forEach(r=>{const sold=!!r.querySelector('.my-st.sold'),ok=(MYTAB==='sold')===sold;
+    if(!ok){r.style.display='none';return;}n++;const show=MYALL||n<=5;r.style.display=show?'flex':'none';if(show)shown++;});
+  L.querySelectorAll('#myTabs button').forEach(b=>b.classList.toggle('on',b.dataset.mt===MYTAB));
+  const a=$('myAll');if(a)a.style.display=(!MYALL&&n>shown)?'block':'none';
+}
 function tidyCards(g){
   g.querySelectorAll('.card-foot').forEach(f=>{
     const fb=f.querySelector('.foot-btns');if(!fb)return;
     const ico=document.createElement('span');ico.className='foot-ico';
-    fb.querySelectorAll('.icon-btn').forEach(b=>{if(b.hasAttribute('data-msg')){b.textContent='✉ Message';}else ico.appendChild(b);});
-    const wa=fb.querySelector('.btn-wa');if(wa)wa.textContent='💬 WhatsApp';
+    fb.querySelectorAll('.icon-btn').forEach(b=>{if(b.hasAttribute('data-msg')){b.textContent=window.matchMedia('(max-width:700px)').matches?'✉':'✉ Message';}else ico.appendChild(b);});
+    const wa=fb.querySelector('.btn-wa');if(wa)wa.textContent=window.matchMedia('(max-width:700px)').matches?'💬':'💬 WhatsApp';
     f.appendChild(ico);fb.className='card-acts';f.insertAdjacentElement('afterend',fb);
   });
 }
@@ -1946,7 +1975,7 @@ async function initCampus(){
     if(error)return;
     if(!CAMPUSES.length){const c=await sb.from('campuses').select('id,name,type').order('name');if(c.error||!c.data)return;CAMPUSES=c.data;}
     CAMP_USER=me.id;MYCAMP=p&&p.campus_id||null;CAMP_CONF=!!(p&&p.campus_confirmed);
-    state.campus=MYCAMP||'all';render();
+    state.campus=MYCAMP||'all';render();LIM=40;loadListings();
     if(!MYCAMP)openCampus('mine',true);
     else if(!CAMP_CONF)confirmCampus();
   }catch(e){}
@@ -1982,17 +2011,18 @@ new MutationObserver(()=>{if(CAMP_FORCE&&!$('campModal').classList.contains('ope
 $('cpX').addEventListener('click',()=>$('campModal').classList.remove('open'));
 $('cpList').addEventListener('click',async e=>{
   const r=e.target.closest('[data-camp]');if(!r)return;const id=r.dataset.camp;
-  if(cpMode==='browse'){state.campus=id;$('campModal').classList.remove('open');render();return;}
+  if(cpMode==='browse'){state.campus=id;$('campModal').classList.remove('open');render();LIM=40;loadListings();return;}
   const {data,error}=await sb.rpc('set_my_campus',{p_campus:id});
   if(error){toast('Could not save: '+error.message,4000);return;}
   if(data==='wait'){toast('You can change your campus once every 30 days.',4500);return;}
   if(data!=='ok'){toast('Could not save your campus.',3500);return;}
   MYCAMP=id;CAMP_CONF=true;CAMP_FORCE=false;state.campus=id;$('campModal').classList.remove('open');
   const t=$('campTileSub');if(t)t.textContent=campName(id);
-  render();toast('📍 Campus set to '+campName(id));
+  render();LIM=40;loadListings();toast('📍 Campus set to '+campName(id));
 });
 $('campBtn').addEventListener('click',()=>openCampus('browse',false));
-$('campBack').addEventListener('click',()=>{state.campus=MYCAMP;render();});
+$('moreBtn').addEventListener('click',()=>{LIM+=40;loadListings();});
+$('campBack').addEventListener('click',()=>{state.campus=MYCAMP;render();LIM=40;loadListings();});
 $('myList').closest('.kyc-card').insertAdjacentHTML('beforebegin','<button type="button" class="kyc-card acct-link" id="campTile"><span class="kyc-ic">📍</span><span class="kyc-info"><b>My campus</b><span id="campTileSub">Choose your university</span></span><span class="acct-chev" aria-hidden="true">›</span></button>');
 $('campTile').addEventListener('click',()=>{if(!CAMPUSES.length){toast('Campuses are not set up yet.',3000);return;}openCampus('mine',false);const t=$('campTileSub');if(t&&MYCAMP)t.textContent=campName(MYCAMP);});
 /* one reusable sheet for questions and confirmations (replaces the browser pop-ups) */
@@ -2694,6 +2724,7 @@ async function loadMyListings(){
   MY=data;
   $('statListings').textContent=data.length;
   L.innerHTML=data.length?data.map(l=>'<div class="my-row"><div class="my-info"><b>'+esc(l.title)+'</b><span>'+(l.price_kobo?'₦'+Math.round(l.price_kobo/100).toLocaleString():(l.type==='trade'?'Trade':'Free'))+' · <i class="my-st '+esc(l.status)+'">'+esc(l.status)+'</i> · 👁 '+(l.views||0)+' · 💬 '+CONVS.filter(c=>c.lid===l.id).length+(Date.now()-new Date(l.created_at)>60*864e5?' · ⏳ expired':'')+'</span></div><div class="my-btns"><button data-ma="renew" data-id="'+esc(l.id)+'">Renew</button><button data-ma="edit" data-id="'+esc(l.id)+'">Edit</button><button data-ma="sold" data-id="'+esc(l.id)+'">'+(l.status==='sold'?'Relist':'Mark sold')+'</button><button class="danger" data-ma="del" data-id="'+esc(l.id)+'">Delete</button></div></div>').join(''):'<div class="mono" style="padding:8px 0">You haven\'t posted anything yet.</div>';
+  tidyMine();
 }
 let editId=null;
 $('myList').addEventListener('click',async e=>{
