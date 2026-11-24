@@ -115,6 +115,17 @@ a{color:inherit;text-decoration:none}
 .sw[aria-checked="true"]{background:var(--g)}.sw[aria-checked="true"]::after{transform:translateX(18px)}
 .vb{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:3px 10px 3px 6px;border-radius:999px;background:var(--g2);color:var(--gtext);font-size:12px;font-weight:700}
 .vb .ic{width:16px;height:16px;fill:var(--ok);stroke:var(--g2)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--line2);border-radius:12px;padding:3px;margin-bottom:12px}
+.seg button{padding:8px;border-radius:10px;font-weight:600;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:var(--sh)}
+.vlist{position:relative}
+.vr{position:absolute;left:0;right:0;box-sizing:border-box}
+.vc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+.vm{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 12px;display:flex;align-items:center;gap:10px;overflow:hidden}
+.vc .t,.vm .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc .s,.vm .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vm b{font-size:14px;white-space:nowrap}
+.relist{padding:6px 12px;border-radius:8px;border:1.5px solid var(--g);background:transparent;color:var(--gtext);font-size:12px;font-weight:600}
 body.pv,.pv .app{background:var(--pvbg)}
 html:has(body.pv){background:var(--pvbg)}
 .round.on{color:#e0394b}.round.on .ic{fill:#e0394b}
@@ -391,39 +402,88 @@ async function showProfile(){
   el.innerHTML='<div class="ph1"><div class="pav sk"></div><div class="sk" style="height:22px;width:50%;border-radius:8px"></div></div>';
   const [p,m]=await Promise.all([
     sb.from('profiles').select('full_name,is_seller_verified,rating_avg,rating_count,campus_id').eq('id',ME.id).maybeSingle(),
-    sb.from('listings').select('id,title,price_kobo,status,type,created_at').eq('seller_id',ME.id).order('created_at',{ascending:false}).limit(100)]);
+    sb.from('listings').select('id',{count:'exact',head:true}).eq('seller_id',ME.id)]);
   if(!isProfileRoute()||!ME)return;
   await loadCampuses();
-  MYPROF=p.data||{};MY=m.data||[];const pr=MYPROF,rc=+pr.rating_count||0;
+  MYPROF=p.data||{};const pr=MYPROF,rc=+pr.rating_count||0;
   const nm=pr.full_name||'Student';
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   el.innerHTML='<div class="ph1"><div class="pav">'+esc(nm.charAt(0).toUpperCase())+'</div><div style="min-width:0"><div class="pname">'+esc(nm)+'</div><div class="ss">'+esc(pr.campus_id?campName(pr.campus_id):'No campus set')+'</div>'+(pr.is_seller_verified?'<span class="vb"><svg class="ic"><use href="#i-tick"/></svg>Sureo Verified</span>':'')+'<span class="trust" id="ptier" hidden style="margin-left:6px">Trusted</span></div></div>'
-   +'<div class="pstats"><div><b>'+(rc&&pr.rating_avg?'★ '+(+pr.rating_avg).toFixed(1):'–')+'</b><span>Rating</span></div><div><b>'+MY.length+'</b><span>Listings</span></div><div><b>'+rc+'</b><span>Reviews</span></div></div>'
-   +'<div class="ptl" id="mine">My listings</div>'
-   +(MY.length?MY.map(l=>{const s=statusOf(l),pz=l.price_kobo?'₦'+Math.round(l.price_kobo/100).toLocaleString('en-NG'):(l.type==='trade'?'Trade':'Free');
-     return '<div class="mrow"><div class="t">'+esc(l.title)+'</div><div class="s">'+pz+' · <span class="st '+esc(s)+'">'+(s==='active'?'Active':esc(s))+'</span> · posted '+ago(l.created_at)+'</div><div class="macts"><button data-ma="edit" data-id="'+esc(l.id)+'">Edit</button><button data-ma="renew" data-id="'+esc(l.id)+'">Renew</button><button class="fill" data-ma="sold" data-id="'+esc(l.id)+'">'+(l.status==='sold'?'Make live again':'Mark Sold')+'</button></div></div>';}).join(''):'<div class="mrow"><div class="t">No listings yet</div><div class="s">Tap Sell to post your first item.</div></div>')
+   +'<div class="pstats"><div><b>'+(rc&&pr.rating_avg?'★ '+(+pr.rating_avg).toFixed(1):'–')+'</b><span>Rating</span></div><div><b id="nList">'+(m.count||0)+'</b><span>Listings</span></div><div><b>'+rc+'</b><span>Reviews</span></div></div>'
+   +'<div class="ptl" id="mine">My listings</div><div class="seg" id="seg"><button class="on" data-vt="active">Active</button><button data-vt="sold">Sold</button><button data-vt="draft">Drafts</button></div><div id="vempty"></div><div class="vlist" id="vlist"></div>'
    +'<div class="ptl">More</div><div class="lcard">'
    +'<button class="lrow" data-act="store"><span><svg class="ic"><use href="#i-share"/></svg>Share my shop link</span></button>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
    +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
+  vlReset('active');
   if(location.hash==='#items'){const t=$('mine');if(t)t.scrollIntoView();}
   try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',ME.id).maybeSingle();const b=$('ptier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
 }
+
+/* ---------- My listings: cursor pagination (15 per page) + windowed list ---------- */
+/* Rows have a fixed height, so only the rows on screen (plus a few spare) exist in the page. */
+const VL={tab:'active',rows:[],cursor:null,done:false,busy:false,err:false,gen:0,key:''};
+const VCFG={active:{H:128,G:10},draft:{H:128,G:10},sold:{H:60,G:8}};
+const VEMPTY={active:['No active listings','Tap Sell to post an item.'],sold:['No sales history yet','Items you mark as sold will show here.'],draft:['No drafts','Unfinished listings will show here.']};
+const priceOf=l=>l.price_kobo?'₦'+Math.round(l.price_kobo/100).toLocaleString('en-NG'):(l.type==='trade'?'Trade':'Free');
+function vRow(l,top,c){
+  const id=esc(l.id),pos='style="top:'+top+'px;height:'+c.H+'px"';
+  if(VL.tab==='sold')return '<div class="vr vm" '+pos+'><div style="min-width:0;flex:1"><div class="t">'+esc(l.title)+'</div><div class="s">Posted '+ago(l.created_at)+'</div></div><b>'+priceOf(l)+'</b><button class="relist" data-ma="sold" data-id="'+id+'">Relist</button></div>';
+  const s=statusOf(l),btn=VL.tab==='draft'?'<button class="fill" data-ma="publish" data-id="'+id+'">Publish</button>':'<button data-ma="renew" data-id="'+id+'">Renew</button><button class="fill" data-ma="sold" data-id="'+id+'">Mark Sold</button>';
+  return '<div class="vr vc" '+pos+'><div class="t">'+esc(l.title)+'</div><div class="s">'+priceOf(l)+' · <span class="st '+esc(s)+'">'+(s==='active'?'Active':esc(s))+'</span> · posted '+ago(l.created_at)+'</div><div class="macts"><button data-ma="edit" data-id="'+id+'">Edit</button>'+btn+'</div></div>';
+}
+function vlRender(force){
+  const box=$('vlist');if(!box)return;
+  const c=VCFG[VL.tab],P=c.H+c.G,n=VL.rows.length,sk=VL.busy?(n?2:3):0;
+  box.style.height=((n+sk)*P)+'px';
+  const top=box.getBoundingClientRect().top,vh=window.innerHeight;
+  const a=Math.max(0,Math.floor(-top/P)-3),b=Math.min(n+sk,Math.ceil((vh-top)/P)+3);
+  const key=[VL.tab,a,b,n,sk,VL.err].join('|');
+  if(!force&&key===VL.key)return;VL.key=key;
+  let out='';for(let i=a;i<b;i++)out+=i<n?vRow(VL.rows[i],i*P,c):'<div class="vr sk" style="top:'+(i*P)+'px;height:'+c.H+'px;border-radius:12px"></div>';
+  box.innerHTML=out;
+  $('vempty').innerHTML=VL.err?'<div class="mrow"><div class="t">Couldn’t load listings</div><div class="s">Check your connection.</div><div class="macts"><button class="fill" data-ma="retry">Try again</button></div></div>':(VL.done&&!n?'<div class="mrow"><div class="t">'+VEMPTY[VL.tab][0]+'</div><div class="s" style="margin:2px 0 0">'+VEMPTY[VL.tab][1]+'</div></div>':'');
+  if(!VL.done&&!VL.busy&&!VL.err&&b>=n-2)vlMore();
+}
+async function vlMore(){
+  if(VL.busy||VL.done||!ME||!$('vlist'))return;
+  VL.busy=true;VL.err=false;const gen=VL.gen;vlRender(true);
+  let q=sb.from('listings').select('id,title,price_kobo,status,type,created_at').eq('seller_id',ME.id).eq('status',VL.tab).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(15);
+  if(VL.cursor)q=q.or('created_at.lt.'+VL.cursor.c+',and(created_at.eq.'+VL.cursor.c+',id.lt.'+VL.cursor.id+')');
+  const {data,error}=await q;
+  if(gen!==VL.gen)return;
+  VL.busy=false;
+  if(error){console.error(error);VL.err=true;vlRender(true);return;}
+  VL.rows.push(...data);if(data.length<15)VL.done=true;
+  if(data.length){const z=data[data.length-1];VL.cursor={c:z.created_at,id:z.id};}
+  vlRender(true);
+}
+function vlReset(tab){
+  VL.gen++;if(tab)VL.tab=tab;VL.rows=[];VL.cursor=null;VL.done=false;VL.busy=false;VL.err=false;VL.key='';
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.vt===VL.tab));
+  vlMore();
+}
+async function updCount(){try{const r=await sb.from('listings').select('id',{count:'exact',head:true}).eq('seller_id',ME.id);const e=$('nList');if(e&&r.count!=null)e.textContent=r.count;}catch(e){}}
+let vraf=0;
+window.addEventListener('scroll',()=>{if(vraf||!$('vlist'))return;vraf=requestAnimationFrame(()=>{vraf=0;if(document.body.classList.contains('pv'))vlRender();});},{passive:true});
+window.addEventListener('resize',()=>{if($('vlist')&&document.body.classList.contains('pv'))vlRender(true);});
 let editId=null;
 async function myAction(b){
-  const a=b.dataset.ma,l=MY.find(x=>x.id===b.dataset.id);
+  const a=b.dataset.ma,l=VL.rows.find(x=>x.id===b.dataset.id);
   if(a==='cancel'){$('esheet').classList.remove('open');return;}
+  if(a==='retry'){VL.err=false;vlMore();return;}
   if(a==='save'){
     const name=$('eName').value.trim(),pz=Math.max(0,Math.round(+$('ePrice').value||0));if(!name){$('eName').focus();return;}
     const {error}=await sb.from('listings').update({title:name,price_kobo:pz*100}).eq('id',editId).eq('seller_id',ME.id);
     if(error){toast('Could not save: '+error.message);return;}
-    $('esheet').classList.remove('open');toast('Listing updated');showProfile();load();return;
+    $('esheet').classList.remove('open');toast('Listing updated');vlReset();load();return;
   }
   if(!l||!ME)return;
   if(a==='edit'){editId=l.id;$('eName').value=l.title;$('ePrice').value=Math.round(l.price_kobo/100);$('esheet').classList.add('open');return;}
   if(a==='renew'){const {error}=await sb.from('listings').update({created_at:new Date().toISOString()}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not renew: '+error.message);return;}toast('Renewed. It is back at the top.');}
+  if(a==='publish'){const {error}=await sb.from('listings').update({status:'active'}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not publish: '+error.message);return;}toast('Listing is live.');}
   if(a==='sold'){const next=l.status==='sold'?'active':'sold';const {error}=await sb.from('listings').update({status:next}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not update: '+error.message);return;}toast(next==='sold'?'Marked as sold. It is hidden from the market.':'Listing is live again.');}
-  showProfile();load();
+  vlReset();load();updCount();
 }
 async function shareStore(){
   const nm=((MYPROF&&MYPROF.full_name)||'').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g,'')||'shop';
@@ -435,13 +495,14 @@ async function shareStore(){
 /* ---------- Events: one delegated listener, so late-added elements always work ---------- */
 document.addEventListener('click',e=>{
   if(e.target.closest('a.card')&&!e.target.closest('[data-fav]'))FROMLIST=true;
-  const t=e.target.closest('[data-fav],[data-cat],[data-act],[data-cid],[data-ma]');
+  const t=e.target.closest('[data-fav],[data-cat],[data-act],[data-cid],[data-ma],[data-vt]');
   if(!t){if(e.target===$('sheet'))$('sheet').classList.remove('open');if(e.target===$('esheet'))$('esheet').classList.remove('open');return;}
   if(t.dataset.fav){
     e.preventDefault();const id=t.dataset.fav;FAV.has(id)?FAV.delete(id):FAV.add(id);
     try{localStorage.setItem('sureoFav',JSON.stringify([...FAV]));}catch(x){}
     t.classList.toggle('on',FAV.has(id));return;
   }
+  if(t.dataset.vt){if(t.dataset.vt!==VL.tab)vlReset(t.dataset.vt);return;}
   if(t.dataset.ma){myAction(t);return;}
   if(t.dataset.cat){st.cat=t.dataset.cat;paint();}
   else if(t.dataset.cid){st.campus=t.dataset.cid;$('sheet').classList.remove('open');load();}
