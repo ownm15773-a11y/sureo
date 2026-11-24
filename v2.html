@@ -84,6 +84,27 @@ a{color:inherit;text-decoration:none}
 .list button{display:flex;justify-content:space-between;width:100%;text-align:left;padding:13px 4px;border-bottom:1px solid var(--line)}
 .list button.on{color:var(--gtext);font-weight:700}
 .list small{color:var(--muted)}
+.pv .top,.pv #grid,.pv #moreWrap{display:none}
+#profileView{display:none;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 8px}
+.pv #profileView{display:block}
+.ph1{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.pav{width:64px;height:64px;border-radius:50%;background:var(--g);color:var(--onG);display:grid;place-items:center;font-size:26px;font-weight:800;flex:none}
+.pname{display:flex;align-items:center;gap:6px;font-size:20px;font-weight:700;flex-wrap:wrap}
+.pname .ic{width:18px;height:18px;color:var(--ok);fill:var(--ok);stroke:var(--card)}
+.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.pstats div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.pstats b{display:block;font-size:18px}.pstats span{font-size:12px;color:var(--muted)}
+.ptl{font-size:16px;font-weight:700;margin:20px 0 10px}
+.mrow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.mrow .t{font-weight:600}.mrow .s{font-size:12px;color:var(--muted);margin:2px 0 10px}
+.st{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--g2);color:var(--gtext);font-size:11px;font-weight:700;text-transform:capitalize}
+.st.sold,.st.expired{background:var(--field);color:var(--muted)}
+.macts{display:flex;gap:8px;flex-wrap:wrap}
+.macts button{padding:8px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--bg);font-size:13px;font-weight:600}
+.macts .pri{background:var(--g);border-color:var(--g);color:var(--onG)}
+.lrow{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:14px 12px;margin-bottom:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-weight:600}
+.lrow small{color:var(--muted);font-weight:500}
+.lrow.out{color:#dc2626}
 .round.on{color:#e0394b}.round.on .ic{fill:#e0394b}
 .detail{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;display:none;overscroll-behavior:contain}
 .detail.open{display:block}
@@ -115,7 +136,7 @@ a{color:inherit;text-decoration:none}
 .wa{width:50px;flex:none;border-radius:12px;display:grid;place-items:center;background:#25d366;color:#fff}
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:90;background:#111827;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
-.sheet{z-index:70}
+.sheet{z-index:70}#esheet{z-index:75}
 </style>
 </head>
 <body>
@@ -153,18 +174,23 @@ a{color:inherit;text-decoration:none}
   </header>
   <main class="grid" id="grid"></main>
   <div id="moreWrap"></div>
+  <section id="profileView" aria-live="polite"></section>
 </div>
 
 <nav class="nav"><div>
-  <a href="/v2" class="on"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></a>
+  <a href="#" id="nHome" class="on"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></a>
   <button data-act="focus"><svg class="ic"><use href="#i-search"/></svg><span>Search</span></button>
   <a href="/" class="sell" aria-label="Sell"><i><svg class="ic"><use href="#i-plus"/></svg></i></a>
-  <a href="/"><svg class="ic"><use href="#i-box"/></svg><span>My Items</span></a>
-  <a href="/"><svg class="ic"><use href="#i-user"/></svg><span>Profile</span></a>
+  <a href="#items" id="nItems"><svg class="ic"><use href="#i-box"/></svg><span>My Items</span></a>
+  <a href="#profile" id="nProf"><svg class="ic"><use href="#i-user"/></svg><span>Profile</span></a>
 </div></nav>
 
 <div class="detail" id="detail" aria-live="polite"></div>
 <div class="toast" id="toast"></div>
+<div class="sheet" id="esheet"><div class="panel"><h2>Edit listing</h2>
+  <input id="eName" placeholder="Title" maxlength="80"><input id="ePrice" type="number" inputmode="numeric" placeholder="Price in ₦ (0 if free)">
+  <div class="macts" style="margin-top:6px"><button class="pri" data-ma="save" style="flex:1;padding:12px">Save changes</button><button data-ma="cancel" style="padding:12px 18px">Cancel</button></div>
+</div></div>
 <div class="sheet" id="sheet"><div class="panel">
   <h2>Choose campus</h2>
   <input id="cq" type="search" placeholder="Search your university" autocomplete="off">
@@ -224,7 +250,7 @@ async function loadCampuses(){
 }
 async function findMyCampus(){ /* after first paint; never blocks the screen */
   try{
-    const {data}=await sb.auth.getSession();const u=data&&data.session&&data.session.user;if(!u)return;
+    const u=await AUTHP;if(!u)return;
     const p=await sb.from('profiles').select('campus_id').eq('id',u.id).maybeSingle();
     const cid=p.data&&p.data.campus_id;if(!cid)return;
     st.mine=cid;if(st.campus==='all'){st.campus=cid;load();}
@@ -306,7 +332,12 @@ async function openDetail(id){
   try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',l.seller_id).maybeSingle();const b=$('dtier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
 }
 function closeDetail(){$('detail').classList.remove('open');$('detail').innerHTML='';document.body.style.overflow='';paint();}
-function route(){const id=idFromHash();if(id)openDetail(id);else closeDetail();}
+function route(){
+  const id=idFromHash();
+  if(isProfileRoute()){closeDetail();showProfile();return;}
+  document.body.classList.remove('pv');setNav('home');
+  if(id)openDetail(id);else closeDetail();
+}
 window.addEventListener('hashchange',route);
 async function shareListing(b){
   const url=location.origin+'/l/'+String(b.dataset.id).slice(0,8),p=+b.dataset.p,txt='Check this on Sureo: '+b.dataset.t+(p?' for ₦'+p.toLocaleString('en-NG'):'')+' (verified campus students)';
@@ -314,23 +345,100 @@ async function shareListing(b){
   try{await navigator.clipboard.writeText(txt+' '+url);toast('Link copied');}catch(e){window.open('https://wa.me/?text='+encodeURIComponent(txt+' '+url),'_blank');}
 }
 
+/* ---------- Session: same 20-minute inactivity rule as the old app (they share one login) ---------- */
+const IDLE_MS=20*60*1000;let ME=null,lastAct=Date.now(),MY=[],MYPROF=null;
+function touchActive(){if(!ME)return;const n=Date.now();if(n-lastAct>5000){lastAct=n;try{localStorage.setItem('sureoLast',n);}catch(e){}}}
+['click','touchstart','keydown','scroll'].forEach(ev=>window.addEventListener(ev,touchActive,{passive:true,capture:true}));
+async function logout(msg){
+  try{await sb.auth.signOut();}catch(e){}
+  ME=null;MY=[];MYPROF=null;st.mine=null;try{localStorage.removeItem('sureoLast');localStorage.removeItem('sureoView');}catch(e){}
+  toast(msg||'Logged out. See you soon!');if(isProfileRoute())showProfile();
+}
+function checkIdle(){if(!ME)return;let l=lastAct;try{l=Math.max(l,+localStorage.getItem('sureoLast')||0);}catch(e){}if(Date.now()-l>=IDLE_MS)logout('You were logged out after 20 minutes of inactivity.');}
+setInterval(checkIdle,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkIdle();});
+async function initAuth(){
+  try{
+    const {data}=await sb.auth.getSession();const s=data&&data.session;if(!s)return null;
+    let l=0;try{l=+localStorage.getItem('sureoLast')||0;}catch(e){}
+    if(l&&Date.now()-l>=IDLE_MS){await sb.auth.signOut();return null;}
+    ME=s.user;touchActive();return ME;
+  }catch(e){return null;}
+}
+const AUTHP=initAuth();
+
+/* ---------- Profile (opens on #profile or #items) ---------- */
+const isProfileRoute=()=>/^#(profile|items)$/.test(location.hash);
+function setNav(n){[['nHome','home'],['nItems','items'],['nProf','profile']].forEach(x=>$(x[0]).classList.toggle('on',x[1]===n));}
+const statusOf=l=>l.status==='active'&&Date.now()-new Date(l.created_at)>=60*864e5?'expired':l.status;
+async function showProfile(){
+  document.body.classList.add('pv');setNav(location.hash==='#items'?'items':'profile');window.scrollTo(0,0);
+  const el=$('profileView');
+  if(!ME){el.innerHTML='<div class="ph1"><div class="pav">S</div><div><div class="pname">Your profile</div><div class="ss">Sign in to see your listings and rating.</div></div></div><a class="btn" href="/">Sign in</a>';await AUTHP;if(!ME)return;}
+  el.innerHTML='<div class="ph1"><div class="pav sk"></div><div class="sk" style="height:22px;width:50%;border-radius:8px"></div></div>';
+  const [p,m]=await Promise.all([
+    sb.from('profiles').select('full_name,is_seller_verified,rating_avg,rating_count,campus_id').eq('id',ME.id).maybeSingle(),
+    sb.from('listings').select('id,title,price_kobo,status,type,created_at').eq('seller_id',ME.id).order('created_at',{ascending:false}).limit(100)]);
+  if(!isProfileRoute()||!ME)return;
+  await loadCampuses();
+  MYPROF=p.data||{};MY=m.data||[];const pr=MYPROF,rc=+pr.rating_count||0;
+  const nm=pr.full_name||'Student';
+  el.innerHTML='<div class="ph1"><div class="pav">'+esc(nm.charAt(0).toUpperCase())+'</div><div style="min-width:0"><div class="pname">'+esc(nm)+(pr.is_seller_verified?'<svg class="ic"><use href="#i-tick"/></svg>':'')+'<span class="trust" id="ptier" hidden>Trusted</span></div><div class="ss">'+esc(pr.campus_id?campName(pr.campus_id):'No campus set')+'</div></div></div>'
+   +'<div class="pstats"><div><b>'+(rc&&pr.rating_avg?'★ '+(+pr.rating_avg).toFixed(1):'–')+'</b><span>Rating</span></div><div><b>'+MY.length+'</b><span>Listings</span></div><div><b>'+rc+'</b><span>Reviews</span></div></div>'
+   +'<div class="ptl" id="mine">My listings</div>'
+   +(MY.length?MY.map(l=>{const s=statusOf(l),pz=l.price_kobo?'₦'+Math.round(l.price_kobo/100).toLocaleString('en-NG'):(l.type==='trade'?'Trade':'Free');
+     return '<div class="mrow"><div class="t">'+esc(l.title)+'</div><div class="s">'+pz+' · <span class="st '+esc(s)+'">'+esc(s)+'</span> · posted '+ago(l.created_at)+'</div><div class="macts"><button data-ma="edit" data-id="'+esc(l.id)+'">Edit</button><button class="'+(s==='expired'?'pri':'')+'" data-ma="renew" data-id="'+esc(l.id)+'">Renew</button><button data-ma="sold" data-id="'+esc(l.id)+'">'+(l.status==='sold'?'Make live again':'Mark as sold')+'</button></div></div>';}).join(''):'<div class="mrow"><div class="t">No listings yet</div><div class="s">Tap Sell to post your first item.</div></div>')
+   +'<div class="ptl">More</div>'
+   +'<button class="lrow" data-act="store"><span>Share my shop link</span><small>Send buyers here</small></button>'
+   +'<button class="lrow" data-act="theme"><span>Dark mode</span><small>Switch</small></button>'
+   +'<a class="lrow" href="/"><span>Orders and receipts</span><small>Open in old app</small></a>'
+   +'<a class="lrow" href="/"><span>Identity and account</span><small>Open in old app</small></a>'
+   +'<button class="lrow out" data-act="logout"><span>Log out</span></button>';
+  if(location.hash==='#items'){const t=$('mine');if(t)t.scrollIntoView();}
+  try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',ME.id).maybeSingle();const b=$('ptier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
+}
+let editId=null;
+async function myAction(b){
+  const a=b.dataset.ma,l=MY.find(x=>x.id===b.dataset.id);
+  if(a==='cancel'){$('esheet').classList.remove('open');return;}
+  if(a==='save'){
+    const name=$('eName').value.trim(),pz=Math.max(0,Math.round(+$('ePrice').value||0));if(!name){$('eName').focus();return;}
+    const {error}=await sb.from('listings').update({title:name,price_kobo:pz*100}).eq('id',editId).eq('seller_id',ME.id);
+    if(error){toast('Could not save: '+error.message);return;}
+    $('esheet').classList.remove('open');toast('Listing updated');showProfile();load();return;
+  }
+  if(!l||!ME)return;
+  if(a==='edit'){editId=l.id;$('eName').value=l.title;$('ePrice').value=Math.round(l.price_kobo/100);$('esheet').classList.add('open');return;}
+  if(a==='renew'){const {error}=await sb.from('listings').update({created_at:new Date().toISOString()}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not renew: '+error.message);return;}toast('Renewed. It is back at the top.');}
+  if(a==='sold'){const next=l.status==='sold'?'active':'sold';const {error}=await sb.from('listings').update({status:next}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not update: '+error.message);return;}toast(next==='sold'?'Marked as sold. It is hidden from the market.':'Listing is live again.');}
+  showProfile();load();
+}
+async function shareStore(){
+  const nm=((MYPROF&&MYPROF.full_name)||'').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g,'')||'shop';
+  const url=location.origin+'/s/'+nm+'-'+String(ME.id).slice(0,8),txt='Shop my listings on Sureo, the verified campus marketplace: ';
+  if(navigator.share){try{await navigator.share({title:'My Sureo shop',text:txt,url});}catch(e){}return;}
+  try{await navigator.clipboard.writeText(url);toast('Shop link copied');}catch(e){window.open('https://wa.me/?text='+encodeURIComponent(txt+url),'_blank');}
+}
+
 /* ---------- Events: one delegated listener, so late-added elements always work ---------- */
 document.addEventListener('click',e=>{
   if(e.target.closest('a.card')&&!e.target.closest('[data-fav]'))FROMLIST=true;
-  const t=e.target.closest('[data-fav],[data-cat],[data-act],[data-cid]');
-  if(!t){if(e.target===$('sheet'))$('sheet').classList.remove('open');return;}
+  const t=e.target.closest('[data-fav],[data-cat],[data-act],[data-cid],[data-ma]');
+  if(!t){if(e.target===$('sheet'))$('sheet').classList.remove('open');if(e.target===$('esheet'))$('esheet').classList.remove('open');return;}
   if(t.dataset.fav){
     e.preventDefault();const id=t.dataset.fav;FAV.has(id)?FAV.delete(id):FAV.add(id);
     try{localStorage.setItem('sureoFav',JSON.stringify([...FAV]));}catch(x){}
     t.classList.toggle('on',FAV.has(id));return;
   }
+  if(t.dataset.ma){myAction(t);return;}
   if(t.dataset.cat){st.cat=t.dataset.cat;paint();}
   else if(t.dataset.cid){st.campus=t.dataset.cid;$('sheet').classList.remove('open');load();}
   else if(t.dataset.act==='campus'){$('sheet').classList.add('open');$('cq').value='';paintCampuses();loadCampuses().then(paintCampuses);}
   else if(t.dataset.act==='theme')setTheme();
   else if(t.dataset.act==='back'){if(FROMLIST){FROMLIST=false;history.back();}else{history.replaceState(null,'',location.pathname+location.search);closeDetail();}}
   else if(t.dataset.act==='share')shareListing(t);
-  else if(t.dataset.act==='focus'){window.scrollTo(0,0);$('q').focus();}
+  else if(t.dataset.act==='focus'){if(location.hash)location.hash='';window.scrollTo(0,0);setTimeout(()=>$('q').focus(),50);}
+  else if(t.dataset.act==='store')shareStore();
+  else if(t.dataset.act==='logout'){if(confirm('Log out of Sureo?'))logout();}
   else if(t.dataset.act==='retry')load();
   else if(t.dataset.act==='all'){st.campus='all';load();}
   else if(t.dataset.act==='more'){LIM+=40;load();}
