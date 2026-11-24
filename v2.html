@@ -98,7 +98,7 @@ a{color:inherit;text-decoration:none}
 .mrow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
 .mrow .t{font-weight:600}.mrow .s{font-size:12px;color:var(--muted);margin:2px 0 10px}
 .st{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--g2);color:var(--gtext);font-size:11px;font-weight:700;text-transform:capitalize}
-.st.sold,.st.expired{background:var(--field);color:var(--muted)}.st.draft{background:#fef3c7;color:#92400e}
+.st.sold,.st.expired,.st.archived{background:var(--field);color:var(--muted)}.st.draft{background:#fef3c7;color:#92400e}
 .macts{display:flex;gap:8px;flex-wrap:wrap}
 .macts button{flex:1;padding:9px 10px;border-radius:10px;border:1.5px solid var(--g);background:transparent;color:var(--gtext);font-size:13px;font-weight:600}
 .macts .fill{background:var(--g);color:var(--onG)}
@@ -115,9 +115,11 @@ a{color:inherit;text-decoration:none}
 .sw[aria-checked="true"]{background:var(--g)}.sw[aria-checked="true"]::after{transform:translateX(18px)}
 .vb{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:3px 10px 3px 6px;border-radius:999px;background:var(--g2);color:var(--gtext);font-size:12px;font-weight:700}
 .vb .ic{width:16px;height:16px;fill:var(--ok);stroke:var(--g2)}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--line2);border-radius:12px;padding:3px;margin-bottom:12px}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);background:var(--line2);border-radius:12px;padding:3px;margin-bottom:12px}
 .seg button{padding:8px;border-radius:10px;font-weight:600;font-size:13px;color:var(--muted)}
 .seg button.on{background:var(--card);color:var(--text);box-shadow:var(--sh)}
+.vstick{position:sticky;top:env(safe-area-inset-top,0px);z-index:12;margin:0 -16px 8px;padding:6px 16px 4px;background:var(--pvbg)}
+.vstick .seg{margin-bottom:0}.vstick .chips{padding:8px 0 4px}
 .vlist{position:relative}
 .vr{position:absolute;left:0;right:0;box-sizing:border-box}
 .vc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
@@ -286,7 +288,7 @@ const money=i=>i.ty==='free'||i.p===0?'Free':'₦'+i.p.toLocaleString('en-NG');
 function condCls(c){c=String(c||'').toLowerCase();return /brand|^new/.test(c)?'new':/like/.test(c)?'like':/fair|used/.test(c)?'used':'';}
 function card(i){
   const t=TIERS[i.sid],f=FAV.has(String(i.id));
-  return '<a class="card" href="#l='+esc(i.id)+'">'
+  return '<a class="card" data-lid="'+esc(i.id)+'" href="#l='+esc(i.id)+'">'
    +'<div class="ph">'+(i.img?'<img src="'+esc(i.img)+'" alt="" loading="lazy" decoding="async">':EMO[i.cat]||'🛍️')
    +(i.cond&&!/^n\/?a/i.test(i.cond)?'<span class="tag '+condCls(i.cond)+'">'+esc(String(i.cond).replace(/_/g,' '))+'</span>':'')
    +'<button class="heart'+(f?' on':'')+'" data-fav="'+esc(i.id)+'" aria-label="Save"><svg class="ic"><use href="#i-heart"/></svg></button></div>'
@@ -308,6 +310,7 @@ function paint(){
   const list=visible();
   g.innerHTML=list.length?list.map(card).join(''):'<div class="empty"><h3>No items found</h3>Try another category, or look on all campuses.<br><button class="btn" data-act="all">Show all campuses</button></div>';
   if(MORE&&!loading)mw.innerHTML='<button class="more" data-act="more">Show more</button>';
+  trackViews();
 }
 
 /* ---------- Campus sheet ---------- */
@@ -410,31 +413,33 @@ async function showProfile(){
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   el.innerHTML='<div class="ph1"><div class="pav">'+esc(nm.charAt(0).toUpperCase())+'</div><div style="min-width:0"><div class="pname">'+esc(nm)+'</div><div class="ss">'+esc(pr.campus_id?campName(pr.campus_id):'No campus set')+'</div>'+(pr.is_seller_verified?'<span class="vb"><svg class="ic"><use href="#i-tick"/></svg>Sureo Verified</span>':'')+'<span class="trust" id="ptier" hidden style="margin-left:6px">Trusted</span></div></div>'
    +'<div class="pstats"><div><b>'+(rc&&pr.rating_avg?'★ '+(+pr.rating_avg).toFixed(1):'–')+'</b><span>Rating</span></div><div><b id="nList">'+(m.count||0)+'</b><span>Listings</span></div><div><b>'+rc+'</b><span>Reviews</span></div></div>'
-   +'<div class="ptl" id="mine">My listings</div><div class="seg" id="seg"><button class="on" data-vt="active">Active</button><button data-vt="sold">Sold</button><button data-vt="draft">Drafts</button></div><div id="vempty"></div><div class="vlist" id="vlist"></div>'
+   +'<div class="ptl" id="mine">My listings</div><div class="vstick"><div class="seg" id="seg"><button class="on" data-vt="active">Active</button><button data-vt="sold">Sold</button><button data-vt="archived">Archived</button><button data-vt="draft">Drafts</button></div><div class="chips" id="vcats">'+VCATS.map(c=>'<button class="chip'+(c[0]==='all'?' on':'')+'" data-vc="'+c[0]+'">'+c[1]+'</button>').join('')+'</div></div><div class="ss" id="vcount" style="margin:2px 0 10px"></div><div id="vempty"></div><div class="vlist" id="vlist"></div>'
    +'<div class="ptl">More</div><div class="lcard">'
    +'<button class="lrow" data-act="store"><span><svg class="ic"><use href="#i-share"/></svg>Share my shop link</span></button>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
    +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
-  vlReset('active');
+  VL.cat='all';vlReset('active');
   if(location.hash==='#items'){const t=$('mine');if(t)t.scrollIntoView();}
   try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',ME.id).maybeSingle();const b=$('ptier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
 }
 
 /* ---------- My listings: cursor pagination (15 per page) + windowed list ---------- */
 /* Rows have a fixed height, so only the rows on screen (plus a few spare) exist in the page. */
-const VL={tab:'active',rows:[],cursor:null,done:false,busy:false,err:false,gen:0,key:''};
-const VCFG={active:{H:128,G:10},draft:{H:128,G:10},sold:{H:60,G:8}};
-const VEMPTY={active:['No active listings','Tap Sell to post an item.'],sold:['No sales history yet','Items you mark as sold will show here.'],draft:['No drafts','Unfinished listings will show here.']};
+const VL={tab:'active',cat:'all',total:0,rows:[],cursor:null,done:false,busy:false,err:false,gen:0,key:''};
+const VCATS=[['all','All'],['food','Food'],['gadgets','Gadgets'],['books','Books'],['fashion','Fashion'],['services','Services']];
+const NOUN={active:'active',sold:'sold',archived:'archived',draft:'draft'};
+const VCFG={active:{H:128,G:10},draft:{H:128,G:10},archived:{H:128,G:10},sold:{H:60,G:8}};
+const VEMPTY={active:['No active listings','Tap Sell to post an item.'],sold:['No sales history yet','Items you mark as sold will show here.'],archived:['No archived listings','Archived listings show here. Renew one to put it back on the market.'],draft:['No drafts','Unfinished listings will show here.']};
 const priceOf=l=>l.price_kobo?'₦'+Math.round(l.price_kobo/100).toLocaleString('en-NG'):(l.type==='trade'?'Trade':'Free');
 function vRow(l,top,c){
   const id=esc(l.id),pos='style="top:'+top+'px;height:'+c.H+'px"';
   if(VL.tab==='sold')return '<div class="vr vm" '+pos+'><div style="min-width:0;flex:1"><div class="t">'+esc(l.title)+'</div><div class="s">Posted '+ago(l.created_at)+'</div></div><b>'+priceOf(l)+'</b><button class="relist" data-ma="sold" data-id="'+id+'">Relist</button></div>';
-  const s=statusOf(l),btn=VL.tab==='draft'?'<button class="fill" data-ma="publish" data-id="'+id+'">Publish</button>':'<button data-ma="renew" data-id="'+id+'">Renew</button><button class="fill" data-ma="sold" data-id="'+id+'">Mark Sold</button>';
+  const s=statusOf(l),btn=VL.tab==='draft'?'<button class="fill" data-ma="publish" data-id="'+id+'">Publish</button>':VL.tab==='archived'?'<button class="fill" data-ma="renew" data-id="'+id+'">Renew</button>':'<button data-ma="renew" data-id="'+id+'">Renew</button><button class="fill" data-ma="sold" data-id="'+id+'">Mark Sold</button>';
   return '<div class="vr vc" '+pos+'><div class="t">'+esc(l.title)+'</div><div class="s">'+priceOf(l)+' · <span class="st '+esc(s)+'">'+(s==='active'?'Active':esc(s))+'</span> · posted '+ago(l.created_at)+'</div><div class="macts"><button data-ma="edit" data-id="'+id+'">Edit</button>'+btn+'</div></div>';
 }
 function vlRender(force){
   const box=$('vlist');if(!box)return;
-  const c=VCFG[VL.tab],P=c.H+c.G,n=VL.rows.length,sk=VL.busy?(n?2:3):0;
+  const c=VCFG[VL.tab],P=c.H+c.G,n=VL.rows.length,sk=VL.busy?2:0;
   box.style.height=((n+sk)*P)+'px';
   const top=box.getBoundingClientRect().top,vh=window.innerHeight;
   const a=Math.max(0,Math.floor(-top/P)-3),b=Math.min(n+sk,Math.ceil((vh-top)/P)+3);
@@ -442,25 +447,32 @@ function vlRender(force){
   if(!force&&key===VL.key)return;VL.key=key;
   let out='';for(let i=a;i<b;i++)out+=i<n?vRow(VL.rows[i],i*P,c):'<div class="vr sk" style="top:'+(i*P)+'px;height:'+c.H+'px;border-radius:12px"></div>';
   box.innerHTML=out;
-  $('vempty').innerHTML=VL.err?'<div class="mrow"><div class="t">Couldn’t load listings</div><div class="s">Check your connection.</div><div class="macts"><button class="fill" data-ma="retry">Try again</button></div></div>':(VL.done&&!n?'<div class="mrow"><div class="t">'+VEMPTY[VL.tab][0]+'</div><div class="s" style="margin:2px 0 0">'+VEMPTY[VL.tab][1]+'</div></div>':'');
+  const vc=$('vcount');if(vc)vc.textContent=VL.total>15&&n?'Showing '+n+' of '+VL.total+' '+NOUN[VL.tab]+' listings':'';
+  const catL=(VCATS.find(x=>x[0]===VL.cat)||[])[1];
+  $('vempty').innerHTML=VL.err?'<div class="mrow"><div class="t">Couldn’t load listings</div><div class="s">Check your connection.</div><div class="macts"><button class="fill" data-ma="retry">Try again</button></div></div>':(VL.done&&!n?'<div class="mrow"><div class="t">'+(VL.cat==='all'?VEMPTY[VL.tab][0]:'Nothing in '+catL)+'</div><div class="s" style="margin:2px 0 0">'+(VL.cat==='all'?VEMPTY[VL.tab][1]:'Try another category or tab.')+'</div></div>':'');
   if(!VL.done&&!VL.busy&&!VL.err&&b>=n-2)vlMore();
 }
 async function vlMore(){
   if(VL.busy||VL.done||!ME||!$('vlist'))return;
   VL.busy=true;VL.err=false;const gen=VL.gen;vlRender(true);
-  let q=sb.from('listings').select('id,title,price_kobo,status,type,created_at').eq('seller_id',ME.id).eq('status',VL.tab).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(15);
+  const first=!VL.cursor;
+  let q=sb.from('listings').select('id,title,price_kobo,status,type,created_at',first?{count:'exact'}:{}).eq('seller_id',ME.id).eq('status',VL.tab);
+  if(VL.cat!=='all')q=q.eq('category',VL.cat);
+  q=q.order('created_at',{ascending:false}).order('id',{ascending:false}).limit(15);
   if(VL.cursor)q=q.or('created_at.lt.'+VL.cursor.c+',and(created_at.eq.'+VL.cursor.c+',id.lt.'+VL.cursor.id+')');
-  const {data,error}=await q;
+  const {data,error,count}=await q;
   if(gen!==VL.gen)return;
   VL.busy=false;
   if(error){console.error(error);VL.err=true;vlRender(true);return;}
+  if(first&&count!=null)VL.total=count;
   VL.rows.push(...data);if(data.length<15)VL.done=true;
   if(data.length){const z=data[data.length-1];VL.cursor={c:z.created_at,id:z.id};}
   vlRender(true);
 }
 function vlReset(tab){
-  VL.gen++;if(tab)VL.tab=tab;VL.rows=[];VL.cursor=null;VL.done=false;VL.busy=false;VL.err=false;VL.key='';
+  VL.gen++;if(tab)VL.tab=tab;VL.total=0;VL.rows=[];VL.cursor=null;VL.done=false;VL.busy=false;VL.err=false;VL.key='';
   document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.vt===VL.tab));
+  document.querySelectorAll('#vcats button').forEach(b=>b.classList.toggle('on',b.dataset.vc===VL.cat));
   vlMore();
 }
 async function updCount(){try{const r=await sb.from('listings').select('id',{count:'exact',head:true}).eq('seller_id',ME.id);const e=$('nList');if(e&&r.count!=null)e.textContent=r.count;}catch(e){}}
@@ -480,7 +492,7 @@ async function myAction(b){
   }
   if(!l||!ME)return;
   if(a==='edit'){editId=l.id;$('eName').value=l.title;$('ePrice').value=Math.round(l.price_kobo/100);$('esheet').classList.add('open');return;}
-  if(a==='renew'){const {error}=await sb.from('listings').update({created_at:new Date().toISOString()}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not renew: '+error.message);return;}toast('Renewed. It is back at the top.');}
+  if(a==='renew'){const upd={created_at:new Date().toISOString()};if(l.status==='archived')upd.status='active';const {error}=await sb.from('listings').update(upd).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not renew: '+error.message);return;}toast('Renewed. It is back at the top.');}
   if(a==='publish'){const {error}=await sb.from('listings').update({status:'active'}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not publish: '+error.message);return;}toast('Listing is live.');}
   if(a==='sold'){const next=l.status==='sold'?'active':'sold';const {error}=await sb.from('listings').update({status:next}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not update: '+error.message);return;}toast(next==='sold'?'Marked as sold. It is hidden from the market.':'Listing is live again.');}
   vlReset();load();updCount();
@@ -492,16 +504,29 @@ async function shareStore(){
   try{await navigator.clipboard.writeText(url);toast('Shop link copied');}catch(e){window.open('https://wa.me/?text='+encodeURIComponent(txt+url),'_blank');}
 }
 
+/* ---------- Seller view counts (same rule as the old app): signed-in viewer, not the seller, once per listing per device per day, when 60% of the card is seen ---------- */
+const vo=new IntersectionObserver(es=>{es.forEach(en=>{
+  if(!en.isIntersecting)return;vo.unobserve(en.target);
+  const id=en.target.dataset.lid,it=ITEMS.find(x=>String(x.id)===id);
+  if(!it||!ME||it.sid===ME.id)return;
+  let seen={};try{seen=JSON.parse(localStorage.getItem('sureoViewed')||'{}');}catch(e){}
+  const day=new Date().toISOString().slice(0,10);if(seen[id]===day)return;
+  seen[id]=day;try{localStorage.setItem('sureoViewed',JSON.stringify(seen));}catch(e){}
+  sb.rpc('add_view',{lid:id}).then(()=>{},()=>{});
+});},{threshold:.6});
+function trackViews(){document.querySelectorAll('#grid .card').forEach(c=>vo.observe(c));}
+
 /* ---------- Events: one delegated listener, so late-added elements always work ---------- */
 document.addEventListener('click',e=>{
   if(e.target.closest('a.card')&&!e.target.closest('[data-fav]'))FROMLIST=true;
-  const t=e.target.closest('[data-fav],[data-cat],[data-act],[data-cid],[data-ma],[data-vt]');
+  const t=e.target.closest('[data-fav],[data-cat],[data-act],[data-cid],[data-ma],[data-vt],[data-vc]');
   if(!t){if(e.target===$('sheet'))$('sheet').classList.remove('open');if(e.target===$('esheet'))$('esheet').classList.remove('open');return;}
   if(t.dataset.fav){
     e.preventDefault();const id=t.dataset.fav;FAV.has(id)?FAV.delete(id):FAV.add(id);
     try{localStorage.setItem('sureoFav',JSON.stringify([...FAV]));}catch(x){}
     t.classList.toggle('on',FAV.has(id));return;
   }
+  if(t.dataset.vc){if(t.dataset.vc!==VL.cat){VL.cat=t.dataset.vc;vlReset();}return;}
   if(t.dataset.vt){if(t.dataset.vt!==VL.tab)vlReset(t.dataset.vt);return;}
   if(t.dataset.ma){myAction(t);return;}
   if(t.dataset.cat){st.cat=t.dataset.cat;paint();}
