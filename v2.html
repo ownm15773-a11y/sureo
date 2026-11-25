@@ -214,6 +214,32 @@ button:disabled:active{transform:none;opacity:.6}
 .nav .sell i{transition:transform .12s ease}
 .nav .sell:active i{transform:translateY(-8px) scale(.9)}
 @media (prefers-reduced-motion:reduce){button,a.card,a.lrow,a.btn,.nav a,.nav .sell i{transition:none}button:active,a.lrow:active,a.btn:active,a.card:active,.nav a:not(.sell):active{transform:none}}
+#psheet{z-index:85}
+.panel textarea{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);outline:0;font-size:16px;margin-bottom:8px;resize:none;font-family:inherit;color:inherit}
+.macts .fill.danger{background:#dc2626;border-color:#dc2626;color:#fff}
+.delb{width:100%;margin-top:10px;padding:12px;border-radius:10px;border:1.5px solid #dc2626;color:#dc2626;font-weight:600;background:transparent}
+.omax{max-width:560px;margin:0 auto}
+.oh{font-size:13px;color:var(--muted);margin:0 0 10px}
+.ord{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:10px}
+.ord summary{display:flex;align-items:center;gap:12px;padding:14px;list-style:none;cursor:pointer}
+.ord summary::-webkit-details-marker{display:none}
+.ord-ic{font-size:20px}
+.ord-t{flex:1;min-width:0}.ord-t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ord-t small{color:var(--muted);font-size:12px}
+.ob{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--field);color:var(--muted);white-space:nowrap}
+.ob.act{background:var(--g2);color:var(--gtext)}
+.ord-body{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px}
+.ord-box{background:var(--field);border-radius:12px;padding:12px;font-size:13px;line-height:1.5}
+.ord-box .code{font-size:24px;letter-spacing:4px;font-weight:700}
+.hrow{display:flex;gap:8px}
+.hrow input{flex:1;min-width:0;padding:11px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);outline:0;font-size:16px}
+.hrow button,.obtn{padding:11px 16px;border-radius:12px;background:var(--g);color:var(--onG);font-weight:700;font-size:14px}
+.obtn.ghost{background:transparent;border:1.5px solid var(--g);color:var(--gtext)}
+.omore{width:100%;margin:12px 0;padding:12px;border-radius:12px;border:1.5px solid var(--g);color:var(--gtext);font-weight:700}
+.wf{display:flex;flex-direction:column;gap:8px;padding:14px 0 10px}
+.wf input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--field);outline:0;font-size:16px}
+.wcard{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
+.wcard>i{font-style:normal;font-size:22px}
+.wcard>div{flex:1;min-width:0}.wcard b{display:block;font-size:14px}.wcard small{color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
@@ -268,7 +294,9 @@ button:disabled:active{transform:none;opacity:.6}
 <div class="sheet" id="esheet"><div class="panel"><h2>Edit listing</h2>
   <input id="eName" placeholder="Title" maxlength="80"><input id="ePrice" type="text" inputmode="numeric" autocomplete="off" placeholder="Price in ₦ (0 if free)">
   <div class="macts" style="margin-top:6px"><button class="pri" data-ma="save" style="flex:1;padding:12px">Save changes</button><button data-ma="cancel" style="padding:12px 18px">Cancel</button></div>
+  <button class="delb" data-ma="del">Delete listing</button>
 </div></div>
+<div class="sheet" id="psheet"><div class="panel"><h2 id="pT"></h2><p class="ss" id="pH" style="margin-bottom:10px"></p><textarea id="pTxt" rows="4"></textarea><p class="err" id="pE"></p><div class="macts"><button class="fill" id="pOk" style="padding:12px;flex:1"><span id="pOkT">Send</span></button><button id="pNo" style="padding:12px 18px">Cancel</button></div></div></div>
 <div class="sheet" id="sheet"><div class="panel">
   <h2>Choose campus</h2>
   <input id="cq" type="search" placeholder="Search your university" autocomplete="off">
@@ -507,6 +535,8 @@ function route(){
   if(location.hash==='#account'){closeDetail();showAccount();return;}
   if(location.hash==='#shop'){closeDetail();showShop();return;}
   if(location.hash==='#sell'){closeDetail();showSell();return;}
+  if(location.hash==='#orders'){closeDetail();showOrders();return;}
+  if(location.hash==='#wanted'){closeDetail();showWanted();return;}
   closeAcct();
   if(isProfileRoute()){closeDetail();showProfile();return;}
   document.body.classList.remove('pv');setNav('home');
@@ -630,6 +660,14 @@ let editId=null;
 async function myAction(b){
   const a=b.dataset.ma,l=VL.rows.find(x=>x.id===b.dataset.id);
   if(a==='cancel'){$('esheet').classList.remove('open');return;}
+  if(a==='del'){
+    const row=VL.rows.find(x=>x.id===editId);
+    if(await askText({title:'Delete this listing?',help:'“'+((row&&row.title)||$('eName').value)+'” will be removed permanently.',noText:true,ok:'Delete',danger:true})===null)return;
+    const {error}=await sb.from('listings').delete().eq('id',editId).eq('seller_id',ME.id);
+    if(error){toast('Could not delete: '+error.message);return;}
+    rmFolder('listing-media',ME.id+'/'+editId);
+    $('esheet').classList.remove('open');toast('Listing deleted.');vlReset();load();updCount();return;
+  }
   if(a==='retry'){VL.err=false;vlMore();return;}
   if(a==='save'){
     const name=$('eName').value.trim(),pz=Math.max(0,parseInt($('ePrice').value.replace(/\D/g,''),10)||0);if(!name){$('eName').focus();return;}
@@ -862,8 +900,8 @@ async function showShop(){
   const lk='style="color:inherit;text-decoration:none"';
   a.innerHTML=aBar('My Shop')+'<div class="acard"><div class="lcard">'
   +'<button class="lrow" data-act="store"><span><svg class="ic"><use href="#i-share"/></svg>Share my shop link</span><small>›</small></button>'
-  +'<a class="lrow" href="/" '+lk+'><span><svg class="ic"><use href="#i-box"/></svg>Orders &amp; Receipts</span><small>›</small></a>'
-  +'<a class="lrow" href="/" '+lk+'><span><svg class="ic"><use href="#i-search"/></svg>Wanted board</span><small>›</small></a>'
+  +'<a class="lrow" href="#orders" '+lk+'><span><svg class="ic"><use href="#i-box"/></svg>Orders &amp; Receipts</span><small>›</small></a>'
+  +'<a class="lrow" href="#wanted" '+lk+'><span><svg class="ic"><use href="#i-search"/></svg>Wanted board</span><small>›</small></a>'
   +'</div></div>';
 }
 
@@ -991,6 +1029,160 @@ async function postListing(btn){
 }
 
 document.addEventListener('touchstart',function(){},{passive:true}); /* lets iPhone Safari show the pressed state */
+/* ---------- Ask-a-question sheet (used by Delete, Report a problem, Reply) ---------- */
+let pRes=null,pMin=0;
+function askText(o){return new Promise(res=>{
+  if(pRes)pRes(null);pRes=res;pMin=o.min||0;
+  $('pT').textContent=o.title;$('pH').textContent=o.help||'';
+  const t=$('pTxt');t.style.display=o.noText?'none':'block';t.value='';t.placeholder=o.placeholder||'';
+  $('pE').style.display='none';$('pOkT').textContent=o.ok||'Send';$('pOk').classList.toggle('danger',!!o.danger);
+  $('psheet').classList.add('open');
+});}
+function askClose(v){$('psheet').classList.remove('open');const r=pRes;pRes=null;if(r)r(v);}
+$('pNo').addEventListener('click',()=>askClose(null));
+$('pOk').addEventListener('click',()=>{const v=$('pTxt').value.trim();if(pMin&&v.length<pMin){const e=$('pE');e.textContent='Please write at least '+pMin+' characters.';e.style.display='block';return;}askClose(v);});
+$('psheet').addEventListener('click',e=>{if(e.target===$('psheet'))askClose(null);});
+const signinCard=t=>aBar(t)+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to continue.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';
+
+/* ---------- Orders & Receipts (#orders): same tables and rules as the old app ---------- */
+let ORD={f:'action',n:20},OC=null;
+const fmtN=k=>'₦'+Math.round((k||0)/100).toLocaleString('en-NG');
+async function showOrders(){
+  const a=$('acct');a.classList.add('open');a.scrollTop=0;
+  a.innerHTML=aBar('Orders & Receipts')+'<div class="acard"><div class="sk" style="height:120px;border-radius:10px;margin:10px 0"></div></div>';
+  if(!ME)await AUTHP;
+  if(!ME){a.innerHTML=signinCard('Orders & Receipts');return;}
+  ORD={f:'action',n:20};await loadOrders();
+}
+async function loadOrders(){
+  if(!ME)return;
+  const {data,error}=await sb.from('orders').select('id,listing_title,amount_kobo,seller_id,buyer_id,handover_status,handover_at,receipt').or('buyer_id.eq.'+ME.id+',seller_id.eq.'+ME.id).order('created_at',{ascending:false}).limit(ORD.n);
+  if(location.hash!=='#orders')return;
+  if(error||!data||!data.length){OC=null;$('acct').innerHTML=aBar('Orders & Receipts')+'<div class="acard"><p class="ss" style="padding:18px 0;text-align:center">No orders yet.</p></div>';return;}
+  const codes={},dm={};
+  const mine=data.filter(o=>o.buyer_id===ME.id).map(o=>String(o.id));
+  if(mine.length){const r=await sb.from('handover_codes').select('order_id,code').in('order_id',mine);(r.data||[]).forEach(c=>codes[c.order_id]=c.code);}
+  const sIds=data.filter(o=>o.seller_id===ME.id).map(o=>String(o.id));
+  if(sIds.length){const r=await sb.from('disputes').select('id,order_id,reason,seller_reply').in('order_id',sIds);(r.data||[]).forEach(d=>{(dm[d.order_id]=dm[d.order_id]||[]).push(d);});}
+  if(location.hash!=='#orders')return;
+  OC={data,codes,dm};drawOrders();
+}
+function drawOrders(){
+  if(!OC)return;
+  const {data,codes,dm}=OC,uid=ME.id;
+  const conf=o=>o.handover_status==='confirmed';
+  const autoClosed=o=>o.receipt==='assumed'||(o.receipt==null&&conf(o)&&o.handover_at&&Date.now()-new Date(o.handover_at)>7*864e5);
+  const isDone=o=>o.buyer_id===uid?(conf(o)&&(o.receipt!=null||autoClosed(o))):conf(o);
+  const unreplied=o=>o.seller_id===uid&&(dm[String(o.id)]||[]).some(d=>!d.seller_reply);
+  const needsAct=o=>!isDone(o)||unreplied(o);
+  const nAct=data.filter(needsAct).length;
+  const badge=o=>{const b=o.buyer_id===uid;
+    if(unreplied(o))return['Reply needed',1];
+    if(isDone(o))return['Done',0];
+    if(!conf(o))return[b?'Share code':'Enter code',1];
+    return['Confirm receipt',1];};
+  const list=data.filter(o=>ORD.f==='action'?needsAct(o):ORD.f==='selling'?o.seller_id===uid:ORD.f==='buying'?o.buyer_id===uid:isDone(o));
+  const seg=[['action','To do'+(nAct?' '+nAct:'')],['selling','Selling'],['buying','Buying'],['done','Done']].map(c=>'<button type="button" class="'+(ORD.f===c[0]?'on':'')+'" data-of="'+c[0]+'">'+c[1]+'</button>').join('');
+  const row=o=>{
+    const b=o.buyer_id===uid,id=esc(o.id),bd=badge(o);let body='';
+    if(b&&!conf(o))body+='<div class="ord-box">Your handover code<br><span class="code">'+esc(codes[String(o.id)]||'······')+'</span><br><small>Give this code to the seller only when the item is in your hand.</small></div>';
+    if(!b&&!conf(o))body+='<div class="hrow"><input inputmode="numeric" maxlength="6" placeholder="Buyer’s 6-digit code" data-hc="'+id+'"><button data-hcb="'+id+'">Confirm</button></div>';
+    if(b&&conf(o)){
+      if(o.receipt==='received')body+='<div class="ord-box">✅ You confirmed you received this item.</div>';
+      else if(o.receipt==='not_received')body+='<div class="ord-box">❌ You reported this item as not received.</div>';
+      else if(autoClosed(o))body+='<div class="ord-box">🕒 Closed automatically after 7 days with no answer. If something is wrong, tap Report a problem.</div>';
+      else body+='<div class="ord-box">📦 <b>Did you receive your item?</b><div class="hrow" style="margin-top:8px"><button data-rcy="'+id+'">Yes</button><button class="obtn ghost" data-rcn="'+id+'">No</button></div></div>';
+    }
+    if(!b&&conf(o))body+='<div class="ord-box">✅ Handover confirmed.</div>';
+    body+=(dm[String(o.id)]||[]).map(d=>'<div class="ord-box">⚠️ <b>Buyer reported:</b> '+esc(d.reason)+'<br>'+(d.seller_reply?'<small>Your reply: '+esc(d.seller_reply)+'</small>':'<button class="obtn ghost" data-srep="'+esc(d.id)+'" style="margin-top:8px">Reply with your side</button>')+'</div>').join('');
+    body+='<button class="obtn ghost" data-prob="'+id+'" style="align-self:flex-start">⚠️ Report a problem</button>';
+    return '<details class="ord"><summary><span class="ord-ic">'+(b?'🛍️':'🏷️')+'</span><span class="ord-t"><b>'+esc(o.listing_title)+'</b><small>'+(b?'Buying':'Selling')+' · '+fmtN(o.amount_kobo)+'</small></span><span class="ob'+(bd[1]?' act':'')+'">'+bd[0]+'</span></summary><div class="ord-body">'+body+'</div></details>';
+  };
+  $('acct').innerHTML=aBar('Orders & Receipts')+'<div class="omax"><div class="oh">'+(nAct?nAct+' need'+(nAct===1?'s':'')+' your attention':'All up to date')+'</div><div class="seg" style="position:static">'+seg+'</div>'
+  +(list.length?list.map(row).join(''):'<p class="ss" style="text-align:center;margin:26px 0">'+(ORD.f==='action'?'Nothing needs your attention 🎉':'No orders here.')+'</p>')
+  +(data.length>=ORD.n?'<button type="button" class="omore" data-omore="1">Load more orders</button>':'')+'</div>';
+}
+document.addEventListener('click',async e=>{
+  if(!ME)return;
+  const t=e.target.closest('[data-of],[data-omore],[data-hcb],[data-prob],[data-rcy],[data-rcn],[data-srep]');if(!t)return;
+  if(t.dataset.of){ORD.f=t.dataset.of;drawOrders();return;}
+  if(t.dataset.omore){ORD.n+=20;loadOrders();return;}
+  if(t.dataset.hcb){
+    const id=t.dataset.hcb,inp=document.querySelector('[data-hc="'+id+'"]');
+    const {data,error}=await sb.rpc('confirm_handover',{p_order:id,p_code:(inp&&inp.value)||''});
+    const msg={ok:'✅ Handover confirmed.',wrong:'Wrong code. Ask the buyer to check.',locked:'Too many wrong tries. Contact support.',already:'Already confirmed.',not_allowed:'Only the seller can confirm.'};
+    toast(error?('Could not confirm: '+error.message):(msg[data]||'Could not confirm.'));loadOrders();return;
+  }
+  if(t.dataset.prob){
+    const r=await askText({title:'Report a problem',help:'Tell us what went wrong with this order. We will review it.',placeholder:'Describe the problem…',min:5,ok:'Send report'});if(r===null)return;
+    const {error}=await sb.from('disputes').insert({order_id:t.dataset.prob,opened_by:ME.id,reason:r});
+    toast(error?('Could not send: '+error.message):'Problem reported. We will review it.');return;
+  }
+  if(t.dataset.rcy){const {data,error}=await sb.rpc('buyer_receipt',{p_order:t.dataset.rcy,p_ok:true,p_note:''});toast(error?('Could not save: '+error.message):(data==='ok'?'✅ Thanks for confirming.':data==='need_code'?'The seller must enter your handover code first.':'Could not save.'));loadOrders();return;}
+  if(t.dataset.rcn){
+    const note=await askText({title:'Item not received?',help:'This opens a dispute that we will review. Tell us what happened.',placeholder:'Optional: add details…',ok:'Report not received',danger:true});if(note===null)return;
+    const {data,error}=await sb.rpc('buyer_receipt',{p_order:t.dataset.rcn,p_ok:false,p_note:note});toast(error?('Could not send: '+error.message):(data==='ok'?'Reported. We will review it.':'Could not send.'));loadOrders();return;
+  }
+  if(t.dataset.srep){
+    const x=await askText({title:'Your side of the story',help:'Say where and when you handed over the item. We read both sides before deciding.',placeholder:'e.g. I handed it over at the library on Tuesday…',min:5,ok:'Send reply'});if(x===null)return;
+    const {data,error}=await sb.rpc('seller_reply',{p_dispute:t.dataset.srep,p_text:x});toast(error?('Could not send: '+error.message):(data==='ok'?'Reply sent.':'Could not send.'));loadOrders();
+  }
+});
+
+/* ---------- Wanted board (#wanted) ---------- */
+let WANTED=[];
+async function showWanted(){
+  const a=$('acct');a.classList.add('open');a.scrollTop=0;
+  a.innerHTML=aBar('Wanted board')+'<div class="acard"><div class="sk" style="height:120px;border-radius:10px;margin:10px 0"></div></div>';
+  if(!ME)await AUTHP;
+  if(location.hash!=='#wanted')return;
+  a.innerHTML=aBar('Wanted board')+'<div class="omax"><div class="acard"><h3>🙋 Post what you need</h3><div class="wf"><input id="wtT" maxlength="80" autocomplete="off" placeholder="e.g. Mini fridge, fairly used"><input id="wtB" inputmode="numeric" autocomplete="off" placeholder="Budget in ₦ (optional)"><button class="btn pbtn" data-wt="post" style="margin-top:4px">Post request</button></div></div><div id="wtList"></div></div>';
+  await paintWanted();
+}
+async function paintWanted(){
+  const L=$('wtList');if(!L)return;
+  const {data,error}=await sb.from('wanted').select('id,user_id,title,budget_kobo').order('created_at',{ascending:false}).limit(40);
+  if(!$('wtList'))return;
+  if(error){L.innerHTML='<p class="ss" style="text-align:center;margin-top:14px">Wanted board is not set up yet.<br>'+esc(error.message||'')+'</p>';return;}
+  WANTED=data||[];
+  L.innerHTML=WANTED.length?WANTED.map(w=>'<div class="wcard"><i>🙋</i><div><b>'+esc(w.title)+'</b><small>'+(w.budget_kobo?'Budget ₦'+Math.round(w.budget_kobo/100).toLocaleString('en-NG'):'Open budget')+'</small></div>'+(ME&&ME.id===w.user_id?'<button class="obtn ghost" data-wt="del" data-id="'+esc(w.id)+'" style="color:#dc2626;border-color:#dc2626">Delete</button>':'<button class="obtn" data-wt="have" data-id="'+esc(w.id)+'">I have it</button>')+'</div>').join(''):'<p class="ss" style="text-align:center;margin-top:14px">No requests yet. Be the first!</p>';
+}
+document.addEventListener('input',e=>{
+  if(e.target.id!=='wtB')return;
+  const el=e.target,raw=el.value,keep=raw.slice(0,el.selectionStart).replace(/\D/g,'').length,f=commaNum(raw);
+  el.value=f;let n=0,i=0;for(;i<f.length&&n<keep;i++)if(/\d/.test(f[i]))n++;
+  try{el.setSelectionRange(i,i);}catch(x){}
+});
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-wt]');if(!t)return;
+  if(!ME){toast('Sign in to use the wanted board.');return;}
+  const a=t.dataset.wt;
+  if(a==='post'){
+    const ti=$('wtT').value.trim();if(ti.length<3){toast('Tell us what you need.');return;}
+    t.disabled=true;
+    const {error}=await sb.from('wanted').insert({user_id:ME.id,title:ti,budget_kobo:(parseInt($('wtB').value.replace(/\D/g,''),10)||0)*100});
+    t.disabled=false;
+    if(error){toast('Could not post: '+error.message);return;}
+    $('wtT').value='';$('wtB').value='';toast('✓ Request posted.');paintWanted();
+  }else if(a==='del'){
+    if(await askText({title:'Delete this request?',help:'It will be removed from the wanted board.',noText:true,ok:'Delete',danger:true})===null)return;
+    const {error}=await sb.from('wanted').delete().eq('id',t.dataset.id).eq('user_id',ME.id);
+    if(error){toast('Could not delete: '+error.message);return;}
+    toast('Request deleted.');paintWanted();
+  }else if(a==='have')haveIt(WANTED.find(x=>String(x.id)===t.dataset.id));
+});
+async function haveIt(w){
+  if(!w||!ME)return;
+  const sub='🙋 Wanted: '+w.title;
+  const ex=await sb.from('conversations').select('id').eq('buyer_id',ME.id).eq('seller_id',w.user_id).eq('listing_title',sub).limit(1);
+  if(!(ex.data&&ex.data.length)){
+    const {data,error}=await sb.from('conversations').insert({listing_id:null,listing_title:sub,buyer_id:ME.id,seller_id:w.user_id,last_message:'',last_at:new Date().toISOString()}).select('id').single();
+    if(error){toast('Could not start chat: '+error.message);return;}
+    await sb.from('messages').insert({conversation_id:data.id,sender_id:ME.id,body:'Hi! I have "'+w.title+'" (saw your request on Sureo Wanted).'});
+  }
+  toast('Chat started. Open Messages in the main app to continue.');
+}
+
 /* ---------- Start: show the screen and listings at once, resolve campus in the background ---------- */
 paint();load();loadCampuses();findMyCampus();route();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
