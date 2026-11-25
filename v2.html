@@ -646,7 +646,7 @@ const statusOf=l=>l.status==='active'&&Date.now()-new Date(l.created_at)>=60*864
 async function showProfile(){
   document.body.classList.add('pv');setNav(location.hash==='#items'?'items':'profile');window.scrollTo(0,0);
   const el=$('profileView');
-  if(!ME){el.innerHTML='<div class="ph1"><div class="pav">S</div><div><div class="pname">Your profile</div><div class="ss">Sign in to see your listings and rating.</div></div></div><a class="btn" href="/">Sign in</a>';await AUTHP;if(!ME)return;}
+  if(!ME){el.innerHTML='<div class="ph1"><div class="pav">S</div><div><div class="pname">Your profile</div><div class="ss">Sign in to see your listings and rating.</div></div></div><a class="btn" href="#signin">Sign in</a>';await AUTHP;if(!ME)return;}
   el.innerHTML='<div class="ph1"><div class="pav sk"></div><div class="sk" style="height:22px;width:50%;border-radius:8px"></div></div>';
   const [p,m]=await Promise.all([
     sb.from('profiles').select('full_name,is_seller_verified,rating_avg,rating_count,campus_id').eq('id',ME.id).maybeSingle(),
@@ -835,7 +835,7 @@ async function rmFolder(bucket,prefix){
 async function showAccount(){
   const a=$('acct');a.classList.add('open');a.scrollTop=0;
   a.innerHTML=aBar()+'<div class="acard"><div class="sk" style="height:150px;border-radius:10px;margin:10px 0"></div></div>';
-  if(!ME){await AUTHP;if(!ME){a.innerHTML=aBar()+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your account.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';return;}}
+  if(!ME){await AUTHP;if(!ME){a.innerHTML=aBar()+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your account.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>';return;}}
   await loadAcc();if(location.hash!=='#account'||!ME)return;paintAcct();
 }
 async function loadAcc(){
@@ -973,7 +973,7 @@ async function savePayout(){
 /* ---------- My Shop (#shop) ---------- */
 async function showShop(){
   const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  if(!ME){a.innerHTML=aBar('My Shop')+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your shop.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';await AUTHP;if(!ME)return;}
+  if(!ME){a.innerHTML=aBar('My Shop')+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your shop.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>';await AUTHP;if(!ME)return;}
   if(location.hash!=='#shop')return;
   const lk='style="color:inherit;text-decoration:none"';
   a.innerHTML=aBar('My Shop')+'<div class="acard"><div class="lcard">'
@@ -1120,7 +1120,7 @@ function askClose(v){$('psheet').classList.remove('open');const r=pRes;pRes=null
 $('pNo').addEventListener('click',()=>askClose(null));
 $('pOk').addEventListener('click',()=>{const v=$('pTxt').value.trim();if(pMin&&v.length<pMin){const e=$('pE');e.textContent='Please write at least '+pMin+' characters.';e.style.display='block';return;}askClose(v);});
 $('psheet').addEventListener('click',e=>{if(e.target===$('psheet'))askClose(null);});
-const signinCard=t=>aBar(t)+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to continue.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';
+const signinCard=t=>aBar(t)+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to continue.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>';
 
 /* ---------- Orders & Receipts (#orders): same tables and rules as the old app ---------- */
 let ORD={f:'action',n:20},OC=null;
@@ -1280,6 +1280,68 @@ async function bellDot(){
     if(b1)b1.classList.toggle('on',(b.count||0)>0);
   }catch(e){}
 }
+
+/* ---------- Sign in / Sign up (inside v2, same Supabase session as old app) ---------- */
+const TERMS_V='2026-11-05',PRIV_V='2026-11-05';let AU={email:''};
+const setRemember=v=>{try{localStorage.setItem('sureoRemember',v?'1':'0');}catch(e){}};
+async function ensureConsent(u){
+  let f=null;try{f=localStorage.getItem('sureoConsent');}catch(e){}
+  if(!f||!u)return;
+  try{const v=JSON.parse(f);const {error}=await sb.from('consents').insert({user_id:u.id,terms_version:v.t,privacy_version:v.p});if(!error)localStorage.removeItem('sureoConsent');}catch(e){}
+}
+const auBtns=(main,label,extra)=>'<p class="err" id="aErr"></p><div class="macts"><button class="fill" data-au="'+main+'" style="padding:12px">'+label+'</button><button data-au="close" style="padding:12px 18px">Cancel</button></div>'+extra;
+function authHtml(m){
+  if(m==='up')return '<h2>Create account</h2><p class="ss" style="margin-bottom:10px">Join Sureo, the verified campus marketplace.</p><input id="auN" placeholder="Full name" autocomplete="name" maxlength="60"><input id="auE" type="email" placeholder="Email" autocomplete="email" value="'+esc(AU.email)+'"><input id="auP" type="password" placeholder="Password (at least 8 characters)" autocomplete="new-password"><p class="ss" style="margin:4px 0 8px;font-size:12px">By creating an account you agree to the Sureo Terms and Privacy Policy.</p>'+auBtns('signup','Create account','<p class="ss" style="text-align:center;margin-top:12px">Have an account? <a href="#" data-au="tologin" style="color:var(--primary);font-weight:700">Sign in</a></p>');
+  if(m==='code')return '<h2>Check your email</h2><p class="ss" style="margin-bottom:10px">We sent a code to <b>'+esc(AU.email)+'</b>. Enter it below to finish.</p><input id="auC" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter the 6-digit code">'+auBtns('verify','Verify','<p class="ss" style="text-align:center;margin-top:12px"><a href="#" data-au="resend" style="color:var(--primary);font-weight:700">Resend code</a></p>');
+  return '<h2>Sign in</h2><p class="ss" style="margin-bottom:10px">Welcome back to Sureo.</p><input id="auE" type="email" placeholder="Email" autocomplete="email" value="'+esc(AU.email)+'"><input id="auP" type="password" placeholder="Password" autocomplete="current-password"><label class="ss" style="display:flex;gap:8px;align-items:center;margin:2px 0 8px"><input type="checkbox" id="auR" style="width:auto;margin:0"'+(rememberOn()?' checked':'')+'>Remember me</label>'+auBtns('login','Sign in','<p class="ss" style="text-align:center;margin-top:12px"><a href="#" data-au="forgot" style="color:var(--primary);font-weight:700">Forgot password?</a> &nbsp;·&nbsp; <a href="#" data-au="tosignup" style="color:var(--primary);font-weight:700">Create account</a></p>');
+}
+const auVal=id=>{const x=$(id);return x?x.value.trim():'';};
+const auMail=e=>/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e);
+async function auDone(u){await ensureConsent(u);location.reload();}
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href="#signin"]');if(!a)return;e.preventDefault();AU.email='';openA(authHtml('in'));},true);
+$('abody').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-au]');if(!b)return;e.preventDefault();
+  const a=b.dataset.au;
+  if(a==='close'){closeA();return;}
+  if(a==='tologin'){AU.email=auVal('auE');openA(authHtml('in'));return;}
+  if(a==='tosignup'){AU.email=auVal('auE');openA(authHtml('up'));return;}
+  if(a==='login')return aRun(b,async()=>{
+    const em=auVal('auE'),pw=$('auP').value;
+    if(!auMail(em))return aErr('Enter a valid email address.');
+    if(!pw)return aErr('Enter your password.');
+    setRemember($('auR').checked);
+    const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
+    if(error)return aErr(error.message);
+    await auDone(data.user);
+  });
+  if(a==='signup')return aRun(b,async()=>{
+    const nm=auVal('auN'),em=auVal('auE'),pw=$('auP').value;
+    if(nm.length<2||nm.length>60)return aErr('Enter your name (2 to 60 characters).');
+    if(!auMail(em))return aErr('Enter a valid email address.');
+    if(pw.length<8)return aErr('Password must be at least 8 characters.');
+    setRemember(true);
+    const {data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{full_name:nm}}});
+    if(error)return aErr(error.message);
+    try{localStorage.setItem('sureoConsent',JSON.stringify({t:TERMS_V,p:PRIV_V}));}catch(x){}
+    if(data.session)return auDone(data.session.user);
+    AU.email=em;openA(authHtml('code'));
+  });
+  if(a==='verify')return aRun(b,async()=>{
+    const c=auVal('auC').replace(/\s/g,'');
+    if(!/^\d{6}$/.test(c))return aErr('Enter the 6-digit code from your email.');
+    const {data,error}=await sb.auth.verifyOtp({email:AU.email,token:c,type:'signup'});
+    if(error)return aErr('That code is wrong or expired. Check it or tap Resend code.');
+    await auDone(data.user);
+  });
+  if(a==='resend'){const {error}=await sb.auth.resend({type:'signup',email:AU.email});toast(error?error.message:'New code sent. Check your email.',4000);return;}
+  if(a==='forgot'){
+    const em=auVal('auE');if(!auMail(em))return aErr('Enter your email above, then tap Forgot password.');
+    const {error}=await sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+'/old.html'});
+    toast(error?error.message:'If an account exists, a reset link is on its way. Check your inbox.',5000);
+  }
+});
+AUTHP.then(u=>{if(u)ensureConsent(u);});
+
 AUTHP.then(bellDot);AUTHP.then(pushInit);setInterval(()=>{if(!document.hidden)bellDot();},30000);
 async function showMsgs(mode){
   MTAB=mode||'chats';const H='#'+(MTAB==='alerts'?'alerts':'messages'),TT=MTAB==='alerts'?'Alerts':'Messages';
@@ -1287,7 +1349,7 @@ async function showMsgs(mode){
   a.innerHTML=hubBack()+TT+'</h1></div><div class="omax"><div class="sk" style="height:70px;border-radius:12px;margin-bottom:10px"></div></div>';
   if(!ME)await AUTHP;
   if(location.hash!==H)return;
-  if(!ME){a.innerHTML=hubBack()+TT+'</h1></div><div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to see your messages.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';return;}
+  if(!ME){a.innerHTML=hubBack()+TT+'</h1></div><div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to see your messages.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>';return;}
   paintMsgs();bellDot();
 }
 async function paintMsgs(){
