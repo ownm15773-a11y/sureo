@@ -532,7 +532,7 @@ function setTheme(){
 let FROMLIST=false;
 const idFromHash=()=>{const m=location.hash.match(/^#l=([\w-]+)$/);return m?m[1]:null;};
 const waNum=p=>{const d=String(p||'').replace(/\D/g,'');if(/^0\d{10}$/.test(d))return '234'+d.slice(1);if(/^234\d{10}$/.test(d))return d;return null;};
-let toastT;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2600);}
+let toastT;function toast(m,ms){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),ms||2600);}
 const ago=d=>{const n=Math.floor((Date.now()-new Date(d))/864e5);return n<=0?'today':n===1?'yesterday':n+' days ago';};
 const TYLAB={sell:['Buy now','Sale'],rent:['Rent this','Rent'],trade:['Propose a trade','Trade'],free:['Get it free','Free']};
 function dBack(){return '<div class="dbar"><button class="round" data-act="back" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>';}
@@ -605,6 +605,39 @@ async function initAuth(){
   }catch(e){return null;}
 }
 const AUTHP=initAuth();
+/* ---------- Push notifications ---------- */
+const VAPID='BIcGhOAajf2Jv_7dyEIB7vnC4d9bQk3flamBIBhPaWdzQYi7eLlvOrXAkzObH2r0v-U5E1LaAb2eTsLw_E-SGHs';
+function b64u(s){const b=(s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b);return Uint8Array.from(Array.from(r).map(c=>c.charCodeAt(0)));}
+const pushOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const isIOS=()=>/iphone|ipad/i.test(navigator.userAgent);
+const isStandalone=()=>window.navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+function pushLabel(){return pushOK()&&Notification.permission==='granted'?'On':'Off';}
+async function enablePush(quiet){
+  if(!pushOK()){if(!quiet)toast(isIOS()?'On iPhone: tap Share, then Add to Home Screen, then open Sureo from your home screen and try again.':'This browser does not support notifications.',7000);return;}
+  try{
+    if(Notification.permission!=='granted'){if(quiet)return;const p=await Notification.requestPermission();if(p!=='granted'){toast('Notifications are blocked. Allow them in your phone settings.',5000);return;}}
+    if(!ME)return;
+    const reg=await navigator.serviceWorker.ready;
+    const sub=(await reg.pushManager.getSubscription())||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID)});
+    const {error}=await sb.rpc('save_push',{p_endpoint:sub.endpoint,p_sub:sub.toJSON()});
+    if(error)throw error;
+    const x=$('pushSub');if(x)x.textContent='On';if(!quiet)toast('🔔 Notifications are on.');
+  }catch(e){if(!quiet)toast('Could not turn on notifications: '+(e.message||e),6000);}
+}
+function pushInit(){
+  try{
+    if(!pushOK()){
+      if(isIOS()&&!isStandalone()&&!localStorage.getItem('sureoIosHint')){localStorage.setItem('sureoIosHint','1');toast('To get alerts on iPhone: tap Share, then Add to Home Screen, then open Sureo from there.',8000);}
+      return;
+    }
+    if(Notification.permission==='granted'){if(ME)enablePush(true);return;}
+    if(Notification.permission!=='default')return;
+    const last=+localStorage.getItem('sureoPushAsk')||0;
+    if(Date.now()-last<3*864e5)return;
+    const go=()=>{window.removeEventListener('click',go,true);try{localStorage.setItem('sureoPushAsk',Date.now());}catch(e){}enablePush(false);};
+    window.addEventListener('click',go,true);
+  }catch(e){}
+}
 
 /* ---------- Profile (opens on #profile or #items) ---------- */
 const isProfileRoute=()=>/^#(profile|items)$/.test(location.hash);
@@ -630,6 +663,7 @@ async function showProfile(){
    +'<div class="ptl" style="margin-top:22px">More</div><div class="lcard">'
     +'<a class="lrow" href="#account" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-user"/></svg>Identity &amp; account</span><small>›</small></a>'
    +'<a class="lrow" href="#shop" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-box"/></svg>My Shop</span><small>›</small></a>'
+   +'<button class="lrow" data-act="push"><span><svg class="ic"><use href="#i-bell"/></svg>Notifications</span><small id="pushSub">'+pushLabel()+'</small></button>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
    +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
   if(location.hash==='#items'){
@@ -761,6 +795,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.cid){st.campus=t.dataset.cid;$('sheet').classList.remove('open');load();}
   else if(t.dataset.act==='campus'){$('sheet').classList.add('open');$('cq').value='';paintCampuses();loadCampuses().then(paintCampuses);}
   else if(t.dataset.act==='theme')setTheme();
+  else if(t.dataset.act==='push')enablePush(false);
   else if(t.dataset.act==='back'){if(FROMLIST){FROMLIST=false;history.back();}else{history.replaceState(null,'',location.pathname+location.search);closeDetail();}}
   else if(t.dataset.act==='share')shareListing(t);
   else if(t.dataset.act==='focus'){if(location.hash)location.hash='';window.scrollTo(0,0);setTimeout(()=>$('q').focus(),50);}
@@ -1245,7 +1280,7 @@ async function bellDot(){
     if(b1)b1.classList.toggle('on',(b.count||0)>0);
   }catch(e){}
 }
-AUTHP.then(bellDot);setInterval(()=>{if(!document.hidden)bellDot();},30000);
+AUTHP.then(bellDot);AUTHP.then(pushInit);setInterval(()=>{if(!document.hidden)bellDot();},30000);
 async function showMsgs(mode){
   MTAB=mode||'chats';const H='#'+(MTAB==='alerts'?'alerts':'messages'),TT=MTAB==='alerts'?'Alerts':'Messages';
   stopCh();const a=$('acct');a.classList.add('open');a.scrollTop=0;
