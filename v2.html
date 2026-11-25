@@ -260,6 +260,11 @@ button:disabled:active{transform:none;opacity:.6}
 .replink{display:block;margin:6px auto 0;padding:10px;font-size:12px;font-weight:600;color:var(--muted)}
 .nav a{position:relative}
 .nav .bdot{top:4px;right:calc(50% - 22px)}
+.pbanner{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin:16px 0 0;padding:14px 16px;border-radius:16px;background:var(--g);color:var(--onG);font-size:18px}
+.pbanner b{display:block;font-size:15px}
+.pbanner small{display:block;font-size:12px;opacity:.85;margin-top:2px}
+.pbi{flex:none;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center}
+.pbi .ic{stroke:#fff;width:20px;height:20px}
 .lrow.picked{border-color:var(--g);background:var(--g2)}
 </style>
 </head>
@@ -291,7 +296,7 @@ button:disabled:active{transform:none;opacity:.6}
       </div>
       <div class="btns">
         <button class="round" data-act="theme" aria-label="Switch light or dark mode"><svg class="ic"><use href="#i-moon"/></svg></button>
-        <a class="round" href="#messages" aria-label="Messages and alerts"><svg class="ic"><use href="#i-bell"/></svg><span class="bdot" id="bdot"></span></a>
+        <a class="round" href="#alerts" aria-label="Alerts"><svg class="ic"><use href="#i-bell"/></svg><span class="bdot" id="bdot"></span></a>
       </div>
     </div>
     <label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search Jollof, MTH211, HP Laptop..." autocomplete="off"></label>
@@ -559,7 +564,8 @@ function route(){
   if(location.hash==='#sell'){closeDetail();showSell();return;}
   if(location.hash==='#orders'){closeDetail();showOrders();return;}
   if(location.hash==='#wanted'){closeDetail();showWanted();return;}
-  if(location.hash==='#messages'){closeDetail();showMsgs();return;}
+  if(location.hash==='#messages'){closeDetail();showMsgs('chats');return;}
+  if(location.hash==='#alerts'){closeDetail();showMsgs('alerts');return;}
   {const cm=location.hash.match(/^#chat=([\w-]+)$/);if(cm){closeDetail();showChat(cm[1]);return;}}
   closeAcct();
   if(isProfileRoute()){closeDetail();showProfile();return;}
@@ -614,13 +620,14 @@ async function showProfile(){
   el.innerHTML='<div class="ph1"><div class="pav">'+esc(nm.charAt(0).toUpperCase())+'</div><div style="min-width:0"><div class="pname">'+esc(nm)+'</div><div class="ss">'+esc(pr.campus_id?campName(pr.campus_id):'No campus set')+'</div>'+(pr.is_seller_verified?'<span class="vb"><svg class="ic"><use href="#i-tick"/></svg>Sureo Verified</span>':'')+'<span class="trust" id="ptier" hidden style="margin-left:6px">Trusted</span></div></div>'
    +'<div class="pstats"><div><b>'+(rc&&pr.rating_avg?'★ '+(+pr.rating_avg).toFixed(1):'–')+'</b><span>Rating</span></div><div><b id="nList">'+(m.count||0)+'</b><span>Listings</span></div><div><b>'+rc+'</b><span>Reviews</span></div></div>'
    +'<div class="ptl" id="mine">My listings</div><div class="vstick"><div class="seg" id="seg"><button class="on" data-vt="active">Active</button><button data-vt="sold">Sold</button><button data-vt="archived">Archived</button><button data-vt="draft">Drafts</button></div><div class="chips" id="vcats">'+VCATS.map(c=>'<button class="chip'+(c[0]==='all'?' on':'')+'" data-vc="'+c[0]+'">'+c[1]+'</button>').join('')+'</div></div><div class="ss" id="vcount" style="margin:2px 0 10px"></div><div id="vempty"></div><div class="vlist" id="vlist"></div>'
-   +'<div class="ptl">More</div><div class="lcard">'
+   +'<button class="pbanner" data-act="store"><span class="pbi"><svg class="ic"><use href="#i-share"/></svg></span><span style="flex:1;min-width:0"><b>Share your shop</b><small>One link to all your listings. Send it to buyers.</small></span><span aria-hidden="true">›</span></button>'
+   +'<div class="ptl" style="margin-top:22px">More</div><div class="lcard">'
     +'<a class="lrow" href="#account" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-user"/></svg>Identity &amp; account</span><small>›</small></a>'
    +'<a class="lrow" href="#shop" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-box"/></svg>My Shop</span><small>›</small></a>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
    +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
   if(location.hash==='#items'){
-    el.querySelectorAll('.ph1,.pstats,.lcard').forEach(x=>x.remove());
+    el.querySelectorAll('.ph1,.pstats,.lcard,.pbanner').forEach(x=>x.remove());
     el.querySelectorAll('.ptl').forEach(x=>{if(x.id!=='mine')x.remove();});
     $('mine').textContent='My items';VL.cat='all';vlReset('active');
   }else{
@@ -1222,26 +1229,28 @@ let MTAB='chats',CH=null,SENDING=false,REP=null;
 const REPR=[['scam','🚨 Suspected scam or fraud'],['prohibited','⛔ Prohibited item'],['spam','📢 Spam or duplicate listing'],['other','❓ Other issue']];
 function stopCh(){try{if(CH)sb.removeChannel(CH);}catch(e){}CH=null;}
 async function bellDot(){
-  const ds=[$('bdot'),$('ndot')].filter(Boolean);if(!ds.length)return;
-  if(!ME){ds.forEach(d=>d.classList.remove('on'));return;}
+  const b1=$('bdot'),n1=$('ndot');
+  if(!ME){[b1,n1].forEach(d=>d&&d.classList.remove('on'));return;}
   try{
     const a=await sb.from('messages').select('id',{count:'exact',head:true}).is('read_at',null).neq('sender_id',ME.id);
     const b=await sb.from('notifications').select('id',{count:'exact',head:true}).eq('read',false).neq('type','message');
-    const on=((a.count||0)+(b.count||0))>0;ds.forEach(d=>d.classList.toggle('on',on));
+    if(n1)n1.classList.toggle('on',(a.count||0)>0);
+    if(b1)b1.classList.toggle('on',(b.count||0)>0);
   }catch(e){}
 }
 AUTHP.then(bellDot);setInterval(()=>{if(!document.hidden)bellDot();},30000);
-async function showMsgs(){
+async function showMsgs(mode){
+  MTAB=mode||'chats';const H='#'+(MTAB==='alerts'?'alerts':'messages'),TT=MTAB==='alerts'?'Alerts':'Messages';
   stopCh();const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  a.innerHTML=hubBack()+'Messages</h1></div><div class="omax"><div class="sk" style="height:70px;border-radius:12px;margin-bottom:10px"></div></div>';
+  a.innerHTML=hubBack()+TT+'</h1></div><div class="omax"><div class="sk" style="height:70px;border-radius:12px;margin-bottom:10px"></div></div>';
   if(!ME)await AUTHP;
-  if(location.hash!=='#messages')return;
-  if(!ME){a.innerHTML=hubBack()+'Messages</h1></div><div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to see your messages.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';return;}
+  if(location.hash!==H)return;
+  if(!ME){a.innerHTML=hubBack()+TT+'</h1></div><div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to see your messages.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';return;}
   paintMsgs();bellDot();
 }
 async function paintMsgs(){
-  const a=$('acct');
-  a.innerHTML=hubBack()+'Messages</h1></div><div class="mtabs"><button data-tab="chats" class="'+(MTAB==='chats'?'on':'')+'">Chats</button><button data-tab="alerts" class="'+(MTAB==='alerts'?'on':'')+'">Alerts</button></div><div class="omax" id="mlist"></div>';
+  const a=$('acct'),TT=MTAB==='alerts'?'Alerts':'Messages';
+  a.innerHTML=hubBack()+TT+'</h1></div><div class="omax" id="mlist"></div>';
   const L=$('mlist');L.innerHTML=SKR;
   if(MTAB==='alerts'){
     const {data,error}=await sb.from('notifications').select('id,title,body,read,created_at').neq('type','message').order('created_at',{ascending:false}).limit(40);
