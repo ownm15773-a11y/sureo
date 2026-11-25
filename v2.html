@@ -240,6 +240,25 @@ button:disabled:active{transform:none;opacity:.6}
 .wcard{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
 .wcard>i{font-style:normal;font-size:22px}
 .wcard>div{flex:1;min-width:0}.wcard b{display:block;font-size:14px}.wcard small{color:var(--muted);font-size:12px}
+.round{position:relative}
+.bdot{position:absolute;top:7px;right:8px;width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid var(--card);display:none}
+.bdot.on{display:block}
+.mtabs{display:flex;gap:8px;max-width:560px;margin:0 auto 12px}
+.mtabs button{flex:1;padding:9px;border-radius:999px;border:1px solid var(--line2);background:var(--card);font-weight:600;font-size:13px;color:var(--muted)}
+.mtabs button.on{background:var(--g);border-color:var(--g);color:var(--onG)}
+.crow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:12px;margin-bottom:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;color:var(--text)}
+.cav{flex:none;width:40px;height:40px;border-radius:50%;background:var(--g2);color:var(--gtext);display:grid;place-items:center;font-weight:700}
+.cl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb{flex:none;min-width:20px;padding:2px 6px;border-radius:999px;background:var(--g);color:var(--onG);font-size:11px;font-weight:700;text-align:center}
+.chat{max-width:560px;margin:0 auto;display:flex;flex-direction:column;min-height:calc(100dvh - 90px)}
+.cmsgs{flex:1;display:flex;flex-direction:column;gap:8px;padding-bottom:10px}
+.msg{max-width:80%;padding:9px 12px;border-radius:16px;font-size:14px;line-height:1.35;word-break:break-word;background:var(--card);border:1px solid var(--line);align-self:flex-start}
+.msg.out{align-self:flex-end;background:var(--g);color:var(--onG);border-color:var(--g)}
+.msg time{display:block;font-size:10px;opacity:.65;margin-top:3px}
+.cin{position:sticky;bottom:0;display:flex;gap:8px;padding:8px 0 calc(6px + env(safe-area-inset-bottom,0px));background:var(--pvbg)}
+.cin input{flex:1;padding:11px 14px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--text);font-size:16px;outline:0}
+.replink{display:block;margin:6px auto 0;padding:10px;font-size:12px;font-weight:600;color:var(--muted)}
+.lrow.picked{border-color:var(--g);background:var(--g2)}
 </style>
 </head>
 <body>
@@ -270,7 +289,7 @@ button:disabled:active{transform:none;opacity:.6}
       </div>
       <div class="btns">
         <button class="round" data-act="theme" aria-label="Switch light or dark mode"><svg class="ic"><use href="#i-moon"/></svg></button>
-        <a class="round" href="/" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></a>
+        <a class="round" href="#messages" aria-label="Messages and alerts"><svg class="ic"><use href="#i-bell"/></svg><span class="bdot" id="bdot"></span></a>
       </div>
     </div>
     <label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search Jollof, MTH211, HP Laptop..." autocomplete="off"></label>
@@ -516,15 +535,16 @@ async function openDetail(id){
   const price=ty==='free'?'Free':fmtNaira((l.price_kobo||0)/100,l.category,ty);
   const exp=Math.max(0,60-Math.floor((Date.now()-new Date(l.created_at))/864e5)),wa=waNum(l.whatsapp),old='/#l='+esc(l.id);
   const slides=ms.length?ms.map(m=>'<div class="slide">'+(m.kind==='video'?'<video src="'+esc(m.url)+'" controls playsinline preload="metadata"></video>':'<img src="'+esc(m.url)+'" alt="" decoding="async">')+'</div>').join(''):'<div class="slide">'+(EMO[l.category]||'🛍️')+'</div>';
-  const f=FAV.has(String(l.id));
+  const f=FAV.has(String(l.id)),D='data-id="'+esc(l.id)+'" data-s="'+esc(l.seller_id)+'" data-t="'+esc(l.title)+'" data-p="'+Math.round((l.price_kobo||0)/100)+'"';
   el.innerHTML='<div class="dwrap"><div class="gwrap"><div class="gal" id="gal">'+slides+'</div>'
    +dBack()+'<div style="display:flex;gap:8px"><button class="round'+(f?' on':'')+'" data-fav="'+esc(l.id)+'" aria-label="Save"><svg class="ic"><use href="#i-heart"/></svg></button><button class="round" data-act="share" data-id="'+esc(l.id)+'" data-t="'+esc(l.title)+'" data-p="'+(l.price_kobo?Math.round(l.price_kobo/100):0)+'" aria-label="Share"><svg class="ic"><use href="#i-share"/></svg></button></div></div>'
    +(ms.length>1?'<span class="cnt" id="cnt">1/'+ms.length+'</span>':'')+'</div>'
    +'<div class="dbody"><div><div class="dttl">'+esc(l.title)+'</div><div class="dprice">'+price+'</div></div>'
    +'<div class="facts"><span class="fact">'+lab[1]+'</span>'+(l.condition&&!/^n\/?a/i.test(l.condition)?'<span class="fact">'+esc(String(l.condition).replace(/_/g,' '))+'</span>':'')+(l.course_code?'<span class="fact code">'+esc(l.course_code)+'</span>':'')+'<span class="fact">'+esc(l.category)+'</span><span class="fact">'+esc(campName(l.campus_id))+'</span></div>'
    +'<div class="scard"><div class="av">'+esc((pr.full_name||'S').charAt(0).toUpperCase())+'</div><div style="min-width:0"><div class="sn">'+esc(pr.full_name||'Student')+(pr.is_seller_verified?'<svg class="ic"><use href="#i-tick"/></svg>':'')+'<span class="trust" id="dtier" hidden>Trusted</span></div><div class="ss">'+(+pr.rating_count?'★ '+(+pr.rating_avg).toFixed(1)+' · '+pr.rating_count+' review'+(pr.rating_count==1?'':'s'):'No reviews yet')+'</div></div></div>'
-   +'<div class="safe">Meet on campus in a public place and check the item before you pay. Posted '+ago(l.created_at)+', expires in '+exp+' day'+(exp==1?'':'s')+'.</div></div></div>'
-   +'<div class="dact"><div><a class="buy" href="'+old+'">'+lab[0]+'</a>'+(ty==='sell'?'<a class="alt" href="'+old+'">Make offer</a>':'')
+   +'<div class="safe">Meet on campus in a public place and check the item before you pay. Posted '+ago(l.created_at)+', expires in '+exp+' day'+(exp==1?'':'s')+'.</div><button class="replink" data-rep="1" data-id="'+esc(l.id)+'" data-t="'+esc(l.title)+'">🚩 Report this listing</button></div></div>'
+   +'<div class="dact"><div><button class="buy" data-buy="1" '+D+'>'+lab[0]+'</button>'+(ty==='sell'&&l.category!=='food'&&l.price_kobo>0?'<button class="alt" data-offer="1" '+D+'>Make offer</button>':'')
+   +'<button class="alt" data-msg="1" data-id="'+esc(l.id)+'" data-s="'+esc(l.seller_id)+'" data-t="'+esc(l.title)+'">Chat</button>'
    +(wa?'<a class="wa" target="_blank" rel="noopener" aria-label="Chat on WhatsApp" href="https://wa.me/'+wa+'?text='+encodeURIComponent('Hi! I saw "'+l.title+'" on Sureo.')+'"><svg class="ic" style="stroke:#fff"><use href="#i-chat"/></svg></a>':'')+'</div></div>';
   const g=$('gal'),c=$('cnt');if(g&&c)g.addEventListener('scroll',()=>{c.textContent=(Math.round(g.scrollLeft/g.clientWidth)+1)+'/'+ms.length;},{passive:true});
   try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',l.seller_id).maybeSingle();const b=$('dtier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
@@ -537,6 +557,8 @@ function route(){
   if(location.hash==='#sell'){closeDetail();showSell();return;}
   if(location.hash==='#orders'){closeDetail();showOrders();return;}
   if(location.hash==='#wanted'){closeDetail();showWanted();return;}
+  if(location.hash==='#messages'){closeDetail();showMsgs();return;}
+  {const cm=location.hash.match(/^#chat=([\w-]+)$/);if(cm){closeDetail();showChat(cm[1]);return;}}
   closeAcct();
   if(isProfileRoute()){closeDetail();showProfile();return;}
   document.body.classList.remove('pv');setNav('home');
@@ -1175,17 +1197,237 @@ async function haveIt(w){
   if(!w||!ME)return;
   const sub='🙋 Wanted: '+w.title;
   const ex=await sb.from('conversations').select('id').eq('buyer_id',ME.id).eq('seller_id',w.user_id).eq('listing_title',sub).limit(1);
-  if(!(ex.data&&ex.data.length)){
+  let cid=ex.data&&ex.data.length?ex.data[0].id:null;
+  if(!cid){
     const {data,error}=await sb.from('conversations').insert({listing_id:null,listing_title:sub,buyer_id:ME.id,seller_id:w.user_id,last_message:'',last_at:new Date().toISOString()}).select('id').single();
     if(error){toast('Could not start chat: '+error.message);return;}
+    cid=data.id;
     await sb.from('messages').insert({conversation_id:data.id,sender_id:ME.id,body:'Hi! I have "'+w.title+'" (saw your request on Sureo Wanted).'});
   }
-  toast('Chat started. Open Messages in the main app to continue.');
+  location.hash='#chat='+cid;
 }
+
+/* ---------- Messages, chat, bell, reports ---------- */
+const hubBack=()=>'<div class="abar"><button class="round" data-mb="1" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><h1>';
+let MTAB='chats',CH=null,SENDING=false,REP=null;
+const REPR=[['scam','🚨 Suspected scam or fraud'],['prohibited','⛔ Prohibited item'],['spam','📢 Spam or duplicate listing'],['other','❓ Other issue']];
+function stopCh(){try{if(CH)sb.removeChannel(CH);}catch(e){}CH=null;}
+async function bellDot(){
+  const d=$('bdot');if(!d)return;
+  if(!ME){d.classList.remove('on');return;}
+  try{
+    const a=await sb.from('messages').select('id',{count:'exact',head:true}).is('read_at',null).neq('sender_id',ME.id);
+    const b=await sb.from('notifications').select('id',{count:'exact',head:true}).eq('read',false).neq('type','message');
+    d.classList.toggle('on',((a.count||0)+(b.count||0))>0);
+  }catch(e){}
+}
+AUTHP.then(bellDot);setInterval(()=>{if(!document.hidden)bellDot();},30000);
+async function showMsgs(){
+  stopCh();const a=$('acct');a.classList.add('open');a.scrollTop=0;
+  a.innerHTML=hubBack()+'Messages</h1></div><div class="omax"><div class="sk" style="height:70px;border-radius:12px;margin-bottom:10px"></div></div>';
+  if(!ME)await AUTHP;
+  if(location.hash!=='#messages')return;
+  if(!ME){a.innerHTML=hubBack()+'Messages</h1></div><div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to see your messages.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';return;}
+  paintMsgs();bellDot();
+}
+async function paintMsgs(){
+  const a=$('acct');
+  a.innerHTML=hubBack()+'Messages</h1></div><div class="mtabs"><button data-tab="chats" class="'+(MTAB==='chats'?'on':'')+'">Chats</button><button data-tab="alerts" class="'+(MTAB==='alerts'?'on':'')+'">Alerts</button></div><div class="omax" id="mlist"></div>';
+  const L=$('mlist');
+  if(MTAB==='alerts'){
+    const {data,error}=await sb.from('notifications').select('id,title,body,read,created_at').neq('type','message').order('created_at',{ascending:false}).limit(40);
+    if(!$('mlist'))return;
+    if(error||!(data&&data.length)){L.innerHTML='<p class="ss" style="text-align:center;margin-top:20px">No alerts yet.</p>';return;}
+    L.innerHTML=data.map(n=>'<div class="crow"><div><b>'+(n.read?'':'● ')+esc(n.title)+'</b><div class="ss">'+esc(n.body||'')+'</div><div class="ss">'+ago(n.created_at)+'</div></div></div>').join('');
+    if(data.some(n=>!n.read))sb.from('notifications').update({read:true}).eq('user_id',ME.id).eq('read',false).neq('type','message').then(bellDot);
+    return;
+  }
+  const {data,error}=await sb.from('conversations').select('id,listing_title,buyer_id,seller_id,last_message,last_at').order('last_at',{ascending:false}).limit(50);
+  if(!$('mlist'))return;
+  if(error){L.innerHTML='<p class="ss" style="text-align:center;margin-top:20px">Could not load chats.<br>'+esc(error.message)+'</p>';return;}
+  if(!data.length){L.innerHTML='<p class="ss" style="text-align:center;margin-top:20px">No chats yet. Open a listing and tap Chat.</p>';return;}
+  const ids=[...new Set(data.map(c=>c.buyer_id===ME.id?c.seller_id:c.buyer_id))],nm={};
+  const ps=await sb.from('profiles').select('id,full_name').in('id',ids);(ps.data||[]).forEach(p=>nm[p.id]=p.full_name);
+  const un=await sb.from('messages').select('conversation_id').is('read_at',null).neq('sender_id',ME.id);
+  const cn={};(un.data||[]).forEach(m=>cn[m.conversation_id]=(cn[m.conversation_id]||0)+1);
+  if(!$('mlist'))return;
+  L.innerHTML=data.map(c=>{const o=c.buyer_id===ME.id?c.seller_id:c.buyer_id,n=nm[o]||'Student';return '<button class="crow" data-chat="'+esc(c.id)+'"><div class="cav">'+esc(n.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1"><b>'+esc(n)+'</b><div class="ss cl">'+esc(c.listing_title||'')+'</div><div class="ss cl">'+esc(c.last_message||'No messages yet')+'</div></div>'+(cn[c.id]?'<span class="cb">'+cn[c.id]+'</span>':'')+'</button>';}).join('');
+}
+async function showChat(id){
+  stopCh();const a=$('acct');a.classList.add('open');
+  if(!ME)await AUTHP;
+  if(location.hash!=='#chat='+id)return;
+  if(!ME){toast('Sign in to chat.');location.replace('#messages');return;}
+  const cv=await sb.from('conversations').select('id,listing_title,buyer_id,seller_id').eq('id',id).maybeSingle(),c=cv.data;
+  if(!c){toast('Chat not found.');location.replace('#messages');return;}
+  const o=c.buyer_id===ME.id?c.seller_id:c.buyer_id;
+  const pr=await sb.from('profiles').select('full_name').eq('id',o).maybeSingle();
+  const ms=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',id).order('created_at',{ascending:true}).limit(200);
+  if(location.hash!=='#chat='+id)return;
+  const bub=m=>'<div class="msg '+(m.sender_id===ME.id?'out':'in')+'">'+esc(m.body)+'<time>'+ago(m.created_at)+'</time></div>';
+  a.innerHTML=hubBack()+esc((pr.data&&pr.data.full_name)||'Student')+'</h1></div><div class="chat"><div class="ss" style="text-align:center;margin-bottom:8px">'+(c.listing_title?'Re: '+esc(c.listing_title):'')+'</div><div id="cmsgs" class="cmsgs">'+((ms.data||[]).map(bub).join('')||'<p class="ss" style="text-align:center">Say hello 👋</p>')+'</div><div class="cin"><input id="cinp" maxlength="2000" placeholder="Type a message" autocomplete="off"><button class="obtn" data-send="'+esc(id)+'">Send</button></div></div>';
+  a.scrollTop=a.scrollHeight;
+  sb.from('messages').update({read_at:new Date().toISOString()}).eq('conversation_id',id).neq('sender_id',ME.id).is('read_at',null).then(bellDot);
+  CH=sb.channel('c-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conversation_id=eq.'+id},p=>{
+    const m=p.new,w=$('cmsgs');if(!w||m.sender_id===ME.id)return;
+    const e=w.querySelector('p.ss');if(e)e.remove();
+    w.insertAdjacentHTML('beforeend',bub(m));$('acct').scrollTop=$('acct').scrollHeight;
+    sb.from('messages').update({read_at:new Date().toISOString()}).eq('id',m.id).then(()=>{});
+  }).subscribe();
+}
+async function sendChat(id){
+  const i=$('cinp');if(!i||SENDING)return;const v=i.value.trim();if(!v)return;
+  SENDING=true;i.value='';
+  const {error}=await sb.from('messages').insert({conversation_id:id,sender_id:ME.id,body:v});
+  SENDING=false;
+  if(error){i.value=v;toast('Could not send: '+error.message);return;}
+  const w=$('cmsgs');if(w){const e=w.querySelector('p.ss');if(e)e.remove();w.insertAdjacentHTML('beforeend','<div class="msg out">'+esc(v)+'<time>just now</time></div>');$('acct').scrollTop=$('acct').scrollHeight;}
+}
+async function msgSeller(b){
+  if(!ME){toast('Sign in to message the seller.');return;}
+  if(b.dataset.s===ME.id){toast("That's your own listing.");return;}
+  const ex=await sb.from('conversations').select('id').eq('listing_id',b.dataset.id).eq('buyer_id',ME.id).limit(1);
+  let cid=ex.data&&ex.data[0]&&ex.data[0].id;
+  if(!cid){
+    const {data,error}=await sb.from('conversations').insert({listing_id:b.dataset.id,listing_title:b.dataset.t,buyer_id:ME.id,seller_id:b.dataset.s,last_message:'',last_at:new Date().toISOString()}).select('id').single();
+    if(error){toast('Could not start chat: '+error.message);return;}cid=data.id;
+  }
+  location.hash='#chat='+cid;
+}
+function openReport(b){
+  if(!ME){toast('Sign in to report a listing.');return;}
+  REP={id:b.dataset.id,t:b.dataset.t,r:null};
+  openA('<h3 style="margin-bottom:4px">Report listing</h3><p class="ss" style="margin-bottom:12px">Your report is private. The seller won\'t see who sent it.</p>'+REPR.map(r=>'<button class="lrow" data-rr="'+r[0]+'">'+r[1]+'</button>').join('')+'<button class="btn" data-rsend="1" style="background:#dc2626">Send report</button>');
+}
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-msg],[data-rep],[data-rr],[data-rsend],[data-chat],[data-send],[data-tab],[data-mb]');if(!t)return;
+  const d=t.dataset;
+  if('msg' in d)return msgSeller(t);
+  if('rep' in d)return openReport(t);
+  if('rr' in d){if(REP)REP.r=d.rr;document.querySelectorAll('[data-rr]').forEach(x=>x.classList.toggle('picked',x===t));return;}
+  if('rsend' in d){
+    if(!REP||!REP.r){toast('Pick a reason first.');return;}
+    const {error}=await sb.from('reports').insert({listing_id:REP.id,listing_title:REP.t,reporter_id:ME.id,reason:REP.r});
+    closeA();toast(error?('Could not send report: '+error.message):'🚩 Report received. Thank you for keeping Sureo safe.');REP=null;return;
+  }
+  if('chat' in d){location.hash='#chat='+d.chat;return;}
+  if('send' in d)return sendChat(d.send);
+  if('tab' in d){MTAB=d.tab;paintMsgs();return;}
+  if('mb' in d){if(history.length>1)history.back();else location.replace('#');}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='cinp'){const b=document.querySelector('[data-send]');if(b)sendChat(b.dataset.send);}});
+
+/* ---------- Buying (checkout) and Offers ---------- */
+let CK=null,CKQ=1,CKM='paystack',OF=null;
+const nmoney=n=>'₦'+Number(n||0).toLocaleString('en-NG');
+async function getConv(lid,title,sid){
+  const ex=await sb.from('conversations').select('id').eq('listing_id',lid).eq('buyer_id',ME.id).limit(1);
+  if(ex.data&&ex.data[0])return ex.data[0].id;
+  const {data,error}=await sb.from('conversations').insert({listing_id:lid,listing_title:title,buyer_id:ME.id,seller_id:sid,last_message:'',last_at:new Date().toISOString()}).select('id').single();
+  if(error)throw new Error('Could not start chat: '+error.message);
+  return data.id;
+}
+async function callPaystack(action,orderId){
+  const {data,error}=await sb.functions.invoke('paystack',{body:{action:action,order_id:orderId}});
+  if(error){let code='';try{const j=await error.context.json();code=j.error||'';}catch(_){}return {err:code||'failed'};}
+  return {data:data};
+}
+function popupPay(code){
+  return new Promise((res,rej)=>{
+    try{new PaystackPop().resumeTransaction(code,{onSuccess:()=>res(true),onCancel:()=>res(false),onError:e=>rej(new Error((e&&e.message)||'Payment failed'))});}
+    catch(e){rej(new Error('Payment window could not open. Check your connection.'));}
+  });
+}
+async function payOnline(oid){
+  if(typeof PaystackPop==='undefined')throw new Error('Paystack failed to load. Check your connection.');
+  const ini=await callPaystack('init',oid);
+  if(ini.err){
+    if(ini.err==='seller_not_ready')throw new Error('This seller cannot take online payments yet. Choose pay on delivery.');
+    if(ini.err==='already_paid')return true;
+    throw new Error('Could not start payment. Try again.');
+  }
+  if(!(await popupPay(ini.data.access_code)))return false;
+  for(let i=0;i<4;i++){const v=await callPaystack('verify',oid);if(v.data&&v.data.ok)return true;await new Promise(r=>setTimeout(r,2000));}
+  throw new Error('We could not confirm your payment yet. If you were charged, email support@sureo.name.ng with your order.');
+}
+function openCheckout(b){
+  if(!ME){toast('Sign in to order.');return;}
+  const d=b.dataset;if(d.s===ME.id){toast("That's your own listing.");return;}
+  CK={id:d.id,s:d.s,t:d.t,p:+d.p||0};CKQ=1;CKM='paystack';paintCk();
+}
+function paintCk(){
+  const free=CK.p===0,tot=CK.p*CKQ;
+  openA('<h3 style="margin-bottom:10px">Checkout</h3><div class="ord-box"><b>'+esc(CK.t)+'</b><br><span class="ss">Total: <b>'+(free?'FREE':nmoney(tot))+'</b></span></div>'
+   +'<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0"><b>Quantity</b><div style="display:flex;align-items:center;gap:14px"><button class="round" data-q="-1" aria-label="Less">−</button><b>'+CKQ+'</b><button class="round" data-q="1" aria-label="More">+</button></div></div>'
+   +(free?'':'<button class="lrow'+(CKM==='paystack'?' picked':'')+'" data-pm="paystack">💳 Pay online with Paystack<br><span class="ss">Card, bank transfer or USSD. Paid straight to the seller.</span></button><button class="lrow'+(CKM==='offline'?' picked':'')+'" data-pm="offline">🤝 Pay on delivery<br><span class="ss">Cash or POS when you meet on campus.</span></button>')
+   +'<button class="btn" data-ckgo="1">'+(free?'Confirm reservation':(CKM==='paystack'?'Pay securely with Paystack':'Place order (pay on delivery)'))+'</button>');
+}
+async function ckGo(btn){
+  if(btn.disabled||!CK)return;btn.disabled=true;const lab=btn.textContent;btn.textContent='Please wait…';
+  try{
+    const online=CKM==='paystack'&&CK.p>0;
+    let ins=await sb.from('orders').insert({listing_id:CK.id,listing_title:CK.t,seller_id:CK.s,buyer_id:ME.id,amount_kobo:CK.p*CKQ*100,quantity:CKQ,method:online?'paystack':'offline'}).select('id').single();
+    if(ins.error){
+      if(ins.error.code==='23505'){
+        const ex=await sb.from('orders').select('id,payment_status').eq('listing_id',CK.id).eq('buyer_id',ME.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        if(online&&ex.data&&ex.data.payment_status!=='paid')ins={data:{id:ex.data.id}};
+        else throw new Error('You already have a pending order for this item.');
+      }else throw ins.error;
+    }
+    let paid=false;
+    if(online){paid=await payOnline(ins.data.id);if(!paid){toast('Payment not completed. Your order is saved. Tap Pay to try again.');btn.disabled=false;btn.textContent=lab;return;}}
+    let cid=null;
+    try{
+      cid=await getConv(CK.id,CK.t,CK.s);
+      await sb.from('messages').insert({conversation_id:cid,sender_id:ME.id,body:"Hi! I'd like to order "+(CKQ>1?CKQ+' x ':'')+'"'+CK.t+'" ('+(CK.p?nmoney(CK.p*CKQ):'free')+'). '+(paid?'Paid online via Paystack. ':'Payment: pay on delivery. ')+'When can we meet?'});
+    }catch(e){}
+    openA('<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h3>'+(paid?'Payment verified!':'Order sent!')+'</h3><p class="ss" style="margin:6px 0 14px">'+(paid?'Paystack confirmed your payment. ':'')+'Chat with the seller to agree a meetup. Your handover code is in My Shop › Orders.</p>'+(cid?'<button class="btn" data-ckchat="'+esc(cid)+'">Open chat</button>':'')+'<button class="obtn ghost" data-ckord="1" style="width:100%;margin-top:8px">View my orders</button></div>');
+    CK=null;
+  }catch(e){toast(e.message||'Could not place order, try again.');btn.disabled=false;btn.textContent=lab;}
+}
+function openOffer(b){
+  if(!ME){toast('Sign in to make an offer.');return;}
+  const d=b.dataset;if(d.s===ME.id){toast("That's your own listing.");return;}
+  OF={id:d.id,s:d.s,t:d.t,p:+d.p||0};
+  openA('<h3 style="margin-bottom:10px">Make an offer</h3><div class="ord-box"><b>'+esc(OF.t)+'</b><br><span class="ss">Asking price: '+nmoney(OF.p)+'</span></div><input id="ofAmt" inputmode="numeric" autocomplete="off" placeholder="Your offer in ₦" style="margin-top:10px"><div class="mtabs" style="margin-bottom:8px"><button data-pct="10">10% off</button><button data-pct="20">20% off</button><button data-pct="30">30% off</button></div><input id="ofNote" maxlength="120" autocomplete="off" placeholder="Message (optional)"><p class="ss" id="ofHint" style="min-height:18px;margin-bottom:8px"></p><button class="btn" data-ofgo="1">Send offer →</button>');
+}
+const ofVal=()=>parseInt(($('ofAmt').value||'').replace(/\D/g,''),10)||0;
+function ofHint(){const a=ofVal(),h=$('ofHint');if(!h||!OF)return;h.textContent=!a||!OF.p?'':a>=OF.p?'This is at or above the asking price.':a<OF.p*0.4?'This is far below the asking price. Sellers may ignore very low offers.':'';}
+document.addEventListener('input',e=>{
+  if(e.target.id!=='ofAmt')return;
+  const el=e.target,keep=el.value.slice(0,el.selectionStart).replace(/\D/g,'').length,f=commaNum(el.value);
+  el.value=f;let n=0,i=0;for(;i<f.length&&n<keep;i++)if(/\d/.test(f[i]))n++;
+  try{el.setSelectionRange(i,i);}catch(x){}ofHint();
+});
+async function ofGo(btn){
+  const amt=ofVal();if(!OF)return;
+  if(!amt){toast('Enter the amount you want to offer.');return;}
+  if(btn.disabled)return;btn.disabled=true;
+  try{
+    const note=($('ofNote').value||'').trim(),cid=await getConv(OF.id,OF.t,OF.s);
+    const {error}=await sb.from('messages').insert({conversation_id:cid,sender_id:ME.id,body:'Hi! Would you take '+nmoney(amt)+' for "'+OF.t+'"?'+(note?' '+note:'')});
+    if(error)throw new Error('Could not send offer: '+error.message);
+    closeA();OF=null;toast('Offer sent. Continue in chat.');location.hash='#chat='+cid;
+  }catch(e){toast(e.message);btn.disabled=false;}
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-buy],[data-offer],[data-pm],[data-q],[data-ckgo],[data-ckchat],[data-ckord],[data-pct],[data-ofgo]');if(!t)return;
+  const d=t.dataset;
+  if('buy' in d)return openCheckout(t);
+  if('offer' in d)return openOffer(t);
+  if('pm' in d){CKM=d.pm;return paintCk();}
+  if('q' in d){CKQ=Math.min(20,Math.max(1,CKQ+(+d.q)));return paintCk();}
+  if('ckgo' in d)return ckGo(t);
+  if('ckchat' in d){closeA();location.hash='#chat='+d.ckchat;return;}
+  if('ckord' in d){closeA();location.hash='#orders';return;}
+  if('pct' in d){if(!OF)return;$('ofAmt').value=commaNum(String(Math.max(50,Math.round(OF.p*(1-d.pct/100)/50)*50)));ofHint();return;}
+  if('ofgo' in d)return ofGo(t);
+});
 
 /* ---------- Start: show the screen and listings at once, resolve campus in the background ---------- */
 paint();load();loadCampuses();findMyCampus();route();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
+<script src="https://js.paystack.co/v2/inline.js"></script>
 </body>
 </html>
