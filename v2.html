@@ -271,38 +271,30 @@ button:disabled:active{transform:none;opacity:.6}
 .pbl{width:100%;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.14);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
 .pbs{align-self:stretch;text-align:center;padding:13px;border-radius:12px;background:#fff;color:#0d4a3a;font-weight:700;font-size:15px}
 .lrow.picked{border-color:var(--g);background:var(--g2)}
-/* ---- auth form (sign in / sign up) ---- */
-.auth-logo{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:14px}
-.auth-badge{display:inline-flex;align-items:center;gap:4px;background:var(--g2);color:var(--gtext);font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px}
-.abody h2{font-size:26px;font-weight:800;margin-bottom:4px}
-.auth-sub{font-size:14px;color:var(--muted);margin-bottom:14px}
-.abody .field{margin-bottom:16px}
-.abody .field label{display:block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.abody .field input{width:100%;min-height:44px;padding:12px 14px;border-radius:8px;border:1px solid var(--line2);background:var(--field);color:var(--text);font-size:15px;transition:border-color .15s,box-shadow .15s}
-.abody .field input::placeholder{color:var(--muted)}
-.abody .field input:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 2px var(--g2),0 0 0 4px var(--g)}
+/* ---- auth form (sign in / sign up), matching the old app's look ---- */
+.auth-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:20px;color:var(--g);margin-bottom:16px}
+.abody h2{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:5px}
+.auth-sub{font-size:13.5px;color:var(--muted);margin-bottom:16px}
+.abody .field{margin-bottom:14px}
+.abody .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.abody .field input{width:100%;padding:12px 14px;border:1.5px solid var(--line2);border-radius:11px;font-size:16px;outline:none;background:var(--field);color:var(--text);transition:border-color .2s,box-shadow .2s}
+.abody .field input:focus{border-color:var(--g);box-shadow:0 0 0 4px var(--g2)}
 .pw-wrap{position:relative}
 .pw-wrap input{padding-right:46px}
 .pw-eye{position:absolute;right:2px;top:0;bottom:0;width:44px;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--muted);background:none;border:0;cursor:pointer}
-.form-err{display:none;color:#dc2626;font-size:13px;margin:4px 0 10px}
-.form-err.show{display:block;animation:authshake .3s linear}
-@keyframes authshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-.btn-auth{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--g);color:var(--onG);font-weight:700;font-size:15px;border:0;border-radius:8px;padding:12px 24px;cursor:pointer;transition:transform .12s}
-.btn-auth:active{transform:scale(.98)}
+.form-err{display:none;font-size:12.5px;color:#dc2626;font-weight:500;margin:-4px 0 12px}
+.form-err.show{display:block}
+.btn-auth{width:100%;padding:14px;background:var(--g);color:var(--onG);border:0;border-radius:11px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:9px}
 .btn-auth:disabled{opacity:.5;cursor:not-allowed}
-.btn-auth .arr{transition:transform .15s}
-.btn-auth:hover .arr{transform:translateX(2px)}
 .btn-auth .spin{display:none;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;animation:authspin .7s linear infinite}
 .btn-auth.loading .spin{display:inline-block}
 .btn-auth.loading span:not(.spin){display:none}
 @keyframes authspin{to{transform:rotate(360deg)}}
-.auth-div{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:14px 0}
+.auth-div{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;margin:14px 0}
 .auth-div::before,.auth-div::after{content:'';flex:1;height:1px;background:var(--line2)}
-.btn-ghost{width:100%;min-height:44px;background:none;border:0;color:var(--g);font-weight:700;font-size:15px;border-radius:8px;cursor:pointer}
-.btn-ghost:hover{background:var(--g2)}
-.auth-note{font-size:12px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
+.btn-ghost{width:100%;padding:12px;border:1.5px solid var(--line2);border-radius:11px;font-size:13.5px;font-weight:600;background:none;color:var(--text)}
+.auth-note{text-align:center;font-size:11px;color:var(--muted);margin-top:14px}
 .legal-link{background:none;border:0;padding:0;color:var(--g);font-weight:700;font-size:inherit;cursor:pointer;text-decoration:underline}
-.legal-link:hover,.legal-link:focus{text-decoration:underline}
 .abody label.rowchk{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 12px;font-size:13px}
 .abody label.rowchk span{display:flex;gap:6px;align-items:center}
 </style>
@@ -855,7 +847,7 @@ const aBar=t=>'<div class="abar"><button class="round" data-ac="back" aria-label
 function closeA(){$('asheet').classList.remove('open');}
 function closeAcct(){const a=$('acct');if(a.classList.contains('open')){a.classList.remove('open');closeA();}}
 function openA(h){$('abody').innerHTML=h;$('abody').scrollTop=0;$('asheet').classList.add('open');}
-const aErr=m=>{const e=$('aErr');if(e){e.classList.remove('show');void e.offsetWidth;e.textContent=m;e.style.display='block';e.classList.add('show');}};
+const aErr=m=>{const e=$('aErr');if(e){e.textContent=m;e.classList.add('show');}};
 async function aRun(btn,fn){if(aBusy)return;aBusy=true;const t=btn.textContent;btn.disabled=true;btn.textContent='Please wait…';try{await fn();}finally{aBusy=false;if(btn.isConnected){btn.disabled=false;btn.textContent=t;}}}
 async function rmFolder(bucket,prefix){
   try{
@@ -1323,7 +1315,7 @@ async function ensureConsent(u){
   if(!f||!u)return;
   try{const v=JSON.parse(f);const {error}=await sb.from('consents').insert({user_id:u.id,terms_version:v.t,privacy_version:v.p});if(!error)localStorage.removeItem('sureoConsent');}catch(e){}
 }
-const auLogo='<div class="auth-logo"><span class="auth-badge">✓ Sureo</span></div>';
+const auLogo='<div class="auth-logo">Sureo ✓</div>';
 const auLegal='<p class="auth-note">By continuing you agree to our <button type="button" class="legal-link" data-au="terms">Terms</button> &amp; <button type="button" class="legal-link" data-au="privacy">Privacy Policy</button>.</p>';
 const auPw=(id,ph,ac)=>'<div class="field"><label>Password</label><div class="pw-wrap"><input type="password" id="'+id+'" placeholder="'+ph+'" autocomplete="'+ac+'"></div></div>';
 function authHtml(m){
