@@ -191,6 +191,22 @@ html:has(body.pv){background:var(--pvbg)}
 .lg{font-size:13px;line-height:1.55;color:var(--text);max-height:50vh;overflow-y:auto}
 .lg h4{font-size:14px;margin:14px 0 4px}.lg p,.lg ul{margin-bottom:6px}.lg ul{padding-left:18px}.lg .upd{color:var(--muted);font-size:12px}
 .macts button:disabled{opacity:.6}
+.stypes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:560px;margin:0 auto 16px}
+.stype{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 4px;border-radius:16px;background:var(--card);border:1.5px solid var(--line2);color:var(--muted);font-weight:600;font-size:14px}
+.stype .ic{width:26px;height:26px;fill:none;stroke:currentColor}
+.stype.on{background:var(--g2);border-color:var(--g);color:var(--gtext)}
+.sform{padding:6px 16px 18px}
+.sform label{display:block;font-weight:600;font-size:14px;margin:16px 0 8px}
+.sform input,.sform select{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--field);outline:0;font-size:16px}
+.cchips{display:flex;gap:8px;flex-wrap:wrap}
+.pbox{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:26px 14px;margin:0;background:var(--field)}
+.pbox .ic{width:26px;height:26px;fill:none;stroke:currentColor}
+.prev{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.thumb{position:relative;width:64px;height:64px}
+.thumb img,.thumb video{width:100%;height:100%;object-fit:cover;border-radius:10px;border:1px solid var(--line2)}
+.thumb button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#111827;color:#fff;font-size:11px;line-height:20px}
+.pbtn{display:block;width:100%;text-align:center;margin-top:18px;padding:14px;font-size:16px;border:0}
+.pbtn:disabled{opacity:.6}
 </style>
 </head>
 <body>
@@ -235,7 +251,7 @@ html:has(body.pv){background:var(--pvbg)}
 <nav class="nav"><div>
   <a href="#" id="nHome" class="on"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></a>
   <button data-act="focus"><svg class="ic"><use href="#i-search"/></svg><span>Search</span></button>
-  <a href="/" class="sell" aria-label="Sell"><i><svg class="ic"><use href="#i-plus"/></svg></i></a>
+  <a href="#sell" class="sell" aria-label="Sell"><i><svg class="ic"><use href="#i-plus"/></svg></i></a>
   <a href="#items" id="nItems"><svg class="ic"><use href="#i-box"/></svg><span>My Items</span></a>
   <a href="#profile" id="nProf"><svg class="ic"><use href="#i-user"/></svg><span>Profile</span></a>
 </div></nav>
@@ -483,6 +499,7 @@ function route(){
   const id=idFromHash();
   if(location.hash==='#account'){closeDetail();showAccount();return;}
   if(location.hash==='#shop'){closeDetail();showShop();return;}
+  if(location.hash==='#sell'){closeDetail();showSell();return;}
   closeAcct();
   if(isProfileRoute()){closeDetail();showProfile();return;}
   document.body.classList.remove('pv');setNav('home');
@@ -841,6 +858,128 @@ async function showShop(){
   +'<a class="lrow" href="/" '+lk+'><span><svg class="ic"><use href="#i-box"/></svg>Orders &amp; Receipts</span><small>›</small></a>'
   +'<a class="lrow" href="/" '+lk+'><span><svg class="ic"><use href="#i-search"/></svg>Wanted board</span><small>›</small></a>'
   +'</div></div>';
+}
+
+/* ---------- Sell wizard (#sell): same rules, tables and storage as the old app ---------- */
+const CAT_LBL={food:'Food',books:'Books',gadgets:'Gadgets',fashion:'Fashion',services:'Services'};
+const CAT_BY_TYPE={sell:['food','books','gadgets','fashion','services'],rent:['books','gadgets','fashion'],trade:['books','gadgets','fashion'],free:['food','books','gadgets','fashion']};
+const SELL_CFG={food:{cond:0,code:0,title:'e.g. Jollof Rice & Chicken'},services:{cond:0,code:0,title:'e.g. Laptop repair / Hair braiding'},books:{cond:1,code:1,title:'e.g. Calculus Made Easy (MTH211)'},gadgets:{cond:1,code:0,title:'e.g. HP Laptop 15"'},fashion:{cond:1,code:0,title:'e.g. Nike Air Force 1, size 43'}};
+const CONDS=[['Brand New','Brand New'],['Like New','Like New'],['Fairly Used','Used']];
+const SI={sell:'<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/>',rent:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/>',trade:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',free:'<rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 1 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 1 1 0 5"/>',cam:'<path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/>'};
+const svgi=p=>'<svg class="ic" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';
+let SL={ty:'sell',cat:'books',cond:'Like New',files:[],busy:false};
+const MIME_EXT={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','video/mp4':'mp4'};
+function badListingText(t){
+t=String(t||'').toLowerCase();
+if(/(\+?234|\b0)[\s.-]?[789][01]\d[\s.-]?\d{3}[\s.-]?\d{4}/.test(t)||/\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d[\s.-]?\d/.test(t))return 'Please remove phone numbers from the title. Buyers contact you through Sureo.';
+if(/whatsapp|telegram|call me|dm me|@gmail|@yahoo/.test(t))return 'Please remove contact details from the title.';
+if(/\b(weed|cocaine|heroin|tramadol|codeine|molly|loud|gun|pistol|rifle|ammo|exam\s*(leak|runz|expo)|leaked\s*(questions|exam)|fake\s*(id|certificate|result))\b/.test(t))return 'This kind of item is not allowed on Sureo.';
+return '';
+}
+async function squeeze(f){
+if(!/^image\/(jpeg|png|webp)$/.test(f.type)||f.size<250000)return f;
+try{
+const bm=await createImageBitmap(f),k=Math.min(1,1280/Math.max(bm.width,bm.height));
+const c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
+c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.8));
+return b&&b.size<f.size?new File([b],'p.jpg',{type:'image/jpeg'}):f;
+}catch(e){return f;}
+}
+
+async function showSell(){
+  const a=$('acct');a.classList.add('open');a.scrollTop=0;
+  a.innerHTML=aBar('Create Listing')+'<div class="acard"><div class="sk" style="height:200px;border-radius:10px;margin:10px 0"></div></div>';
+  if(!ME)await AUTHP;
+  if(!ME){toast('Sign in to sell on Sureo.');location.href='/';return;}
+  const [p,k]=await Promise.all([sb.from('profiles').select('is_seller_verified').eq('id',ME.id).maybeSingle(),sb.from('kyc').select('status').eq('user_id',ME.id).maybeSingle()]);
+  if(location.hash!=='#sell')return;
+  if(!(p.data&&p.data.is_seller_verified)){
+    if(k.data&&k.data.status==='pending'){toast('⏳ Your seller verification is under review.');location.replace(location.pathname+location.search);}
+    else{toast('Verify as a seller first to list items.');location.replace('#account');}
+    return;
+  }
+  SL={ty:'sell',cat:'books',cond:'Like New',files:[],busy:false};paintSell();
+}
+function paintSell(){
+  $('acct').innerHTML='<div class="abar" style="justify-content:space-between"><span style="width:40px"></span><h1>Create Listing</h1><button class="round" data-sl="close" aria-label="Close">✕</button></div>'
+  +'<div class="stypes" id="sTypes">'+[['sell','Sell'],['rent','Rent'],['trade','Trade'],['free','Free']].map(t=>'<button class="stype'+(t[0]===SL.ty?' on':'')+'" data-sl="type" data-v="'+t[0]+'">'+svgi(SI[t[0]])+'<span>'+t[1]+'</span></button>').join('')+'</div>'
+  +'<div class="acard sform">'
+  +'<label>Category</label><select id="sCat"></select>'
+  +'<label>Title</label><input id="sName" maxlength="80" autocomplete="off">'
+  +'<div id="sPriceF"><label>Price (₦)</label><input id="sPrice" inputmode="numeric" autocomplete="off" placeholder="0 for Free"></div>'
+  +'<div id="sCondF"><label>Condition</label><div class="cchips" id="sCond"></div></div>'
+  +'<div id="sCodeF"><label>Course code / ISBN <span style="color:var(--muted);font-weight:500">(for textbooks)</span></label><input id="sCode" autocomplete="off" placeholder="e.g. MTH211 or ISBN 978-..."></div>'
+  +'<label>Photos</label><button class="ubox pbox" data-sl="pick">'+svgi(SI.cam)+'<span id="sPickT">Add Photos</span></button><input type="file" id="sFile" multiple accept="image/jpeg,image/png,image/webp,video/mp4" hidden><div class="prev" id="sPrev"></div>'
+  +'<label>Your WhatsApp number</label><input id="sPhone" type="tel" placeholder="08012345678" autocomplete="tel">'
+  +'<p class="err" id="sErr" style="margin-top:12px"></p><button class="btn pbtn" data-sl="post">Post on Sureo ✓</button></div>';
+  applySell();
+}
+function applySell(){
+  const al=CAT_BY_TYPE[SL.ty],sc=$('sCat');
+  if(al.indexOf(SL.cat)<0)SL.cat=al[0];
+  sc.innerHTML=al.map(k=>'<option value="'+k+'"'+(k===SL.cat?' selected':'')+'>'+CAT_LBL[k]+'</option>').join('');
+  const c=SELL_CFG[SL.cat];
+  $('sName').placeholder=c.title;
+  $('sPriceF').style.display=SL.ty==='free'?'none':'';
+  $('sCondF').style.display=c.cond?'':'none';
+  $('sCodeF').style.display=c.code?'':'none';
+  renderCond();
+}
+function renderCond(){$('sCond').innerHTML=CONDS.map(c=>'<button class="chip'+(c[0]===SL.cond?' on':'')+'" data-sl="cond" data-v="'+c[0]+'">'+c[1]+'</button>').join('');}
+function renderPrev(){
+  $('sPrev').innerHTML=SL.files.map((f,i)=>'<div class="thumb">'+(f.type.startsWith('video')?'<video src="'+URL.createObjectURL(f)+'" muted playsinline></video>':'<img alt="" src="'+URL.createObjectURL(f)+'">')+'<button data-sl="rm" data-i="'+i+'" aria-label="Remove">✕</button></div>').join('');
+  $('sPickT').textContent=SL.files.length?(SL.files.length+' of 5 added · tap to add more'):'Add Photos';
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-sl]');if(!b)return;
+  const a=b.dataset.sl;
+  if(a==='close')location.replace(location.pathname+location.search);
+  else if(a==='type'){SL.ty=b.dataset.v;document.querySelectorAll('#sTypes .stype').forEach(x=>x.classList.toggle('on',x===b));applySell();}
+  else if(a==='cond'){SL.cond=b.dataset.v;renderCond();}
+  else if(a==='pick')$('sFile').click();
+  else if(a==='rm'){SL.files.splice(+b.dataset.i,1);renderPrev();}
+  else if(a==='post')postListing(b);
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='sCat'){SL.cat=e.target.value;applySell();}
+  else if(e.target.id==='sFile'){SL.files=SL.files.concat(Array.from(e.target.files)).slice(0,5);e.target.value='';renderPrev();}
+});
+document.addEventListener('input',e=>{
+  if(e.target.id!=='sPrice')return;
+  const el=e.target,raw=el.value,keep=raw.slice(0,el.selectionStart).replace(/\D/g,'').length,f=commaNum(raw);
+  el.value=f;let n=0,i=0;for(;i<f.length&&n<keep;i++)if(/\d/.test(f[i]))n++;
+  try{el.setSelectionRange(i,i);}catch(x){}
+});
+async function postListing(btn){
+  if(SL.busy)return;
+  const er=m=>{const e=$('sErr');e.textContent=m;e.style.display='block';};
+  $('sErr').style.display='none';
+  const n=$('sName').value.trim();if(!n)return er('Enter a title.');
+  const bad=badListingText(n);if(bad)return er(bad);
+  const ty=SL.ty,cat=SL.cat,c=SELL_CFG[cat],p=ty==='free'?0:(parseInt($('sPrice').value.replace(/\D/g,''),10)||0);
+  const ph=waNum($('sPhone').value);if(!ph)return er('Enter a valid WhatsApp number, e.g. 08012345678');
+  const files=SL.files.slice(0,5);
+  for(const f of files){
+    if(!MIME_EXT[f.type])return er('Use JPG, PNG, WebP photos or MP4 video.');
+    if(f.size>20*1024*1024)return er('Each file must be under 20 MB.');
+  }
+  SL.busy=true;btn.disabled=true;btn.textContent='Posting…';
+  try{
+    const {data:l,error}=await sb.from('listings').insert({seller_id:ME.id,type:ty,category:cat,title:n,price_kobo:p*100,condition:c.cond?SL.cond:'N/A (Food / Service)',course_code:c.code?($('sCode').value.trim()||null):null,whatsapp:ph}).select('id').single();
+    if(error)throw error;
+    const rows=[];
+    for(let i=0;i<files.length;i++){
+      const f=await squeeze(files[i]),path=ME.id+'/'+l.id+'/'+i+'.'+MIME_EXT[f.type];
+      const up=await sb.storage.from('listing-media').upload(path,f,{contentType:f.type});
+      if(up.error)throw up.error;
+      rows.push({listing_id:l.id,url:sb.storage.from('listing-media').getPublicUrl(path).data.publicUrl,kind:f.type.startsWith('video')?'video':'image',position:i});
+    }
+    if(rows.length){const r2=await sb.from('listing_media').insert(rows);if(r2.error)throw r2.error;}
+    toast('✓ Listing posted! It’s live with your Sureo ✓ badge.');
+    load();location.replace('#items');
+  }catch(e){console.error(e);if($('sErr'))er('Could not post: '+(e.message||'please try again'));}
+  finally{SL.busy=false;if(btn.isConnected){btn.disabled=false;btn.textContent='Post on Sureo ✓';}}
 }
 
 /* ---------- Start: show the screen and listings at once, resolve campus in the background ---------- */
