@@ -207,6 +207,13 @@ html:has(body.pv){background:var(--pvbg)}
 .thumb button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#111827;color:#fff;font-size:11px;line-height:20px}
 .pbtn{display:block;width:100%;text-align:center;margin-top:18px;padding:14px;font-size:16px;border:0}
 .pbtn:disabled{opacity:.6}
+button,a.card,a.lrow,a.btn,.nav a:not(.sell){transition:transform .12s ease,opacity .12s ease}
+button:active,a.lrow:active,a.btn:active,.nav a:not(.sell):active{transform:scale(.96);opacity:.8}
+a.card:active{transform:scale(.98);opacity:.9}
+button:disabled:active{transform:none;opacity:.6}
+.nav .sell i{transition:transform .12s ease}
+.nav .sell:active i{transform:translateY(-8px) scale(.9)}
+@media (prefers-reduced-motion:reduce){button,a.card,a.lrow,a.btn,.nav a,.nav .sell i{transition:none}button:active,a.lrow:active,a.btn:active,a.card:active,.nav a:not(.sell):active{transform:none}}
 </style>
 </head>
 <body>
@@ -860,6 +867,7 @@ async function showShop(){
   +'</div></div>';
 }
 
+function leaveTo(){history.replaceState(null,'',location.pathname+location.search);route();} /* no page reload, so the header and logo stay put */
 /* ---------- Sell wizard (#sell): same rules, tables and storage as the old app ---------- */
 const CAT_LBL={food:'Food',books:'Books',gadgets:'Gadgets',fashion:'Fashion',services:'Services'};
 const CAT_BY_TYPE={sell:['food','books','gadgets','fashion','services'],rent:['books','gadgets','fashion'],trade:['books','gadgets','fashion'],free:['food','books','gadgets','fashion']};
@@ -895,7 +903,7 @@ async function showSell(){
   const [p,k]=await Promise.all([sb.from('profiles').select('is_seller_verified').eq('id',ME.id).maybeSingle(),sb.from('kyc').select('status').eq('user_id',ME.id).maybeSingle()]);
   if(location.hash!=='#sell')return;
   if(!(p.data&&p.data.is_seller_verified)){
-    if(k.data&&k.data.status==='pending'){toast('⏳ Your seller verification is under review.');location.replace(location.pathname+location.search);}
+    if(k.data&&k.data.status==='pending'){toast('⏳ Your seller verification is under review.');leaveTo();}
     else{toast('Verify as a seller first to list items.');location.replace('#account');}
     return;
   }
@@ -934,7 +942,7 @@ function renderPrev(){
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-sl]');if(!b)return;
   const a=b.dataset.sl;
-  if(a==='close')location.replace(location.pathname+location.search);
+  if(a==='close')leaveTo();
   else if(a==='type'){SL.ty=b.dataset.v;document.querySelectorAll('#sTypes .stype').forEach(x=>x.classList.toggle('on',x===b));applySell();}
   else if(a==='cond'){SL.cond=b.dataset.v;renderCond();}
   else if(a==='pick')$('sFile').click();
@@ -982,6 +990,7 @@ async function postListing(btn){
   finally{SL.busy=false;if(btn.isConnected){btn.disabled=false;btn.textContent='Post on Sureo ✓';}}
 }
 
+document.addEventListener('touchstart',function(){},{passive:true}); /* lets iPhone Safari show the pressed state */
 /* ---------- Start: show the screen and listings at once, resolve campus in the background ---------- */
 paint();load();loadCampuses();findMyCampus();route();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
