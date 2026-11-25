@@ -443,6 +443,437 @@ button:disabled:active{transform:none;opacity:.6}
 <p>Data questions: <b>support@sureo.name.ng</b></p>
 </template>
 
+<template id="lpTpl"><style>
+        :host {
+            --sureo-green: #064E3B;
+            --sureo-green-hover: #059669;
+            --sureo-green-light: rgba(6, 78, 59, 0.05);
+            --bg-light: #FFFFFF;
+            --bg-off-white: #F9FAFB;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --warning-bg: #FEF3C7;
+            --warning-text: #92400E;
+            --font-stack: 'Inter', system-ui, -apple-system, sans-serif;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --transition: all 0.2s ease-in-out;
+        }
+        :host([data-theme="dark"]) {
+            --bg-light: #111827;
+            --bg-off-white: #0F172A;
+            --text-main: #F9FAFB;
+            --text-muted: #9CA3AF;
+            --border: #374151;
+            --sureo-green-light: rgba(16, 185, 129, 0.1);
+            --warning-bg: #451A03;
+            --warning-text: #FEF3C7;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        .lp-root {
+            height: 100%; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; overflow-y: auto;
+            font-family: var(--font-stack);
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+        a { text-decoration: none; color: inherit; transition: var(--transition); }
+        ul { list-style: none; }
+        img { max-width: 100%; display: block; }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        h1, h2, h3 { font-weight: 700; letter-spacing: -0.02em; }
+        h1 { font-size: 32px; line-height: 1.2; margin-bottom: 16px; }
+        h2 { font-size: 24px; margin-bottom: 12px; }
+        p { color: var(--text-muted); font-size: 16px; }
+        @media (min-width: 768px) {
+            h1 { font-size: 48px; }
+            h2 { font-size: 32px; }
+            p { font-size: 18px; }
+        }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            height: 48px; padding: 0 24px; border-radius: var(--radius-xl);
+            font-weight: 600; font-size: 16px; cursor: pointer; transition: var(--transition);
+            border: none; min-width: 44px;
+        }
+        .btn-primary { background-color: var(--sureo-green); color: white; }
+        .btn-primary:hover { background-color: var(--sureo-green-hover); transform: translateY(-1px); }
+        .btn-secondary { background: transparent; color: var(--sureo-green); gap: 8px; }
+        .btn-secondary:hover { opacity: 0.8; }
+        .btn-white { background-color: white; color: var(--sureo-green); }
+        .btn-white:hover { background-color: var(--bg-off-white); }
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border); padding: 16px 0;
+        }
+        :host([data-theme="dark"]) nav { background: rgba(17, 24, 39, 0.9); }
+        .nav-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--sureo-green); display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: none; gap: 24px; font-weight: 500; font-size: 14px; }
+        @media (min-width: 768px) { .nav-links { display: flex; } }
+        #hero { padding: 60px 0 40px; }
+        .hero-grid { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; }
+        @media (min-width: 992px) { .hero-grid { grid-template-columns: 1fr 1fr; } }
+        .trust-badges { display: flex; flex-wrap: wrap; gap: 16px; margin: 24px 0; }
+        .badge {
+            display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+            color: var(--text-main); background: var(--bg-off-white); padding: 6px 12px;
+            border-radius: 20px; border: 1px solid var(--border);
+        }
+        :host([data-theme="dark"]) .badge { background: var(--sureo-green-light); border-color: transparent; }
+        .hero-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 32px; }
+        .live-feed-container { position: relative; perspective: 1000px; }
+        .feed-overlay {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--sureo-green); color: white; padding: 4px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 700; z-index: 10; box-shadow: var(--shadow-sm); white-space: nowrap;
+        }
+        .feed-card {
+            background: var(--bg-light); border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm);
+            display: flex; align-items: center; gap: 12px; animation: float 3s ease-in-out infinite;
+        }
+        .feed-card:nth-child(2) { animation-delay: 0.5s; margin-left: 12px; }
+        .feed-card:nth-child(3) { animation-delay: 1s; margin-left: 24px; }
+        .feed-icon {
+            width: 40px; height: 40px; background: var(--bg-off-white); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+        .feed-info h4 { font-size: 14px; margin-bottom: 2px; color: var(--text-main); }
+        .feed-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; align-items: center; }
+        .verified-tag { color: var(--sureo-green); font-weight: 600; display: flex; align-items: center; gap: 2px; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .social-proof {
+            border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+            padding: 24px 0; margin: 40px 0; background: var(--bg-off-white);
+        }
+        :host([data-theme="dark"]) .social-proof { background: rgba(255,255,255,0.02); }
+        .stats-row { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; text-align: center; }
+        .stat-item h3 { font-size: 32px; color: var(--sureo-green); margin-bottom: 4px; }
+        .stat-item p { font-size: 14px; font-weight: 500; }
+        #categories { padding: 40px 0; }
+        .bento-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        @media (min-width: 768px) { .bento-grid { grid-template-columns: repeat(4, 1fr); } }
+        .cat-card {
+            background: var(--bg-light); border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 24px; text-align: center; cursor: pointer; transition: var(--transition);
+        }
+        .cat-card:hover { transform: scale(1.02); box-shadow: var(--shadow-md); border-color: var(--sureo-green); }
+        .cat-icon { font-size: 32px; margin-bottom: 12px; display: block; }
+        .cat-name { font-weight: 700; font-size: 15px; display: block; margin-bottom: 4px; }
+        .cat-price { font-size: 13px; color: var(--text-muted); }
+        @media (max-width: 767px) {
+            .bento-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 16px; gap: 12px; }
+            .cat-card { min-width: 160px; scroll-snap-align: start; }
+        }
+        #how { padding: 80px 0; background: var(--bg-off-white); position: relative; overflow: hidden; }
+        #how::before {
+            content: ''; position: absolute; inset: 0; opacity: 0.03;
+            background-image: radial-gradient(var(--sureo-green) 1px, transparent 1px);
+            background-size: 24px 24px; pointer-events: none;
+        }
+        .timeline { display: flex; flex-direction: column; gap: 32px; position: relative; z-index: 1; }
+        @media (min-width: 768px) {
+            .timeline { flex-direction: row; justify-content: space-between; }
+            .timeline::after {
+                content: ''; position: absolute; top: 40px; left: 10%; right: 10%; height: 2px;
+                background: var(--border); z-index: -1;
+            }
+        }
+        .step-card {
+            flex: 1; background: var(--bg-light); padding: 24px; border-radius: var(--radius-lg);
+            border: 1px solid var(--border); text-align: center; position: relative;
+        }
+        .step-num {
+            width: 48px; height: 48px; background: var(--sureo-green); color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px;
+            margin: 0 auto 16px; border: 4px solid var(--bg-off-white);
+        }
+        .step-icon { font-size: 24px; margin-bottom: 8px; display: block; }
+        #why { padding: 80px 0; }
+        .comparison-table {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border);
+            border-radius: var(--radius-lg); overflow: hidden; margin-top: 40px;
+        }
+        .comp-col { padding: 32px; }
+        .comp-wa { background: var(--bg-off-white); opacity: 0.7; }
+        .comp-sureo { background: var(--sureo-green-light); border-left: 1px solid var(--border); }
+        .comp-row { display: flex; align-items: flex-start; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+        .comp-row:last-child { border-bottom: none; }
+        .comp-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+        .comp-text { font-size: 15px; font-weight: 500; }
+        .comp-wa .comp-text { color: var(--text-muted); text-decoration: line-through; text-decoration-color: #EF4444; }
+        .comp-sureo .comp-text { color: var(--text-main); font-weight: 600; }
+        @media (min-width: 768px) {
+            .comp-sureo { opacity: 0; transform: translateX(20px); transition: all 0.8s ease; }
+            .comp-sureo.visible { opacity: 1; transform: translateX(0); }
+        }
+        #safety { padding: 60px 0; background: var(--bg-light); }
+        .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin: 32px 0; }
+        .hub-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+        .hub-header { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 16px; }
+        .hub-status { font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 4px; display: inline-block; width: fit-content; }
+        .status-open { background: #DCFCE7; color: #166534; }
+        .status-staffed { background: #DBEAFE; color: #1E40AF; }
+        .warning-banner {
+            background: var(--warning-bg); color: var(--warning-text); padding: 16px 24px;
+            border-radius: var(--radius-lg); display: flex; align-items: center; gap: 12px;
+            font-weight: 600; font-size: 14px; margin-top: 24px;
+        }
+        #reviews { padding: 80px 0; background: var(--bg-off-white); text-align: center; }
+        .carousel-container { max-width: 800px; margin: 40px auto 0; position: relative; overflow: hidden; }
+        .carousel-track { display: flex; transition: transform 0.5s ease-in-out; }
+        .review-card {
+            min-width: 100%; background: var(--bg-light); border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm); padding: 40px 32px; text-align: left;
+        }
+        .stars { color: #FBBF24; font-size: 20px; margin-bottom: 16px; letter-spacing: 2px; }
+        .quote { font-size: 18px; font-style: italic; color: var(--text-main); margin-bottom: 24px; line-height: 1.6; }
+        .author { display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 48px; height: 48px; background: var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); }
+        .author-info h4 { font-size: 15px; margin-bottom: 2px; }
+        .author-info p { font-size: 13px; margin: 0; }
+        .dots { display: flex; justify-content: center; gap: 8px; margin-top: 24px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; transition: var(--transition); }
+        .dot.active { background: var(--sureo-green); width: 24px; border-radius: 4px; }
+        .footer-cta { background: var(--sureo-green); color: white; padding: 80px 0; text-align: center; }
+        .footer-cta h2 { color: white; font-size: 32px; margin-bottom: 16px; }
+        .footer-cta p { color: rgba(255,255,255,0.8); margin-bottom: 32px; font-size: 18px; }
+        footer { background: var(--bg-light); padding: 40px 0; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-muted); }
+        .footer-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        .legal-links { display: flex; gap: 24px; }
+        .legal-links a:hover { color: var(--sureo-green); text-decoration: underline; }
+        *:focus-visible { outline: 2px solid var(--sureo-green); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+        }
+
+        nav { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
+        .lp-root { padding-bottom: env(safe-area-inset-bottom, 0px); }
+</style><div class="lp-root" id="lpTop">
+    <nav aria-label="Main navigation">
+        <div class="container nav-inner">
+            <a href="#lpTop" class="logo" aria-label="Sureo Home">🛡️ Sureo</a>
+            <div class="nav-links">
+                <a href="#how">How it works</a>
+                <a href="#why">Why Sureo</a>
+                <a href="#safety">Safety</a>
+                <a href="#reviews">Reviews</a>
+            </div>
+            <button class="btn btn-primary" data-lp="signin" style="padding: 0 16px; font-size: 14px;">Sign In</button>
+        </div>
+    </nav>
+
+    <section id="hero">
+        <div class="container hero-grid">
+            <div class="hero-content">
+                <h1>The campus market, finally without the chaos.</h1>
+                <p>Sureo replaces flooded WhatsApp groups with one verified place to order food, buy textbooks, rent rooms, find gigs and report lost items — trusted by students and vendors across campus.</p>
+                <div class="trust-badges">
+                    <span class="badge">🛡️ Student Verified</span>
+                    <span class="badge">🔒 Safe Meetup Hubs</span>
+                    <span class="badge">⚡ 2-Second Search</span>
+                </div>
+                <div class="hero-actions">
+                    <a href="#" class="btn btn-primary" data-lp="signup">Start Buying & Selling →</a>
+                    <a href="#how" class="btn btn-secondary">See how it works ↓</a>
+                </div>
+            </div>
+            <div class="live-feed-container" aria-hidden="true">
+                <div class="feed-overlay">Live on your campus right now</div>
+                <div class="feed-card">
+                    <div class="feed-icon">🍛</div>
+                    <div class="feed-info">
+                        <h4>Jollof Rice Combo</h4>
+                        <div class="feed-meta"><span>₦1,500</span> • <span>Active</span> • <span>Posted 2m ago</span></div>
+                    </div>
+                </div>
+                <div class="feed-card">
+                    <div class="feed-icon">💻</div>
+                    <div class="feed-info">
+                        <h4>HP Pavilion 15</h4>
+                        <div class="feed-meta"><span>₦120k</span> • <span class="verified-tag">Verified Seller ✓</span></div>
+                    </div>
+                </div>
+                <div class="feed-card">
+                    <div class="feed-icon">🏠</div>
+                    <div class="feed-info">
+                        <h4>Self-contain Apartment</h4>
+                        <div class="feed-meta"><span>₦150k/yr</span> • <span>Near Gate 2</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="social-proof">
+        <div class="container stats-row">
+            <div class="stat-item">
+                <h3 data-target="500">0+</h3>
+                <p>UNIBEN Students Waiting</p>
+            </div>
+            <div class="stat-item">
+                <h3 id="lpListings">0</h3>
+                <p>Active Listings</p>
+            </div>
+            <div class="stat-item">
+                <h3 data-target="98">0%</h3>
+                <p>Safe Meetup Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <section id="categories">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 32px;">Browse Categories</h2>
+            <div class="bento-grid">
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Food"><span class="cat-icon">🍛</span><span class="cat-name">Food</span><span class="cat-price">From ₦1,000</span></div>
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Books"><span class="cat-icon">📚</span><span class="cat-name">Books</span><span class="cat-price">From ₦2,500</span></div>
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Gadgets"><span class="cat-icon">💻</span><span class="cat-name">Gadgets</span><span class="cat-price">From ₦15,000</span></div>
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Housing"><span class="cat-icon">🏠</span><span class="cat-name">Housing</span><span class="cat-price">From ₦80k/yr</span></div>
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Services"><span class="cat-icon">🛠️</span><span class="cat-name">Services</span><span class="cat-price">From ₦3,000</span></div>
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Gigs"><span class="cat-icon">💼</span><span class="cat-name">Gigs</span><span class="cat-price">Flexible Pay</span></div>
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Lost & Found"><span class="cat-icon">🔍</span><span class="cat-name">Lost & Found</span><span class="cat-price">Free Reports</span></div>
+                <div class="cat-card" data-lp="browse" tabindex="0" role="button" aria-label="Browse Fashion"><span class="cat-icon">👗</span><span class="cat-name">Fashion</span><span class="cat-price">From ₦4,000</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 48px;">How Sureo Works</h2>
+            <div class="timeline">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <span class="step-icon">🪪</span>
+                    <h3>Join in seconds</h3>
+                    <p style="font-size: 14px; margin-top: 8px;">Verify your student ID once. Get the Sureo ✓ badge instantly.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <span class="step-icon">🔍</span>
+                    <h3>Search & discover</h3>
+                    <p style="font-size: 14px; margin-top: 8px;">Find anything in 2 seconds — even by ISBN or specific hostel location.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <span class="step-icon">🤝</span>
+                    <h3>Chat, pay & meet safely</h3>
+                    <p style="font-size: 14px; margin-top: 8px;">From "I need it" to "I got it" using our verified meetup hubs.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="why">
+        <div class="container">
+            <h2 style="text-align: center;">Why switch from WhatsApp?</h2>
+            <div class="comparison-table">
+                <div class="comp-col comp-wa">
+                    <h3 style="margin-bottom: 24px; color: var(--text-muted);">WhatsApp Groups 😩</h3>
+                    <div class="comp-row"><span class="comp-icon">❌</span><span class="comp-text">Messages buried in minutes</span></div>
+                    <div class="comp-row"><span class="comp-icon">❌</span><span class="comp-text">No seller verification</span></div>
+                    <div class="comp-row"><span class="comp-icon">❌</span><span class="comp-text">Meetups in unsafe locations</span></div>
+                    <div class="comp-row"><span class="comp-icon">❌</span><span class="comp-text">Zero search functionality</span></div>
+                </div>
+                <div class="comp-col comp-sureo" id="sureoCol">
+                    <h3 style="margin-bottom: 24px; color: var(--sureo-green);">Sureo Marketplace ✅</h3>
+                    <div class="comp-row"><span class="comp-icon">✅</span><span class="comp-text">Find anything in 2 seconds — even by ISBN</span></div>
+                    <div class="comp-row"><span class="comp-icon">✅</span><span class="comp-text">Listings stay visible until sold</span></div>
+                    <div class="comp-row"><span class="comp-icon">✅</span><span class="comp-text">Student-verified sellers with the Sureo ✓</span></div>
+                    <div class="comp-row"><span class="comp-icon">✅</span><span class="comp-text">Ratings, reports & meetup safety hubs</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="safety">
+        <div class="container">
+            <h2 style="text-align: center;">Trade in Safe Zones Only</h2>
+            <p style="text-align: center; max-width: 600px; margin: 0 auto;">We've partnered with campus security to designate official meetup points.</p>
+            <div class="hub-grid">
+                <div class="hub-card">
+                    <div class="hub-header">🛡️ Security Post, Gate 1</div>
+                    <span class="hub-status status-open">OPEN 24/7</span>
+                    <p style="font-size: 14px;">CCTV monitored area with constant security presence. Ideal for evening trades.</p>
+                </div>
+                <div class="hub-card">
+                    <div class="hub-header">📚 Library Front Desk</div>
+                    <span class="hub-status status-staffed">8AM–6PM STAFFED</span>
+                    <p style="font-size: 14px;">Quiet, well-lit environment perfect for textbook exchanges and gadget inspections.</p>
+                </div>
+                <div class="hub-card">
+                    <div class="hub-header">🏛️ SU Building Lobby</div>
+                    <span class="hub-status status-staffed">9AM–5PM SU OFFICERS</span>
+                    <p style="font-size: 14px;">Central location with student union oversight. High foot traffic ensures safety.</p>
+                </div>
+            </div>
+            <div class="warning-banner" role="alert">
+                <span style="font-size: 24px;">⚠️</span>
+                <span>Never meet in hostels or isolated gates. Always inspect items before paying.</span>
+            </div>
+            <div style="text-align: center; margin-top: 24px;">
+                <a href="#" class="btn btn-secondary">View all safety hubs →</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="reviews">
+        <div class="container">
+            <h2>Trusted by Students</h2>
+            <div class="carousel-container">
+                <div class="carousel-track" id="reviewTrack">
+                    <div class="review-card">
+                        <div class="stars">★★★★★</div>
+                        <p class="quote">"I sold my old laptop in 2 hours! The verification badge made buyers trust me instantly. No more 'is this available?' spam."</p>
+                        <div class="author"><div class="avatar">BA</div><div class="author-info"><h4>Blessing A.</h4><p>300L Computer Science</p></div></div>
+                    </div>
+                    <div class="review-card">
+                        <div class="stars">★★★★★</div>
+                        <p class="quote">"Found a self-contain near Gate 2 without leaving my room. The safety hub feature gave my mum peace of mind when I went to inspect."</p>
+                        <div class="author"><div class="avatar">MI</div><div class="author-info"><h4>Musa I.</h4><p>200L Engineering</p></div></div>
+                    </div>
+                    <div class="review-card">
+                        <div class="stars">★★★★★</div>
+                        <p class="quote">"Best thing since JAMB results. I get fresh jollof delivered to my hostel gate by verified cooks. Life saver during exam week!"</p>
+                        <div class="author"><div class="avatar">AB</div><div class="author-info"><h4>Amina B.</h4><p>100L Mass Comm</p></div></div>
+                    </div>
+                </div>
+                <div class="dots" id="reviewDots">
+                    <div class="dot active" data-index="0"></div>
+                    <div class="dot" data-index="1"></div>
+                    <div class="dot" data-index="2"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="footer-cta">
+        <div class="container">
+            <h2>Free for students. Free for vendors during launch week.</h2>
+            <p>Join Sureo today — no credit card required.</p>
+            <button class="btn btn-white" data-lp="signup">Create my free account →</button>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container footer-inner">
+            <div>&copy; 2026 Sureo Technologies. All rights reserved.</div>
+            <div class="legal-links">
+                <a href="#" data-lp="terms">Terms of Service</a>
+                <a href="#" data-lp="privacy">Privacy Policy</a>
+                <a href="#">Campus Selector</a>
+            </div>
+        </div>
+    </footer>
+</div></template>
+<div id="lpHost" style="display:none;position:fixed;inset:0;z-index:65"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* ---------- Supabase: identical to index.html so the login session is shared ---------- */
@@ -1617,6 +2048,72 @@ document.addEventListener('click',e=>{
 /* ---------- Start: show the screen and listings at once, resolve campus in the background ---------- */
 paint();load();loadCampuses();findMyCampus();route();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+
+<script>
+/* ---------- Landing page: only for signed-out visitors on the home route, once per session ---------- */
+(function(){
+  const host=document.getElementById('lpHost'),tpl=document.getElementById('lpTpl');
+  if(!host||!tpl)return;
+  const sync=()=>host.setAttribute('data-theme',document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light');
+  new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  function close(){host.style.display='none';try{sessionStorage.setItem('sureoLP','1');}catch(e){}}
+  function mount(){
+    const root=host.attachShadow({mode:'open'});
+    root.appendChild(tpl.content.cloneNode(true));
+    sync();host.style.display='block';
+    const cp=(async()=>{try{const r=await sb.from('listings').select('id',{count:'exact',head:true}).eq('status','active');return r.error?null:r.count;}catch(e){return null;}})();
+    root.addEventListener('click',e=>{
+      const t=e.target.closest('[data-lp]');
+      if(t){
+        e.preventDefault();const a=t.dataset.lp;
+        if(a==='signin'){AU.email='';openAuth('in');}
+        else if(a==='signup'){AU.email='';openAuth('up');}
+        else if(a==='browse')close();
+        else if(a==='terms'||a==='privacy')openA(legalH(a));
+        return;
+      }
+      const l=e.target.closest('a[href^="#"]');
+      if(l){
+        e.preventDefault();const id=l.getAttribute('href').slice(1);
+        const el=id&&root.getElementById(id);
+        (el||root.getElementById('lpTop')).scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    });
+    root.querySelectorAll('.cat-card').forEach(c=>c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();c.click();}}));
+    let counted=false;
+    function count(el,target,suffix){
+      const inc=target/(2000/16);let cur=0;
+      (function step(){cur+=inc;if(cur<target){el.textContent=Math.ceil(cur)+suffix;requestAnimationFrame(step);}else el.textContent=target+suffix;})();
+    }
+    async function animate(){
+      if(counted)return;counted=true;
+      root.querySelectorAll('[data-target]').forEach(el=>count(el,+el.dataset.target,el.textContent.replace(/[0-9]/g,'')));
+      const n=await cp,el=root.getElementById('lpListings');
+      if(n==null)el.textContent='—';else count(el,n,'');
+    }
+    const io=new IntersectionObserver(es=>es.forEach(en=>{
+      if(!en.isIntersecting)return;
+      en.target.classList.add('visible');
+      if(en.target.querySelector('.stat-item'))animate();
+    }),{threshold:.2});
+    root.querySelectorAll('#sureoCol,.social-proof').forEach(el=>io.observe(el));
+    const track=root.getElementById('reviewTrack'),dots=root.querySelectorAll('.dot'),box=root.querySelector('.carousel-container');
+    let idx=0,timer;
+    const go=i=>{idx=i;track.style.transform='translateX(-'+i*100+'%)';dots.forEach(d=>d.classList.remove('active'));dots[i].classList.add('active');};
+    const run=()=>{clearInterval(timer);timer=setInterval(()=>go((idx+1)%dots.length),5000);};
+    run();
+    box.addEventListener('mouseenter',()=>clearInterval(timer));box.addEventListener('mouseleave',run);
+    dots.forEach(d=>d.addEventListener('click',()=>{go(+d.dataset.index);run();}));
+  }
+  (async()=>{
+    try{if(sessionStorage.getItem('sureoLP')==='1')return;}catch(e){}
+    if((location.hash&&location.hash!=='#')||/^\/(l|s)\//.test(location.pathname))return;
+    const me=await AUTHP;if(me)return;
+    mount();
+  })();
+  document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('a[href="#signin"]'))close();},true);
+})();
 </script>
 <script src="https://js.paystack.co/v2/inline.js"></script>
 </body>
