@@ -271,6 +271,40 @@ button:disabled:active{transform:none;opacity:.6}
 .pbl{width:100%;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.14);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
 .pbs{align-self:stretch;text-align:center;padding:13px;border-radius:12px;background:#fff;color:#0d4a3a;font-weight:700;font-size:15px}
 .lrow.picked{border-color:var(--g);background:var(--g2)}
+/* ---- auth form (sign in / sign up) ---- */
+.auth-logo{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:14px}
+.auth-badge{display:inline-flex;align-items:center;gap:4px;background:var(--g2);color:var(--gtext);font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px}
+.abody h2{font-size:26px;font-weight:800;margin-bottom:4px}
+.auth-sub{font-size:14px;color:var(--muted);margin-bottom:14px}
+.abody .field{margin-bottom:16px}
+.abody .field label{display:block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.abody .field input{width:100%;min-height:44px;padding:12px 14px;border-radius:8px;border:1px solid var(--line2);background:var(--field);color:var(--text);font-size:15px;transition:border-color .15s,box-shadow .15s}
+.abody .field input::placeholder{color:var(--muted)}
+.abody .field input:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 2px var(--g2),0 0 0 4px var(--g)}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:46px}
+.pw-eye{position:absolute;right:2px;top:0;bottom:0;width:44px;display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--muted);background:none;border:0;cursor:pointer}
+.form-err{display:none;color:#dc2626;font-size:13px;margin:4px 0 10px}
+.form-err.show{display:block;animation:authshake .3s linear}
+@keyframes authshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.btn-auth{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--g);color:var(--onG);font-weight:700;font-size:15px;border:0;border-radius:8px;padding:12px 24px;cursor:pointer;transition:transform .12s}
+.btn-auth:active{transform:scale(.98)}
+.btn-auth:disabled{opacity:.5;cursor:not-allowed}
+.btn-auth .arr{transition:transform .15s}
+.btn-auth:hover .arr{transform:translateX(2px)}
+.btn-auth .spin{display:none;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;animation:authspin .7s linear infinite}
+.btn-auth.loading .spin{display:inline-block}
+.btn-auth.loading span:not(.spin){display:none}
+@keyframes authspin{to{transform:rotate(360deg)}}
+.auth-div{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:14px 0}
+.auth-div::before,.auth-div::after{content:'';flex:1;height:1px;background:var(--line2)}
+.btn-ghost{width:100%;min-height:44px;background:none;border:0;color:var(--g);font-weight:700;font-size:15px;border-radius:8px;cursor:pointer}
+.btn-ghost:hover{background:var(--g2)}
+.auth-note{font-size:12px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
+.legal-link{background:none;border:0;padding:0;color:var(--g);font-weight:700;font-size:inherit;cursor:pointer;text-decoration:underline}
+.legal-link:hover,.legal-link:focus{text-decoration:underline}
+.abody label.rowchk{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 12px;font-size:13px}
+.abody label.rowchk span{display:flex;gap:6px;align-items:center}
 </style>
 </head>
 <body>
@@ -821,7 +855,7 @@ const aBar=t=>'<div class="abar"><button class="round" data-ac="back" aria-label
 function closeA(){$('asheet').classList.remove('open');}
 function closeAcct(){const a=$('acct');if(a.classList.contains('open')){a.classList.remove('open');closeA();}}
 function openA(h){$('abody').innerHTML=h;$('abody').scrollTop=0;$('asheet').classList.add('open');}
-const aErr=m=>{const e=$('aErr');if(e){e.textContent=m;e.style.display='block';}};
+const aErr=m=>{const e=$('aErr');if(e){e.classList.remove('show');void e.offsetWidth;e.textContent=m;e.style.display='block';e.classList.add('show');}};
 async function aRun(btn,fn){if(aBusy)return;aBusy=true;const t=btn.textContent;btn.disabled=true;btn.textContent='Please wait…';try{await fn();}finally{aBusy=false;if(btn.isConnected){btn.disabled=false;btn.textContent=t;}}}
 async function rmFolder(bucket,prefix){
   try{
@@ -1289,50 +1323,91 @@ async function ensureConsent(u){
   if(!f||!u)return;
   try{const v=JSON.parse(f);const {error}=await sb.from('consents').insert({user_id:u.id,terms_version:v.t,privacy_version:v.p});if(!error)localStorage.removeItem('sureoConsent');}catch(e){}
 }
-const auBtns=(main,label,extra)=>'<p class="err" id="aErr"></p><div class="macts"><button class="fill" data-au="'+main+'" style="padding:12px">'+label+'</button><button data-au="close" style="padding:12px 18px">Cancel</button></div>'+extra;
+const auLogo='<div class="auth-logo"><span class="auth-badge">✓ Sureo</span></div>';
+const auLegal='<p class="auth-note">By continuing you agree to our <button type="button" class="legal-link" data-au="terms">Terms</button> &amp; <button type="button" class="legal-link" data-au="privacy">Privacy Policy</button>.</p>';
+const auPw=(id,ph,ac)=>'<div class="field"><label>Password</label><div class="pw-wrap"><input type="password" id="'+id+'" placeholder="'+ph+'" autocomplete="'+ac+'"></div></div>';
 function authHtml(m){
-  if(m==='up')return '<h2>Create account</h2><p class="ss" style="margin-bottom:10px">Join Sureo, the verified campus marketplace.</p><input id="auN" placeholder="Full name" autocomplete="name" maxlength="60"><input id="auE" type="email" placeholder="Email" autocomplete="email" value="'+esc(AU.email)+'"><input id="auP" type="password" placeholder="Password (at least 8 characters)" autocomplete="new-password"><p class="ss" style="margin:4px 0 8px;font-size:12px">By creating an account you agree to the Sureo Terms and Privacy Policy.</p>'+auBtns('signup','Create account','<p class="ss" style="text-align:center;margin-top:12px">Have an account? <a href="#" data-au="tologin" style="color:var(--primary);font-weight:700">Sign in</a></p>');
-  if(m==='code')return '<h2>Check your email</h2><p class="ss" style="margin-bottom:10px">We sent a code to <b>'+esc(AU.email)+'</b>. Enter it below to finish.</p><input id="auC" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter the 6-digit code">'+auBtns('verify','Verify','<p class="ss" style="text-align:center;margin-top:12px"><a href="#" data-au="resend" style="color:var(--primary);font-weight:700">Resend code</a></p>');
-  return '<h2>Sign in</h2><p class="ss" style="margin-bottom:10px">Welcome back to Sureo.</p><input id="auE" type="email" placeholder="Email" autocomplete="email" value="'+esc(AU.email)+'"><input id="auP" type="password" placeholder="Password" autocomplete="current-password"><label class="ss" style="display:flex;gap:8px;align-items:center;margin:2px 0 8px"><input type="checkbox" id="auR" style="width:auto;margin:0"'+(rememberOn()?' checked':'')+'>Remember me</label>'+auBtns('login','Sign in','<p class="ss" style="text-align:center;margin-top:12px"><a href="#" data-au="forgot" style="color:var(--primary);font-weight:700">Forgot password?</a> &nbsp;·&nbsp; <a href="#" data-au="tosignup" style="color:var(--primary);font-weight:700">Create account</a></p>');
+  if(m==='up')return auLogo+'<h2>Create your account 🎉</h2><p class="auth-sub">Join Sureo, the verified campus marketplace.</p>'
+    +'<div class="field"><label>Full name</label><input id="auN" placeholder="e.g. Chidera Okafor" autocomplete="name" maxlength="60"></div>'
+    +'<div class="field"><label>Email address</label><input id="auE" type="email" placeholder="you@gmail.com" autocomplete="username" autocapitalize="none" inputmode="email" value="'+esc(AU.email)+'"></div>'
+    +auPw('auP','At least 8 characters','new-password')
+    +'<p class="form-err" id="aErr" role="alert" aria-live="polite"></p>'
+    +'<button class="btn-auth" id="auBtn" data-au="signup"><span class="spin"></span><span>Create account</span><span class="arr">→</span></button>'
+    +'<div class="auth-div">or</div>'
+    +'<button class="btn-ghost" data-au="tologin">I already have an account</button>'
+    +auLegal;
+  if(m==='code')return auLogo+'<h2>Enter your code 📩</h2><p class="auth-sub">We sent a 6-digit code to <b>'+esc(AU.email)+'</b>. Enter it below to confirm your account.</p>'
+    +'<div class="field"><label>Confirmation code</label><input id="auC" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter the 6-digit code"></div>'
+    +'<p class="form-err" id="aErr" role="alert" aria-live="polite"></p>'
+    +'<button class="btn-auth" id="auBtn" data-au="verify"><span class="spin"></span><span>Verify &amp; create account</span><span class="arr">→</span></button>'
+    +'<button type="button" class="btn-ghost" data-au="resend" style="margin-top:4px">Resend code</button>'
+    +'<div class="auth-div">or</div>'
+    +'<button class="btn-ghost" data-au="tologin">Back</button>';
+  return auLogo+'<h2>Welcome back 👋</h2><p class="auth-sub">Sign in to your verified campus market.</p>'
+    +'<div class="field"><label>Email address</label><input id="auE" type="email" placeholder="you@gmail.com" autocomplete="username" autocapitalize="none" inputmode="email" value="'+esc(AU.email)+'"></div>'
+    +auPw('auP','••••••••','current-password')
+    +'<label class="rowchk"><span><input type="checkbox" id="auR" style="width:auto;margin:0"'+(rememberOn()?' checked':'')+'> Remember me</span><button type="button" class="legal-link" data-au="forgot">Forgot password?</button></label>'
+    +'<p class="form-err" id="aErr" role="alert" aria-live="polite"></p>'
+    +'<button class="btn-auth" id="auBtn" data-au="login"><span class="spin"></span><span>Sign In</span><span class="arr">→</span></button>'
+    +'<div class="auth-div">or</div>'
+    +'<button class="btn-ghost" data-au="tosignup">Create a free account</button>'
+    +auLegal;
 }
+function auMount(){
+  $('abody').querySelectorAll('input[type="password"]').forEach(inp=>{
+    const btn=document.createElement('button');btn.type='button';btn.className='pw-eye';btn.setAttribute('aria-label','Show password');btn.textContent='👁️';
+    btn.addEventListener('click',()=>{const show=inp.type==='password';inp.type=show?'text':'password';btn.textContent=show?'🙈':'👁️';btn.setAttribute('aria-label',show?'Hide password':'Show password');});
+    inp.parentNode.appendChild(btn);
+  });
+  const f=$('abody').querySelector('input');if(f)setTimeout(()=>f.focus(),50);
+}
+function openAuth(m){openA(authHtml(m));auMount();}
 const auVal=id=>{const x=$(id);return x?x.value.trim():'';};
 const auMail=e=>/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e);
 async function auDone(u){await ensureConsent(u);location.reload();}
-document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href="#signin"]');if(!a)return;e.preventDefault();AU.email='';openA(authHtml('in'));},true);
+function auLoading(btn,on){btn.disabled=on;btn.classList.toggle('loading',on);}
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href="#signin"]');if(!a)return;e.preventDefault();AU.email='';openAuth('in');},true);
 $('abody').addEventListener('click',async e=>{
   const b=e.target.closest('[data-au]');if(!b)return;e.preventDefault();
   const a=b.dataset.au;
   if(a==='close'){closeA();return;}
-  if(a==='tologin'){AU.email=auVal('auE');openA(authHtml('in'));return;}
-  if(a==='tosignup'){AU.email=auVal('auE');openA(authHtml('up'));return;}
-  if(a==='login')return aRun(b,async()=>{
+  if(a==='terms'||a==='privacy'){openA(legalH(a));return;}
+  if(a==='tologin'){AU.email=auVal('auE');openAuth('in');return;}
+  if(a==='tosignup'){AU.email=auVal('auE');openAuth('up');return;}
+  if(a==='login'){
     const em=auVal('auE'),pw=$('auP').value;
     if(!auMail(em))return aErr('Enter a valid email address.');
     if(!pw)return aErr('Enter your password.');
+    auLoading(b,true);
     setRemember($('auR').checked);
     const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
-    if(error)return aErr(error.message);
-    await auDone(data.user);
-  });
-  if(a==='signup')return aRun(b,async()=>{
+    auLoading(b,false);
+    if(error)return aErr('Invalid email or password.');
+    await auDone(data.user);return;
+  }
+  if(a==='signup'){
     const nm=auVal('auN'),em=auVal('auE'),pw=$('auP').value;
     if(nm.length<2||nm.length>60)return aErr('Enter your name (2 to 60 characters).');
     if(!auMail(em))return aErr('Enter a valid email address.');
     if(pw.length<8)return aErr('Password must be at least 8 characters.');
+    auLoading(b,true);
     setRemember(true);
     const {data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{full_name:nm}}});
+    auLoading(b,false);
     if(error)return aErr(error.message);
     try{localStorage.setItem('sureoConsent',JSON.stringify({t:TERMS_V,p:PRIV_V}));}catch(x){}
     if(data.session)return auDone(data.session.user);
-    AU.email=em;openA(authHtml('code'));
-  });
-  if(a==='verify')return aRun(b,async()=>{
+    AU.email=em;openAuth('code');return;
+  }
+  if(a==='verify'){
     const c=auVal('auC').replace(/\s/g,'');
     if(!/^\d{6}$/.test(c))return aErr('Enter the 6-digit code from your email.');
+    auLoading(b,true);
     const {data,error}=await sb.auth.verifyOtp({email:AU.email,token:c,type:'signup'});
+    auLoading(b,false);
     if(error)return aErr('That code is wrong or expired. Check it or tap Resend code.');
-    await auDone(data.user);
-  });
+    await auDone(data.user);return;
+  }
   if(a==='resend'){const {error}=await sb.auth.resend({type:'signup',email:AU.email});toast(error?error.message:'New code sent. Check your email.',4000);return;}
   if(a==='forgot'){
     const em=auVal('auE');if(!auMail(em))return aErr('Enter your email above, then tap Forgot password.');
