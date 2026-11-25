@@ -39,7 +39,8 @@ a{color:inherit;text-decoration:none}
 .search .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;width:18px;height:18px}
 .search input{width:100%;padding:10px 16px 10px 40px;background:var(--field);border:2px solid transparent;border-radius:12px;outline:0;font-size:16px}
 .search input:focus{border-color:var(--g);background:var(--card)}
-.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 12px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 12px;overscroll-behavior-x:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent)}
+.chips::after{content:"";flex:none;width:16px}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;padding:6px 16px;border-radius:999px;border:1px solid var(--line2);background:var(--card);font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
 .chip.on{background:var(--g);border-color:var(--g);color:var(--onG);box-shadow:0 4px 8px rgba(13,74,58,.25)}
@@ -162,6 +163,34 @@ html:has(body.pv){background:var(--pvbg)}
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:90;background:#111827;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
 .sheet{z-index:70}#esheet{z-index:75}
+.acct{position:fixed;inset:0;z-index:60;background:var(--pvbg);overflow-y:auto;display:none;overscroll-behavior:contain;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+.acct.open{display:block}
+.abar{display:flex;align-items:center;gap:12px;margin:0 auto 14px;max-width:560px}
+.abar h1{font-size:20px}
+.acard{max-width:560px;margin:0 auto 16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 14px 4px}
+.acard h3{font-size:16px;margin:12px 0 2px}
+.acard .ss{margin-bottom:6px}
+.acard .lcard{border:0;border-radius:0;margin:0 -14px}
+.krow{display:flex;align-items:center;gap:12px;padding:13px 0}
+.krow+.krow{border-top:1px solid var(--line)}
+.krow>i{font-style:normal;font-size:20px;width:28px;text-align:center}
+.krow>div{flex:1;min-width:0}
+.krow b{display:block;font-size:14px}
+.krow .m{font-size:12px;color:var(--muted)}
+.kst{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--g2);color:var(--gtext);white-space:nowrap}
+.kst.opt{background:var(--field);color:var(--muted)}
+.kbtn{font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;border:1.5px solid var(--g);color:var(--gtext);background:transparent;white-space:nowrap}
+.alegal{display:flex;gap:18px;justify-content:center;max-width:560px;margin:0 auto;font-size:13px;color:var(--muted)}
+.alegal button{text-decoration:underline}
+#asheet{z-index:80}
+.abody{overflow-y:auto;overscroll-behavior:contain}
+.panel select{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);outline:0;font-size:16px;margin-bottom:8px}
+.ubox{display:block;width:100%;text-align:left;padding:14px;margin-bottom:8px;border:1.5px dashed var(--line2);border-radius:12px;color:var(--muted);font-size:14px}
+.ubox.got{border-style:solid;border-color:var(--g);color:var(--gtext)}
+.err{display:none;color:#dc2626;font-size:12px;margin:0 0 8px}
+.lg{font-size:13px;line-height:1.55;color:var(--text);max-height:50vh;overflow-y:auto}
+.lg h4{font-size:14px;margin:14px 0 4px}.lg p,.lg ul{margin-bottom:6px}.lg ul{padding-left:18px}.lg .upd{color:var(--muted);font-size:12px}
+.macts button:disabled{opacity:.6}
 </style>
 </head>
 <body>
@@ -214,7 +243,7 @@ html:has(body.pv){background:var(--pvbg)}
 <div class="detail" id="detail" aria-live="polite"></div>
 <div class="toast" id="toast"></div>
 <div class="sheet" id="esheet"><div class="panel"><h2>Edit listing</h2>
-  <input id="eName" placeholder="Title" maxlength="80"><input id="ePrice" type="number" inputmode="numeric" placeholder="Price in ₦ (0 if free)">
+  <input id="eName" placeholder="Title" maxlength="80"><input id="ePrice" type="text" inputmode="numeric" autocomplete="off" placeholder="Price in ₦ (0 if free)">
   <div class="macts" style="margin-top:6px"><button class="pri" data-ma="save" style="flex:1;padding:12px">Save changes</button><button data-ma="cancel" style="padding:12px 18px">Cancel</button></div>
 </div></div>
 <div class="sheet" id="sheet"><div class="panel">
@@ -222,6 +251,89 @@ html:has(body.pv){background:var(--pvbg)}
   <input id="cq" type="search" placeholder="Search your university" autocomplete="off">
   <div class="list" id="clist"></div>
 </div></div>
+
+<div class="acct" id="acct" aria-live="polite"></div>
+<div class="sheet" id="asheet"><div class="panel"><div class="abody" id="abody"></div></div></div>
+<template id="tplTerms"><p class="upd">Last updated: November 5, 2026</p>
+<h4>1. About Sureo</h4>
+<p>Sureo is an online marketplace that connects students and staff of Nigerian universities so they can buy, sell, rent, trade and order food and services. <b>Sureo is a platform only.</b> Unless we expressly say otherwise, we are not the seller, buyer, or owner of any item or service listed, and we are not a party to any deal between users.</p>
+<h4>2. Eligibility and accounts</h4>
+<ul><li>You must be 18 or older, or have a parent/guardian's permission, and be able to form a binding contract in Nigeria.</li>
+<li>You must give accurate information and keep your password secure. You are responsible for all activity on your account.</li>
+<li>One person, one account. Impersonating someone else or using false identity or student details is prohibited.</li></ul>
+<h4>3. Seller verification (KYC)</h4>
+<p>To sell, we require your matric number, a photo of your student ID and a selfie holding it. We use these only to verify who you are, prevent fraud, and meet legal obligations. A "Verified" badge means you passed our checks at the time; it is <b>not</b> a guarantee of an item's quality or a user's conduct.</p>
+<h4>4. Listings and prohibited items</h4>
+<p>You may only list items you own or are authorised to sell, described honestly with real photos. You must not list or promote:</p>
+<ul><li>Illegal goods, stolen goods, counterfeits or pirated material</li>
+<li>Drugs, weapons, or anything harmful or hazardous</li>
+<li>Exam papers, answers, assignment-writing or any academic-cheating service</li>
+<li>Adult content, hateful content, or anything that harasses or deceives others</li>
+<li>Scams, advance-fee schemes, or requests to move payment off Sureo to avoid protections</li></ul>
+<p>We may remove listings and suspend or ban accounts that break these rules.</p>
+<h4>5. Payments, fees and refunds</h4>
+<ul><li><b>Online payments:</b> Online payments are processed by Paystack. Funds go directly to the seller's verified Paystack subaccount; Sureo does not hold or release your money. An order is marked as paid only after Paystack confirms the charge, never because a user says so.</li>
+<li><b>Pay on delivery:</b> You may instead choose to pay cash or by POS when you meet at a campus safety hub. Sellers must never share personal bank account numbers in chat or ask for off-platform transfers.</li>
+<li>We recommend meeting in a public place, inspecting the item before you pay, and never paying for something you have not seen. Paying in advance to a stranger is at your own risk.</li>
+<li>Sureo does not currently charge buyers a fee. Paystack may apply its own processing charges. We will tell you in advance if we introduce fees and update these Terms.</li>
+<li>If an item is not delivered or is not as described, report the listing or user in the app and email support@sureo.name.ng with your order details. We may remove listings or suspend accounts. Refunds for online payments are handled through Paystack and the seller; we cannot refund cash paid on delivery.</li></ul>
+<h4>6. Meeting safely</h4>
+<p>Meet in public campus locations, preferably the Safety Hubs shown in the app. Inspect items before confirming. Never share your PIN, OTP or password with anyone, including people claiming to be Sureo staff.</p>
+<h4>7. Reviews, reports and disputes</h4>
+<p>Reviews must be honest and based on a real transaction. Fake, paid or retaliatory reviews are not allowed. You can report any listing or user, and we may act on reports at our discretion. Disputes between users should first be attempted in good faith; Sureo may help mediate but is not obliged to.</p>
+<h4>8. Your content</h4>
+<p>You keep ownership of what you post, but you give Sureo a non-exclusive, free licence to display, store and distribute it on the platform for the purpose of running and promoting the service.</p>
+<h4>9. Suspension and termination</h4>
+<p>We may suspend or close accounts that break these Terms, put others at risk, or are required to be closed by law. You can delete your account at any time from Profile → Identity &amp; account → Delete account.</p>
+<h4>10. Disclaimers and limits of liability</h4>
+<p>Sureo is provided "as is" and "as available". To the fullest extent allowed by Nigerian law, we are not liable for the quality, safety, legality or delivery of items or services; for the acts or omissions of users; or for indirect or consequential losses. Nothing in these Terms limits liability that cannot lawfully be limited, including for fraud or death or personal injury caused by negligence.</p>
+<h4>11. Changes</h4>
+<p>We may update these Terms. If changes are material we will notify you in the app or by email. Continuing to use Sureo after the effective date means you accept the update.</p>
+<h4>12. Governing law</h4>
+<p>These Terms are governed by the laws of the Federal Republic of Nigeria. Disputes will be handled by the courts of Nigeria, after a good-faith attempt to resolve them informally first.</p>
+<h4>13. Contact</h4>
+<p>Questions? Email <b>support@sureo.name.ng</b>.</p>
+</template>
+<template id="tplPrivacy"><p class="upd">Last updated: November 5, 2026</p>
+<div class="callout">🔒 In short: we collect only what we need to run a safe marketplace, we never sell your personal data, and your student ID and selfie are never shown to other users.</div>
+<h4>1. Who we are</h4>
+<p>Sureo ("we", "us") is the data controller for personal data processed through this platform. This policy is written to align with the <b>Nigeria Data Protection Act 2023 (NDPA)</b>.</p>
+<h4>2. What we collect</h4>
+<ul><li><b>Account data:</b> full name, email address, password (stored securely hashed, never in plain text).</li>
+<li><b>Seller verification data:</b> matric number, student ID image, a selfie holding your ID, and your university.</li>
+<li><b>Marketplace activity:</b> listings, photos, messages, orders, reviews, reports and saved items.</li>
+<li><b>Order and payment data:</b> the items you order, the amount, your payment method and the Paystack transaction reference and status. Card and bank details are entered on Paystack and are never seen or stored by Sureo. Sellers who accept online payments also provide bank details to Paystack to create a payout subaccount; Sureo stores only the Paystack subaccount code.</li>
+<li><b>Technical data:</b> device type, browser, IP address and basic usage logs, for security and performance.</li></ul>
+<h4>3. Why we use it, and our legal basis</h4>
+<ul><li>To create and run your account and provide the service <i>(contract)</i>.</li>
+<li>To verify sellers, prevent fraud and meet regulatory duties <i>(legal obligation / legitimate interest)</i>.</li>
+<li>To process order requests and resolve disputes <i>(contract)</i>.</li>
+<li>To keep the platform safe, investigate reports and enforce our Terms <i>(legitimate interest)</i>.</li>
+<li>To send service notices such as order updates, and, with your consent, offers and news <i>(consent; you can opt out anytime)</i>.</li></ul>
+<h4>4. Student ID and selfie handling</h4>
+<p>Your student ID photo and selfie are used only to verify you are a real student, are transmitted over encrypted connections, are stored in a private bucket with restricted access, and are <b>never displayed to other users</b>.</p>
+<h4>5. Who we share data with</h4>
+<ul><li><b>Other users:</b> only what is needed for a deal, such as your display name, verified status, rating and listings. Never your student ID, selfie, email or password.</li>
+<li><b>Service providers:</b> hosting, email delivery and database services, bound by confidentiality and data protection terms.</li>
+<li><b>Authorities:</b> where required by law, court order, or to prevent fraud or harm.</li></ul>
+<p>We do <b>not</b> sell your personal data.</p>
+<h4>6. International transfers</h4>
+<p>Some providers may process data outside Nigeria. Where that happens we take steps required by the NDPA to protect it.</p>
+<h4>7. How long we keep it</h4>
+<p>We keep data while your account is active and afterwards only as long as needed for legal, tax, fraud-prevention and dispute purposes. After that it is deleted or anonymised.</p>
+<h4>8. Security</h4>
+<p>We use encryption in transit, access controls, and monitoring. No system is perfectly secure, so please use a strong, unique password and never share OTPs or PINs.</p>
+<h4>9. Your rights</h4>
+<p>Under the NDPA you may ask to access, correct, delete, restrict or port your data, withdraw consent, or object to certain processing. Email <b>support@sureo.name.ng</b> and we will respond within a reasonable time. You also have the right to complain to the <b>Nigeria Data Protection Commission (NDPC)</b>.</p>
+<h4>10. Children</h4>
+<p>Sureo is not intended for anyone under 18 acting alone. If we learn we hold data of a minor without proper consent we will delete it.</p>
+<h4>11. Cookies and local storage</h4>
+<p>We use essential storage to keep you signed in and remember preferences, and basic analytics to improve the app.</p>
+<h4>12. Changes to this policy</h4>
+<p>We will post updates here and notify you of material changes.</p>
+<h4>13. Contact</h4>
+<p>Data questions: <b>support@sureo.name.ng</b></p>
+</template>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
@@ -284,7 +396,14 @@ async function findMyCampus(){ /* after first paint; never blocks the screen */
 }
 
 /* ---------- Render ---------- */
-const money=i=>i.ty==='free'||i.p===0?'Free':'₦'+i.p.toLocaleString('en-NG');
+const BIGOK={gadgets:1,housing:1};
+function fmtNaira(n,cat,ty){
+  n=Math.round(+n);
+  if(!isFinite(n)||n<=0)return ty==='trade'?'Trade':'Free';
+  if(n>1e6&&!BIGOK[cat])console.warn('Sureo: unusually high price ₦'+n+' in '+cat);
+  return '₦'+n.toLocaleString('en-NG');
+}
+const money=i=>i.ty==='free'?'Free':fmtNaira(i.p,i.cat,i.ty);
 function condCls(c){c=String(c||'').toLowerCase();return /brand|^new/.test(c)?'new':/like/.test(c)?'like':/fair|used/.test(c)?'used':'';}
 function card(i){
   const t=TIERS[i.sid],f=FAV.has(String(i.id));
@@ -343,7 +462,7 @@ async function openDetail(id){
   if(error||!l){el.innerHTML='<div class="dwrap"><div class="gwrap" style="height:70px">'+dBack()+'</div></div><div class="empty"><h3>'+(error?'Couldn’t load this listing':'Listing not found')+'</h3>'+(error?'Check your connection and try again.':'It may have been sold or removed.')+'</div></div>';return;}
   await loadCampuses();
   const pr=l.profiles||{},ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),ty=l.type||'sell',lab=TYLAB[ty]||TYLAB.sell;
-  const price=ty==='free'||!l.price_kobo?'Free':'₦'+Math.round(l.price_kobo/100).toLocaleString('en-NG');
+  const price=ty==='free'?'Free':fmtNaira((l.price_kobo||0)/100,l.category,ty);
   const exp=Math.max(0,60-Math.floor((Date.now()-new Date(l.created_at))/864e5)),wa=waNum(l.whatsapp),old='/#l='+esc(l.id);
   const slides=ms.length?ms.map(m=>'<div class="slide">'+(m.kind==='video'?'<video src="'+esc(m.url)+'" controls playsinline preload="metadata"></video>':'<img src="'+esc(m.url)+'" alt="" decoding="async">')+'</div>').join(''):'<div class="slide">'+(EMO[l.category]||'🛍️')+'</div>';
   const f=FAV.has(String(l.id));
@@ -362,6 +481,8 @@ async function openDetail(id){
 function closeDetail(){$('detail').classList.remove('open');$('detail').innerHTML='';document.body.style.overflow='';paint();}
 function route(){
   const id=idFromHash();
+  if(location.hash==='#account'){closeDetail();showAccount();return;}
+  closeAcct();
   if(isProfileRoute()){closeDetail();showProfile();return;}
   document.body.classList.remove('pv');setNav('home');
   if(id)openDetail(id);else closeDetail();
@@ -380,7 +501,7 @@ function touchActive(){if(!ME)return;const n=Date.now();if(n-lastAct>5000){lastA
 async function logout(msg){
   try{await sb.auth.signOut();}catch(e){}
   ME=null;MY=[];MYPROF=null;st.mine=null;try{localStorage.removeItem('sureoLast');localStorage.removeItem('sureoView');}catch(e){}
-  toast(msg||'Logged out. See you soon!');if(isProfileRoute())showProfile();
+  closeA();toast(msg||'Logged out. See you soon!');if(location.hash==='#account')location.replace('#profile');else if(isProfileRoute())showProfile();
 }
 function checkIdle(){if(!ME)return;let l=lastAct;try{l=Math.max(l,+localStorage.getItem('sureoLast')||0);}catch(e){}if(Date.now()-l>=IDLE_MS)logout('You were logged out after 20 minutes of inactivity.');}
 setInterval(checkIdle,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkIdle();});
@@ -415,6 +536,7 @@ async function showProfile(){
    +'<div class="pstats"><div><b>'+(rc&&pr.rating_avg?'★ '+(+pr.rating_avg).toFixed(1):'–')+'</b><span>Rating</span></div><div><b id="nList">'+(m.count||0)+'</b><span>Listings</span></div><div><b>'+rc+'</b><span>Reviews</span></div></div>'
    +'<div class="ptl" id="mine">My listings</div><div class="vstick"><div class="seg" id="seg"><button class="on" data-vt="active">Active</button><button data-vt="sold">Sold</button><button data-vt="archived">Archived</button><button data-vt="draft">Drafts</button></div><div class="chips" id="vcats">'+VCATS.map(c=>'<button class="chip'+(c[0]==='all'?' on':'')+'" data-vc="'+c[0]+'">'+c[1]+'</button>').join('')+'</div></div><div class="ss" id="vcount" style="margin:2px 0 10px"></div><div id="vempty"></div><div class="vlist" id="vlist"></div>'
    +'<div class="ptl">More</div><div class="lcard">'
+    +'<a class="lrow" href="#account" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-user"/></svg>Identity &amp; account</span><small>›</small></a>'
    +'<button class="lrow" data-act="store"><span><svg class="ic"><use href="#i-share"/></svg>Share my shop link</span></button>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
    +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
@@ -430,7 +552,7 @@ const VCATS=[['all','All'],['food','Food'],['gadgets','Gadgets'],['books','Books
 const NOUN={active:'active',sold:'sold',archived:'archived',draft:'draft'};
 const VCFG={active:{H:128,G:10},draft:{H:128,G:10},archived:{H:128,G:10},sold:{H:60,G:8}};
 const VEMPTY={active:['No active listings','Tap Sell to post an item.'],sold:['No sales history yet','Items you mark as sold will show here.'],archived:['No archived listings','Archived listings show here. Renew one to put it back on the market.'],draft:['No drafts','Unfinished listings will show here.']};
-const priceOf=l=>l.price_kobo?'₦'+Math.round(l.price_kobo/100).toLocaleString('en-NG'):(l.type==='trade'?'Trade':'Free');
+const priceOf=l=>l.type==='free'?'Free':fmtNaira((l.price_kobo||0)/100,l.category,l.type);
 function vRow(l,top,c){
   const id=esc(l.id),pos='style="top:'+top+'px;height:'+c.H+'px"';
   if(VL.tab==='sold')return '<div class="vr vm" '+pos+'><div style="min-width:0;flex:1"><div class="t">'+esc(l.title)+'</div><div class="s">Posted '+ago(l.created_at)+'</div></div><b>'+priceOf(l)+'</b><button class="relist" data-ma="sold" data-id="'+id+'">Relist</button></div>';
@@ -456,7 +578,7 @@ async function vlMore(){
   if(VL.busy||VL.done||!ME||!$('vlist'))return;
   VL.busy=true;VL.err=false;const gen=VL.gen;vlRender(true);
   const first=!VL.cursor;
-  let q=sb.from('listings').select('id,title,price_kobo,status,type,created_at',first?{count:'exact'}:{}).eq('seller_id',ME.id).eq('status',VL.tab);
+  let q=sb.from('listings').select('id,title,price_kobo,status,type,category,created_at',first?{count:'exact'}:{}).eq('seller_id',ME.id).eq('status',VL.tab);
   if(VL.cat!=='all')q=q.eq('category',VL.cat);
   q=q.order('created_at',{ascending:false}).order('id',{ascending:false}).limit(15);
   if(VL.cursor)q=q.or('created_at.lt.'+VL.cursor.c+',and(created_at.eq.'+VL.cursor.c+',id.lt.'+VL.cursor.id+')');
@@ -485,13 +607,13 @@ async function myAction(b){
   if(a==='cancel'){$('esheet').classList.remove('open');return;}
   if(a==='retry'){VL.err=false;vlMore();return;}
   if(a==='save'){
-    const name=$('eName').value.trim(),pz=Math.max(0,Math.round(+$('ePrice').value||0));if(!name){$('eName').focus();return;}
+    const name=$('eName').value.trim(),pz=Math.max(0,parseInt($('ePrice').value.replace(/\D/g,''),10)||0);if(!name){$('eName').focus();return;}
     const {error}=await sb.from('listings').update({title:name,price_kobo:pz*100}).eq('id',editId).eq('seller_id',ME.id);
     if(error){toast('Could not save: '+error.message);return;}
     $('esheet').classList.remove('open');toast('Listing updated');vlReset();load();return;
   }
   if(!l||!ME)return;
-  if(a==='edit'){editId=l.id;$('eName').value=l.title;$('ePrice').value=Math.round(l.price_kobo/100);$('esheet').classList.add('open');return;}
+  if(a==='edit'){editId=l.id;$('eName').value=l.title;$('ePrice').value=commaNum(Math.round(l.price_kobo/100));$('esheet').classList.add('open');return;}
   if(a==='renew'){const upd={created_at:new Date().toISOString()};if(l.status==='archived')upd.status='active';const {error}=await sb.from('listings').update(upd).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not renew: '+error.message);return;}toast('Renewed. It is back at the top.');}
   if(a==='publish'){const {error}=await sb.from('listings').update({status:'active'}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not publish: '+error.message);return;}toast('Listing is live.');}
   if(a==='sold'){const next=l.status==='sold'?'active':'sold';const {error}=await sb.from('listings').update({status:next}).eq('id',l.id).eq('seller_id',ME.id);if(error){toast('Could not update: '+error.message);return;}toast(next==='sold'?'Marked as sold. It is hidden from the market.':'Listing is live again.');}
@@ -542,8 +664,170 @@ document.addEventListener('click',e=>{
   else if(t.dataset.act==='all'){st.campus='all';load();}
   else if(t.dataset.act==='more'){LIM+=40;load();}
 });
+const commaNum=v=>String(v).replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,10).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+$('ePrice').addEventListener('input',e=>{
+  const el=e.target,raw=el.value,keep=raw.slice(0,el.selectionStart).replace(/\D/g,'').length,f=commaNum(raw);
+  el.value=f;let n=0,i=0;for(;i<f.length&&n<keep;i++)if(/\d/.test(f[i]))n++;
+  try{el.setSelectionRange(i,i);}catch(x){}
+});
 $('q').addEventListener('input',e=>{st.q=e.target.value;paint();});
 $('cq').addEventListener('input',paintCampuses);
+
+/* ---------- Identity & Account (#account) ---------- */
+let ACC={p:{},k:null},aBusy=false;
+const BANKS=[['044','Access Bank'],['050','Ecobank'],['070','Fidelity Bank'],['011','First Bank'],['214','FCMB'],['058','GTBank'],['50211','Kuda'],['50515','Moniepoint'],['999992','OPay'],['999991','PalmPay'],['076','Polaris Bank'],['221','Stanbic IBTC'],['232','Sterling Bank'],['033','UBA'],['032','Union Bank'],['035','Wema Bank'],['057','Zenith Bank']];
+const aBar=()=>'<div class="abar"><button class="round" data-ac="back" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><h1>Identity &amp; account</h1></div>';
+function closeA(){$('asheet').classList.remove('open');}
+function closeAcct(){const a=$('acct');if(a.classList.contains('open')){a.classList.remove('open');closeA();}}
+function openA(h){$('abody').innerHTML=h;$('abody').scrollTop=0;$('asheet').classList.add('open');}
+const aErr=m=>{const e=$('aErr');if(e){e.textContent=m;e.style.display='block';}};
+async function aRun(btn,fn){if(aBusy)return;aBusy=true;const t=btn.textContent;btn.disabled=true;btn.textContent='Please wait…';try{await fn();}finally{aBusy=false;if(btn.isConnected){btn.disabled=false;btn.textContent=t;}}}
+async function rmFolder(bucket,prefix){
+  try{
+    const {data}=await sb.storage.from(bucket).list(prefix,{limit:1000});
+    if(!data||!data.length)return;
+    const files=[];
+    for(const f of data){if(f.id)files.push(prefix+'/'+f.name);else await rmFolder(bucket,prefix+'/'+f.name);}
+    if(files.length)await sb.storage.from(bucket).remove(files);
+  }catch(e){}
+}
+async function showAccount(){
+  const a=$('acct');a.classList.add('open');a.scrollTop=0;
+  a.innerHTML=aBar()+'<div class="acard"><div class="sk" style="height:150px;border-radius:10px;margin:10px 0"></div></div>';
+  if(!ME){await AUTHP;if(!ME){a.innerHTML=aBar()+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your account.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';return;}}
+  await loadAcc();if(location.hash!=='#account'||!ME)return;paintAcct();
+}
+async function loadAcc(){
+  let [p,k]=await Promise.all([
+    sb.from('profiles').select('full_name,is_seller_verified,paystack_subaccount').eq('id',ME.id).maybeSingle(),
+    sb.from('kyc').select('matric_no,status,student_id_path').eq('user_id',ME.id).maybeSingle()]);
+  if(k.error)k=await sb.from('kyc').select('matric_no,status').eq('user_id',ME.id).maybeSingle();
+  ACC.p=p.data||{};ACC.k=k.error?null:(k.data||null);
+}
+const kRow=(ic,t,m,r)=>'<div class="krow"><i>'+ic+'</i><div><b>'+t+'</b><span class="m">'+m+'</span></div>'+r+'</div>';
+const kOk=t=>'<span class="kst">'+t+'</span>',kOpt=t=>'<span class="kst opt">'+t+'</span>',kBtn=(t,a)=>'<button class="kbtn" data-ac="'+a+'">'+t+'</button>';
+function paintAcct(){
+  const p=ACC.p,k=ACC.k,ver=!!p.is_seller_verified,pend=!ver&&!!k&&k.status==='pending',idOk=!!(k&&k.student_id_path),pay=!!p.paystack_subaccount;
+  const row=(t,a)=>'<button class="lrow'+(a==='delete'?' out':'')+'" data-ac="'+a+'"><span>'+t+'</span><small>›</small></button>';
+  $('acct').innerHTML=aBar()
+  +'<div class="acard"><h3>Identity &amp; verification</h3><div class="ss">Fully verified members get the Sureo ✓ badge on every listing.</div>'
+  +kRow('🏛️','Email address',esc(ME.email||''),kOk('✓ VERIFIED'))
+  +kRow('🪪','Seller verification',ver?'Student ID and selfie reviewed by the Sureo team':pend?'Submitted · we’ll notify you once approved':'Only needed if you want to sell on Sureo',ver?kOk('✓ VERIFIED'):pend?kOpt('⏳ PENDING'):kBtn('Verify','verify'))
+  +kRow('🎓','Student ID upload <em style="color:var(--muted);font-style:normal;font-weight:500">(optional)</em>',idOk?'Student ID on file · extra trust layer active':'Adds an extra trust layer to your profile',idOk?kOk('✓ UPLOADED'):kBtn('Upload ID','uploadid'))
+  +kRow('🏦','Payout account',pay?'Online payments go straight to your account':ver?'Needed to accept online payments':'Where online payments are sent when you sell',pay?kOk('✓ READY'):ver?kBtn('Set up','payout'):kOpt('Verify first'))
+  +'</div>'
+  +'<div class="acard"><h3>Account actions</h3><div class="ss">Manage your presence on Sureo.</div><div class="lcard">'
+  +row('Edit profile','editname')+row('Change email','email')+row('Change password','pass')+row('Log out','logout')+row('Delete account','delete')
+  +'</div></div>'
+  +'<div class="alegal"><button data-ac="terms">Terms of Service</button><button data-ac="privacy">Privacy Policy</button></div>';
+}
+const aForm=(title,sub,inputs,ac,label)=>'<h2>'+title+'</h2><p class="ss" style="margin-bottom:10px">'+sub+'</p>'+inputs+'<p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="'+ac+'" style="padding:12px">'+label+'</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>';
+const legalH=w=>'<h2>Legal</h2><div class="macts" style="margin-bottom:10px"><button class="'+(w==='terms'?'fill':'')+'" data-ac="terms">Terms of Service</button><button class="'+(w==='privacy'?'fill':'')+'" data-ac="privacy">Privacy Policy</button></div><div class="lg">'+$(w==='privacy'?'tplPrivacy':'tplTerms').innerHTML+'</div>';
+document.addEventListener('change',e=>{
+  if(e.target.id!=='aIdF'&&e.target.id!=='aSfF')return;
+  const f=e.target.files[0],bx=$(e.target.id==='aIdF'?'aIdBox':'aSfBox');
+  if(f&&bx){bx.textContent='✓ '+f.name;bx.classList.add('got');}
+});
+document.addEventListener('click',e=>{
+  if(e.target===$('asheet')){closeA();return;}
+  const b=e.target.closest('[data-ac]');if(!b)return;
+  const a=b.dataset.ac;
+  if(a==='back'){location.replace('#profile');return;}
+  if(a==='close'){closeA();return;}
+  if(!ME)return;
+  if(a==='editname')openA(aForm('Edit your profile','This is the name other students see on your listings.','<input id="aName" maxlength="60" placeholder="Full name" autocomplete="name" value="'+esc(ACC.p.full_name||'')+'">','savename','Save changes'));
+  else if(a==='email')openA(aForm('Change your email','We’ll send a confirmation link to the new address.','<input id="aEmail" type="email" placeholder="New email address" autocomplete="email" autocapitalize="off">','saveemail','Send confirmation'));
+  else if(a==='pass')openA(aForm('Change your password','Choose a new password for your account.','<input id="aP1" type="password" placeholder="At least 8 characters" autocomplete="new-password"><input id="aP2" type="password" placeholder="Type it again" autocomplete="new-password">','savepass','Update password'));
+  else if(a==='delete')openA(aForm('Delete your account?','This permanently deletes your account, listings, chats and verification files. It cannot be undone.','<input id="aDel" placeholder="Type DELETE to confirm" autocomplete="off" autocapitalize="characters">','confirmdelete','Delete my account'));
+  else if(a==='logout'){if(confirm('Log out of Sureo?'))logout();}
+  else if(a==='terms'||a==='privacy')openA(legalH(a));
+  else if(a==='verify')openA('<h2>Seller verification</h2><p class="ss" style="margin-bottom:10px">Needed once, to sell on Sureo. 🔒 Only the Sureo team can see these files.</p><input id="aMat" placeholder="Matric number, e.g. U2020/123456" autocomplete="off" maxlength="30"><button class="ubox" id="aIdBox" data-ac="pickid">📎 Tap to upload a clear photo of your student ID</button><input type="file" id="aIdF" accept="image/jpeg,image/png,application/pdf" hidden><button class="ubox" id="aSfBox" data-ac="picksf">🤳 Tap to take a selfie holding your ID next to your face</button><input type="file" id="aSfF" accept="image/*" capture="user" hidden><p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="submitkyc" style="padding:12px">Submit for review</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>');
+  else if(a==='pickid')$('aIdF').click();
+  else if(a==='picksf')$('aSfF').click();
+  else if(a==='payout')openA(aForm('Payout account','Buyers who pay online are paid straight into this account through Paystack. Sureo never holds your money.','<select id="aBank"><option value="">Select your bank</option>'+BANKS.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select><input id="aAcct" inputmode="numeric" maxlength="10" placeholder="10-digit account number" autocomplete="off">','savepayout','Save payout account'));
+  else if(a==='uploadid')pickIdOnly();
+  else if(a==='savename')aRun(b,saveName);
+  else if(a==='saveemail')aRun(b,saveEmail);
+  else if(a==='savepass')aRun(b,savePass);
+  else if(a==='confirmdelete')aRun(b,delAccount);
+  else if(a==='submitkyc')aRun(b,submitKyc);
+  else if(a==='savepayout')aRun(b,savePayout);
+});
+async function saveName(){
+  const nm=$('aName').value.trim().replace(/\s+/g,' ');
+  if(nm.length<2||nm.length>60)return aErr('Enter your name (2 to 60 characters).');
+  const {error}=await sb.from('profiles').update({full_name:nm}).eq('id',ME.id);
+  if(error)return aErr('Could not save. '+(error.message||'Try again.'));
+  try{await sb.auth.updateUser({data:{full_name:nm}});}catch(x){}
+  ACC.p.full_name=nm;if(MYPROF)MYPROF.full_name=nm;closeA();toast('✓ Profile updated.');
+}
+async function saveEmail(){
+  const ne=$('aEmail').value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(ne))return aErr('Enter a valid email address.');
+  if(ne===(ME.email||'').toLowerCase())return aErr('That is already your email.');
+  const {error}=await sb.auth.updateUser({email:ne},{emailRedirectTo:location.origin+'/'});
+  if(error)return aErr(error.message||'Could not change email. Try again.');
+  openA('<h2>📩 Check your inbox</h2><p class="ss" style="margin-bottom:12px">We sent a confirmation link to '+esc(ne)+'. Tap it to finish. If you also get a message at your old email, tap that link too.</p><div class="macts"><button class="fill" data-ac="close" style="padding:12px">Done</button></div>');
+}
+async function savePass(){
+  const x=$('aP1').value,y=$('aP2').value;
+  if(x.length<8)return aErr('Password must be at least 8 characters.');
+  if(x!==y)return aErr('The two passwords do not match.');
+  const {error}=await sb.auth.updateUser({password:x});
+  if(error)return aErr(error.message||'Could not update password. Try again.');
+  closeA();toast('✓ Password updated.');
+}
+async function delAccount(){
+  if($('aDel').value.trim()!=='DELETE')return aErr('Type DELETE in capital letters to confirm.');
+  try{
+    await rmFolder('kyc-private',ME.id);await rmFolder('listing-media',ME.id);
+    const {error}=await sb.rpc('delete_my_account');if(error)throw error;
+  }catch(e){return aErr('Could not delete account: '+(e.message||'try again'));}
+  closeA();await logout('Your account has been deleted.');
+}
+async function submitKyc(){
+  const matric=$('aMat').value.trim(),idf=$('aIdF').files[0],sf=$('aSfF').files[0];
+  if(!matric)return aErr('Enter your matric number.');
+  if(!idf||!sf)return aErr('Add your student ID and a selfie holding it.');
+  const EXT={'image/jpeg':'jpg','image/png':'png','application/pdf':'pdf'};
+  if(!EXT[idf.type])return aErr('Student ID must be a JPG, PNG or PDF.');
+  if(!/^image\//.test(sf.type))return aErr('Selfie must be a photo.');
+  if(idf.size>5*1024*1024||sf.size>8*1024*1024)return aErr('Each photo must be under 5 MB.');
+  const t=Date.now(),idPath=ME.id+'/student-id-'+t+'.'+EXT[idf.type],sfPath=ME.id+'/selfie-'+t+'.'+(sf.type==='image/png'?'png':'jpg');
+  let up=await sb.storage.from('kyc-private').upload(idPath,idf,{contentType:idf.type});
+  if(up.error)return aErr('Upload failed: '+up.error.message);
+  up=await sb.storage.from('kyc-private').upload(sfPath,sf,{contentType:sf.type==='image/png'?'image/png':'image/jpeg'});
+  if(up.error)return aErr('Upload failed: '+up.error.message);
+  const {error}=await sb.from('kyc').upsert({user_id:ME.id,id_type:null,id_last4:null,matric_no:matric,student_id_path:idPath,selfie_path:sfPath,status:'pending'});
+  if(error)return aErr('Could not submit: '+error.message);
+  ACC.k={matric_no:matric,status:'pending',student_id_path:idPath};closeA();paintAcct();
+  toast('✓ Submitted! We’ll review your details and activate your Seller badge.');
+}
+function pickIdOnly(){
+  if(!ACC.k){toast('Complete seller verification first, then your Student ID can be added.');$('acct').querySelector('[data-ac="verify"]')&&$('acct').querySelector('[data-ac="verify"]').click();return;}
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/jpeg,image/png,application/pdf';
+  inp.addEventListener('change',async()=>{
+    const f=inp.files[0];if(!f)return;
+    const ext=({'image/jpeg':'jpg','image/png':'png','application/pdf':'pdf'})[f.type];
+    if(!ext)return toast('Student ID must be a JPG, PNG or PDF.');
+    if(f.size>5*1024*1024)return toast('Student ID file must be under 5 MB.');
+    const path=ME.id+'/student-id-'+Date.now()+'.'+ext;
+    toast('Uploading…');
+    const up=await sb.storage.from('kyc-private').upload(path,f,{contentType:f.type});
+    if(up.error)return toast('Upload failed: '+up.error.message);
+    const {error}=await sb.from('kyc').update({student_id_path:path}).eq('user_id',ME.id);
+    if(error)return toast('Could not save: '+error.message);
+    ACC.k.student_id_path=path;paintAcct();toast('✓ Student ID uploaded.');
+  });
+  inp.click();
+}
+async function savePayout(){
+  const bank=$('aBank').value,acct=$('aAcct').value.trim();
+  if(!bank||!/^\d{10}$/.test(acct))return aErr('Choose your bank and enter a 10-digit account number.');
+  const {error}=await sb.functions.invoke('paystack',{body:{action:'subaccount',bank_code:bank,account_number:acct}});
+  if(error){let m='';try{const j=await error.context.json();m=j.error||'';}catch(_){}return aErr(m==='not_verified'?'Complete seller verification first.':(m||'Could not save. Try again.'));}
+  ACC.p.paystack_subaccount='set';closeA();paintAcct();toast('✓ Payout account saved. You can now accept online payments.');
+}
 
 /* ---------- Start: show the screen and listings at once, resolve campus in the background ---------- */
 paint();load();loadCampuses();findMyCampus();route();
