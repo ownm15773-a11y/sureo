@@ -482,6 +482,7 @@ function closeDetail(){$('detail').classList.remove('open');$('detail').innerHTM
 function route(){
   const id=idFromHash();
   if(location.hash==='#account'){closeDetail();showAccount();return;}
+  if(location.hash==='#shop'){closeDetail();showShop();return;}
   closeAcct();
   if(isProfileRoute()){closeDetail();showProfile();return;}
   document.body.classList.remove('pv');setNav('home');
@@ -537,7 +538,7 @@ async function showProfile(){
    +'<div class="ptl" id="mine">My listings</div><div class="vstick"><div class="seg" id="seg"><button class="on" data-vt="active">Active</button><button data-vt="sold">Sold</button><button data-vt="archived">Archived</button><button data-vt="draft">Drafts</button></div><div class="chips" id="vcats">'+VCATS.map(c=>'<button class="chip'+(c[0]==='all'?' on':'')+'" data-vc="'+c[0]+'">'+c[1]+'</button>').join('')+'</div></div><div class="ss" id="vcount" style="margin:2px 0 10px"></div><div id="vempty"></div><div class="vlist" id="vlist"></div>'
    +'<div class="ptl">More</div><div class="lcard">'
     +'<a class="lrow" href="#account" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-user"/></svg>Identity &amp; account</span><small>›</small></a>'
-   +'<button class="lrow" data-act="store"><span><svg class="ic"><use href="#i-share"/></svg>Share my shop link</span></button>'
+   +'<a class="lrow" href="#shop" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-box"/></svg>My Shop</span><small>›</small></a>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
    +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
   VL.cat='all';vlReset('active');
@@ -676,7 +677,7 @@ $('cq').addEventListener('input',paintCampuses);
 /* ---------- Identity & Account (#account) ---------- */
 let ACC={p:{},k:null},aBusy=false;
 const BANKS=[['044','Access Bank'],['050','Ecobank'],['070','Fidelity Bank'],['011','First Bank'],['214','FCMB'],['058','GTBank'],['50211','Kuda'],['50515','Moniepoint'],['999992','OPay'],['999991','PalmPay'],['076','Polaris Bank'],['221','Stanbic IBTC'],['232','Sterling Bank'],['033','UBA'],['032','Union Bank'],['035','Wema Bank'],['057','Zenith Bank']];
-const aBar=()=>'<div class="abar"><button class="round" data-ac="back" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><h1>Identity &amp; account</h1></div>';
+const aBar=t=>'<div class="abar"><button class="round" data-ac="back" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><h1>'+(t||'Identity &amp; account')+'</h1></div>';
 function closeA(){$('asheet').classList.remove('open');}
 function closeAcct(){const a=$('acct');if(a.classList.contains('open')){a.classList.remove('open');closeA();}}
 function openA(h){$('abody').innerHTML=h;$('abody').scrollTop=0;$('asheet').classList.add('open');}
@@ -827,6 +828,19 @@ async function savePayout(){
   const {error}=await sb.functions.invoke('paystack',{body:{action:'subaccount',bank_code:bank,account_number:acct}});
   if(error){let m='';try{const j=await error.context.json();m=j.error||'';}catch(_){}return aErr(m==='not_verified'?'Complete seller verification first.':(m||'Could not save. Try again.'));}
   ACC.p.paystack_subaccount='set';closeA();paintAcct();toast('✓ Payout account saved. You can now accept online payments.');
+}
+
+/* ---------- My Shop (#shop) ---------- */
+async function showShop(){
+  const a=$('acct');a.classList.add('open');a.scrollTop=0;
+  if(!ME){a.innerHTML=aBar('My Shop')+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your shop.</p><a class="btn" href="/" style="margin-bottom:14px">Sign in</a></div>';await AUTHP;if(!ME)return;}
+  if(location.hash!=='#shop')return;
+  const lk='style="color:inherit;text-decoration:none"';
+  a.innerHTML=aBar('My Shop')+'<div class="acard"><div class="lcard">'
+  +'<button class="lrow" data-act="store"><span><svg class="ic"><use href="#i-share"/></svg>Share my shop link</span><small>›</small></button>'
+  +'<a class="lrow" href="/" '+lk+'><span><svg class="ic"><use href="#i-box"/></svg>Orders &amp; Receipts</span><small>›</small></a>'
+  +'<a class="lrow" href="/" '+lk+'><span><svg class="ic"><use href="#i-search"/></svg>Wanted board</span><small>›</small></a>'
+  +'</div></div>';
 }
 
 /* ---------- Start: show the screen and listings at once, resolve campus in the background ---------- */
