@@ -258,6 +258,8 @@ button:disabled:active{transform:none;opacity:.6}
 .cin{position:sticky;bottom:0;display:flex;gap:8px;padding:8px 0 calc(6px + env(safe-area-inset-bottom,0px));background:var(--pvbg)}
 .cin input{flex:1;padding:11px 14px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--text);font-size:16px;outline:0}
 .replink{display:block;margin:6px auto 0;padding:10px;font-size:12px;font-weight:600;color:var(--muted)}
+.nav a{position:relative}
+.nav .bdot{top:4px;right:calc(50% - 22px)}
 .lrow.picked{border-color:var(--g);background:var(--g2)}
 </style>
 </head>
@@ -302,7 +304,7 @@ button:disabled:active{transform:none;opacity:.6}
 
 <nav class="nav"><div>
   <a href="#" id="nHome" class="on"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></a>
-  <button data-act="focus"><svg class="ic"><use href="#i-search"/></svg><span>Search</span></button>
+  <a href="#messages" id="nMsg"><svg class="ic"><use href="#i-chat"/></svg><span>Messages</span><i class="bdot" id="ndot"></i></a>
   <a href="#sell" class="sell" aria-label="Sell"><i><svg class="ic"><use href="#i-plus"/></svg></i></a>
   <a href="#items" id="nItems"><svg class="ic"><use href="#i-box"/></svg><span>My Items</span></a>
   <a href="#profile" id="nProf"><svg class="ic"><use href="#i-user"/></svg><span>Profile</span></a>
@@ -617,8 +619,14 @@ async function showProfile(){
    +'<a class="lrow" href="#shop" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-box"/></svg>My Shop</span><small>›</small></a>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
    +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
-  VL.cat='all';vlReset('active');
-  if(location.hash==='#items'){const t=$('mine');if(t)t.scrollIntoView();}
+  if(location.hash==='#items'){
+    el.querySelectorAll('.ph1,.pstats,.lcard').forEach(x=>x.remove());
+    el.querySelectorAll('.ptl').forEach(x=>{if(x.id!=='mine')x.remove();});
+    $('mine').textContent='My items';VL.cat='all';vlReset('active');
+  }else{
+    ['mine','vcount','vempty','vlist'].forEach(i=>{const x=$(i);if(x)x.remove();});
+    const vs=el.querySelector('.vstick');if(vs)vs.remove();
+  }
   try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',ME.id).maybeSingle();const b=$('ptier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
 }
 
@@ -1209,16 +1217,17 @@ async function haveIt(w){
 
 /* ---------- Messages, chat, bell, reports ---------- */
 const hubBack=()=>'<div class="abar"><button class="round" data-mb="1" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><h1>';
+const SKR=Array(4).fill('<div class="sk" style="height:66px;border-radius:12px;margin-bottom:10px"></div>').join('');
 let MTAB='chats',CH=null,SENDING=false,REP=null;
 const REPR=[['scam','🚨 Suspected scam or fraud'],['prohibited','⛔ Prohibited item'],['spam','📢 Spam or duplicate listing'],['other','❓ Other issue']];
 function stopCh(){try{if(CH)sb.removeChannel(CH);}catch(e){}CH=null;}
 async function bellDot(){
-  const d=$('bdot');if(!d)return;
-  if(!ME){d.classList.remove('on');return;}
+  const ds=[$('bdot'),$('ndot')].filter(Boolean);if(!ds.length)return;
+  if(!ME){ds.forEach(d=>d.classList.remove('on'));return;}
   try{
     const a=await sb.from('messages').select('id',{count:'exact',head:true}).is('read_at',null).neq('sender_id',ME.id);
     const b=await sb.from('notifications').select('id',{count:'exact',head:true}).eq('read',false).neq('type','message');
-    d.classList.toggle('on',((a.count||0)+(b.count||0))>0);
+    const on=((a.count||0)+(b.count||0))>0;ds.forEach(d=>d.classList.toggle('on',on));
   }catch(e){}
 }
 AUTHP.then(bellDot);setInterval(()=>{if(!document.hidden)bellDot();},30000);
@@ -1233,7 +1242,7 @@ async function showMsgs(){
 async function paintMsgs(){
   const a=$('acct');
   a.innerHTML=hubBack()+'Messages</h1></div><div class="mtabs"><button data-tab="chats" class="'+(MTAB==='chats'?'on':'')+'">Chats</button><button data-tab="alerts" class="'+(MTAB==='alerts'?'on':'')+'">Alerts</button></div><div class="omax" id="mlist"></div>';
-  const L=$('mlist');
+  const L=$('mlist');L.innerHTML=SKR;
   if(MTAB==='alerts'){
     const {data,error}=await sb.from('notifications').select('id,title,body,read,created_at').neq('type','message').order('created_at',{ascending:false}).limit(40);
     if(!$('mlist'))return;
@@ -1254,7 +1263,8 @@ async function paintMsgs(){
   L.innerHTML=data.map(c=>{const o=c.buyer_id===ME.id?c.seller_id:c.buyer_id,n=nm[o]||'Student';return '<button class="crow" data-chat="'+esc(c.id)+'"><div class="cav">'+esc(n.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1"><b>'+esc(n)+'</b><div class="ss cl">'+esc(c.listing_title||'')+'</div><div class="ss cl">'+esc(c.last_message||'No messages yet')+'</div></div>'+(cn[c.id]?'<span class="cb">'+cn[c.id]+'</span>':'')+'</button>';}).join('');
 }
 async function showChat(id){
-  stopCh();const a=$('acct');a.classList.add('open');
+  stopCh();const a=$('acct');a.classList.add('open');a.scrollTop=0;
+  a.innerHTML=hubBack()+'Chat</h1></div><div class="omax">'+SKR+'</div>';
   if(!ME)await AUTHP;
   if(location.hash!=='#chat='+id)return;
   if(!ME){toast('Sign in to chat.');location.replace('#messages');return;}
