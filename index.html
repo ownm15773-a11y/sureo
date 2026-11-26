@@ -300,6 +300,22 @@ button:disabled:active{transform:none;opacity:.6}
 </style>
 </head>
 <body>
+<div id="landingScreen" style="position:fixed;inset:0;z-index:9000;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column">
+  <img src="hero-student.jpg" alt="" style="width:100%;height:42vh;min-height:240px;object-fit:cover;object-position:top center;display:block">
+  <div style="flex:1;display:flex;flex-direction:column;padding:28px 20px calc(24px + env(safe-area-inset-bottom,0px));text-align:center">
+    <h1 style="font-size:26px;font-weight:800;margin:0 0 8px;color:var(--text)">Sureo</h1>
+    <p style="font-size:14px;color:var(--muted);margin:0 0 24px;line-height:1.5">The verified campus marketplace. Buy and sell safely with students on your own campus.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:28px">
+      <div style="background:var(--field);border-radius:10px;padding:10px 4px"><div style="font-size:12px;font-weight:700;color:var(--g)">Verified</div></div>
+      <div style="background:var(--field);border-radius:10px;padding:10px 4px"><div style="font-size:12px;font-weight:700;color:var(--g)">Campus only</div></div>
+      <div style="background:var(--field);border-radius:10px;padding:10px 4px"><div style="font-size:12px;font-weight:700;color:var(--g)">Direct chat</div></div>
+    </div>
+    <div style="margin-top:auto">
+      <button class="btn-auth" onclick="openAuth('up')">Create a free account</button>
+      <button class="btn-ghost" style="margin-top:8px" onclick="openAuth('in')">Sign in</button>
+    </div>
+  </div>
+</div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
 <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
@@ -618,7 +634,7 @@ function touchActive(){if(!ME)return;const n=Date.now();if(n-lastAct>5000){lastA
 async function logout(msg){
   try{await sb.auth.signOut();}catch(e){}
   ME=null;MY=[];MYPROF=null;st.mine=null;try{localStorage.removeItem('sureoLast');localStorage.removeItem('sureoView');}catch(e){}
-  closeA();toast(msg||'Logged out. See you soon!');if(location.hash==='#account')location.replace('#profile');else if(isProfileRoute())showProfile();
+  closeA();syncLanding();toast(msg||'Logged out. See you soon!');if(location.hash==='#account')location.replace('#profile');else if(isProfileRoute())showProfile();
 }
 function checkIdle(){if(!ME)return;let l=lastAct;try{l=Math.max(l,+localStorage.getItem('sureoLast')||0);}catch(e){}if(Date.now()-l>=IDLE_MS)logout('You were logged out after 20 minutes of inactivity.');}
 setInterval(checkIdle,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkIdle();});
@@ -631,6 +647,8 @@ async function initAuth(){
   }catch(e){return null;}
 }
 const AUTHP=initAuth();
+function syncLanding(){const l=document.getElementById('landingScreen');if(l)l.style.display=ME?'none':'flex';}
+AUTHP.then(syncLanding);
 /* ---------- Push notifications ---------- */
 const VAPID='BIcGhOAajf2Jv_7dyEIB7vnC4d9bQk3flamBIBhPaWdzQYi7eLlvOrXAkzObH2r0v-U5E1LaAb2eTsLw_E-SGHs';
 function b64u(s){const b=(s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b);return Uint8Array.from(Array.from(r).map(c=>c.charCodeAt(0)));}
@@ -1371,6 +1389,7 @@ $('abody').addEventListener('click',async e=>{
   const b=e.target.closest('[data-au]');if(!b)return;e.preventDefault();
   const a=b.dataset.au;
   if(a==='close'){closeA();return;}
+  if(a==='dologout'){closeA();logout();return;}
   if(a==='terms'||a==='privacy'){openA(legalH(a));return;}
   if(a==='tologin'){AU.email=auVal('auE');openAuth('in');return;}
   if(a==='tosignup'){AU.email=auVal('auE');openAuth('up');return;}
