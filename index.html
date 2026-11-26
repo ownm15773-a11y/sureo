@@ -1266,7 +1266,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.act==='share')shareListing(t);
   else if(t.dataset.act==='focus'){if(location.hash)location.hash='';window.scrollTo(0,0);setTimeout(()=>$('q').focus(),50);}
   else if(t.dataset.act==='store')shareStore();
-  else if(t.dataset.act==='logout'){if(confirm('Log out of Sureo?'))logout();}
+  else if(t.dataset.act==='logout'){openA(aForm('Log out of Sureo?','You can sign back in anytime.','','confirmlogout','Log out'));}
   else if(t.dataset.act==='retry')load();
   else if(t.dataset.act==='all'){st.campus='all';load();}
   else if(t.dataset.act==='more'){LIM+=40;load();}
@@ -1346,7 +1346,7 @@ document.addEventListener('click',e=>{
   else if(a==='email')openA(aForm('Change your email','We’ll send a confirmation link to the new address.','<input id="aEmail" type="email" placeholder="New email address" autocomplete="email" autocapitalize="off">','saveemail','Send confirmation'));
   else if(a==='pass')openA(aForm('Change your password','Choose a new password for your account.','<input id="aP1" type="password" placeholder="At least 8 characters" autocomplete="new-password"><input id="aP2" type="password" placeholder="Type it again" autocomplete="new-password">','savepass','Update password'));
   else if(a==='delete')openA(aForm('Delete your account?','This permanently deletes your account, listings, chats and verification files. It cannot be undone.','<input id="aDel" placeholder="Type DELETE to confirm" autocomplete="off" autocapitalize="characters">','confirmdelete','Delete my account'));
-  else if(a==='logout'){if(confirm('Log out of Sureo?'))logout();}
+  else if(a==='logout'){openA(aForm('Log out of Sureo?','You can sign back in anytime.','','confirmlogout','Log out'));}
   else if(a==='terms'||a==='privacy')openA(legalH(a));
   else if(a==='verify')openA('<h2>Seller verification</h2><p class="ss" style="margin-bottom:10px">Needed once, to sell on Sureo. 🔒 Only the Sureo team can see these files.</p><input id="aMat" placeholder="Matric number, e.g. U2020/123456" autocomplete="off" maxlength="30"><button class="ubox" id="aIdBox" data-ac="pickid">📎 Tap to upload a clear photo of your student ID</button><input type="file" id="aIdF" accept="image/jpeg,image/png,application/pdf" hidden><button class="ubox" id="aSfBox" data-ac="picksf">🤳 Tap to take a selfie holding your ID next to your face</button><input type="file" id="aSfF" accept="image/*" capture="user" hidden><p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="submitkyc" style="padding:12px">Submit for review</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>');
   else if(a==='pickid')$('aIdF').click();
@@ -1357,6 +1357,7 @@ document.addEventListener('click',e=>{
   else if(a==='saveemail')aRun(b,saveEmail);
   else if(a==='savepass')aRun(b,savePass);
   else if(a==='confirmdelete')aRun(b,delAccount);
+  else if(a==='confirmlogout'){closeA();logout();}
   else if(a==='submitkyc')aRun(b,submitKyc);
   else if(a==='savepayout')aRun(b,savePayout);
 });
@@ -1812,6 +1813,8 @@ function auMount(){
 function openAuth(m){openA(authHtml(m));auMount();}
 const auVal=id=>{const x=$(id);return x?x.value.trim():'';};
 const auMail=e=>/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e);
+const OK_MAIL=['gmail.com','googlemail.com','yahoo.com','ymail.com','outlook.com','hotmail.com','live.com','msn.com','icloud.com','me.com','proton.me','protonmail.com'];
+const auSignupMailErr=e=>{e=(e||'').trim().toLowerCase();const l=e.split('@')[0]||'',d=e.split('@')[1]||'';if(l.indexOf('+')>-1)return 'Emails with a + sign are not allowed.';if(OK_MAIL.indexOf(d)<0)return 'Please use a Gmail, Yahoo, Outlook, Hotmail, iCloud or Proton email. Temporary emails are not allowed.';return '';};
 async function auDone(u){
   /* start a fresh inactivity timer, otherwise an old timestamp signs the user straight out after the reload */
   try{localStorage.setItem('sureoLast',Date.now());sessionStorage.setItem('sureoLP','1');}catch(e){}
@@ -1841,6 +1844,7 @@ $('abody').addEventListener('click',async e=>{
     const nm=auVal('auN'),em=auVal('auE'),pw=$('auP').value;
     if(nm.length<2||nm.length>60)return aErr('Enter your name (2 to 60 characters).');
     if(!auMail(em))return aErr('Enter a valid email address.');
+    {const me=auSignupMailErr(em);if(me)return aErr(me);}
     if(pw.length<8)return aErr('Password must be at least 8 characters.');
     auLoading(b,true);
     setRemember(true);
