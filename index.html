@@ -826,7 +826,7 @@ document.addEventListener('click',e=>{
   else if(t.dataset.act==='share')shareListing(t);
   else if(t.dataset.act==='focus'){if(location.hash)location.hash='';window.scrollTo(0,0);setTimeout(()=>$('q').focus(),50);}
   else if(t.dataset.act==='store')shareStore();
-  else if(t.dataset.act==='logout'){if(confirm('Log out of Sureo?'))logout();}
+  else if(t.dataset.act==='logout')askLogout();
   else if(t.dataset.act==='retry')load();
   else if(t.dataset.act==='all'){st.campus='all';load();}
   else if(t.dataset.act==='more'){LIM+=40;load();}
@@ -847,6 +847,7 @@ const aBar=t=>'<div class="abar"><button class="round" data-ac="back" aria-label
 function closeA(){$('asheet').classList.remove('open');}
 function closeAcct(){const a=$('acct');if(a.classList.contains('open')){a.classList.remove('open');closeA();}}
 function openA(h){$('abody').innerHTML=h;$('abody').scrollTop=0;$('asheet').classList.add('open');}
+function askLogout(){openA('<h2>Log out of Sureo?</h2><p class="ss" style="margin-bottom:12px">You can log back in anytime with your email and password.</p><div class="macts"><button class="fill" data-ac="dologout" style="padding:12px">Log out</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>');}
 const aErr=m=>{const e=$('aErr');if(e){e.textContent=m;e.classList.add('show');}};
 async function aRun(btn,fn){if(aBusy)return;aBusy=true;const t=btn.textContent;btn.disabled=true;btn.textContent='Please wait…';try{await fn();}finally{aBusy=false;if(btn.isConnected){btn.disabled=false;btn.textContent=t;}}}
 async function rmFolder(bucket,prefix){
@@ -906,7 +907,8 @@ document.addEventListener('click',e=>{
   else if(a==='email')openA(aForm('Change your email','We’ll send a confirmation link to the new address.','<input id="aEmail" type="email" placeholder="New email address" autocomplete="email" autocapitalize="off">','saveemail','Send confirmation'));
   else if(a==='pass')openA(aForm('Change your password','Choose a new password for your account.','<input id="aP1" type="password" placeholder="At least 8 characters" autocomplete="new-password"><input id="aP2" type="password" placeholder="Type it again" autocomplete="new-password">','savepass','Update password'));
   else if(a==='delete')openA(aForm('Delete your account?','This permanently deletes your account, listings, chats and verification files. It cannot be undone.','<input id="aDel" placeholder="Type DELETE to confirm" autocomplete="off" autocapitalize="characters">','confirmdelete','Delete my account'));
-  else if(a==='logout'){if(confirm('Log out of Sureo?'))logout();}
+  else if(a==='logout')askLogout();
+  else if(a==='dologout')logout();
   else if(a==='terms'||a==='privacy')openA(legalH(a));
   else if(a==='verify')openA('<h2>Seller verification</h2><p class="ss" style="margin-bottom:10px">Needed once, to sell on Sureo. 🔒 Only the Sureo team can see these files.</p><input id="aMat" placeholder="Matric number, e.g. U2020/123456" autocomplete="off" maxlength="30"><button class="ubox" id="aIdBox" data-ac="pickid">📎 Tap to upload a clear photo of your student ID</button><input type="file" id="aIdF" accept="image/jpeg,image/png,application/pdf" hidden><button class="ubox" id="aSfBox" data-ac="picksf">🤳 Tap to take a selfie holding your ID next to your face</button><input type="file" id="aSfF" accept="image/*" capture="user" hidden><p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="submitkyc" style="padding:12px">Submit for review</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>');
   else if(a==='pickid')$('aIdF').click();
