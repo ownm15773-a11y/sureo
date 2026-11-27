@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SECURITY FIX: CSRF token added. Placeholder; a backend/edge function injects the real value. -->
+<meta name="csrf-token" content="{{CSRF_TOKEN}}">
 <title>Sureo Marketplace</title>
 <link rel="manifest" href="/manifest-v2.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -973,6 +975,8 @@ const authStorage={
   removeItem:k=>{try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch(e){}}
 };
 const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{storage:authStorage,persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+/* SECURITY FIX: CSRF token added. getCsrfToken() reads the meta tag. This app talks to Supabase with a Bearer token (not cookies), so it has no forgeable cookie-based requests and there are no raw fetch() calls to patch. Do NOT add X-CSRF-Token to Supabase calls: Supabase CORS rejects unknown headers and every request would fail. Use this helper only on your OWN backend endpoints (POST/PUT/DELETE). */
+function getCsrfToken(){const m=document.querySelector('meta[name="csrf-token"]');const v=m?m.getAttribute('content'):'';return(v&&v!=='{{CSRF_TOKEN}}')?v:'';}
 
 
 /* ---------- State ---------- */
@@ -1107,7 +1111,10 @@ async function openDetail(id){
   try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',l.seller_id).maybeSingle();const b=$('dtier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
 }
 function closeDetail(){$('detail').classList.remove('open');safeRender($('detail'), '');document.body.style.overflow='';paint();}
+/* SECURITY FIX: No sensitive data in URL hash. Routes only carry ids (#chat=<id>, #l=<id>). This guard removes any token/OTP-like param from the hash so it never stays in history or gets copied/shared. */
+function scrubHash(){if(/(^#|[&?])(access_token|refresh_token|token_hash|token|otp|code|password)=/i.test(location.hash)){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}}
 function route(){
+  scrubHash();
   $('acct').classList.remove('cmode');
   const id=idFromHash();
   if(location.hash==='#account'){closeDetail();showAccount();return;}
@@ -1444,7 +1451,7 @@ document.addEventListener('click',e=>{
   if(a==='editname')openA(aForm('Edit your profile','This is the name other students see on your listings.','<input id="aName" maxlength="60" placeholder="Full name" autocomplete="name" value="'+esc(ACC.p.full_name||'')+'">','savename','Save changes'));
   else if(a==='email')openA(aForm('Change your email','We’ll send a confirmation link to the new address.','<input id="aEmail" type="email" placeholder="New email address" autocomplete="email" autocapitalize="off">','saveemail','Send confirmation'));
   else if(a==='pass')openA(aForm('Change your password','Choose a new password for your account.','<input id="aP1" type="password" placeholder="At least 8 characters" autocomplete="new-password"><input id="aP2" type="password" placeholder="Type it again" autocomplete="new-password">','savepass','Update password'));
-  else if(a==='delete')openA(aForm('Delete your account?','This permanently deletes your account, listings, chats and verification files. It cannot be undone.','<input id="aDel" placeholder="Type DELETE to confirm" autocomplete="off" autocapitalize="characters">','confirmdelete','Delete my account'));
+  else if(a==='delete')openA(aForm('Delete your account?','This permanently deletes your account, listings, chats and verification files. It cannot be undone.','<input id="aDel" placeholder="Type DELETE to confirm" autocomplete="off" autocapitalize="characters"><input id="aDelPw" type="password" placeholder="Enter your password" autocomplete="current-password">','confirmdelete','Delete my account')),delGate();
   else if(a==='logout'){openA(aForm('Log out of Sureo?','You can sign back in anytime.','','confirmlogout','Log out'));}
   else if(a==='terms'||a==='privacy')openA(legalH(a));
   else if(a==='verify')openA('<h2>Seller verification</h2><p class="ss" style="margin-bottom:10px">Needed once, to sell on Sureo. 🔒 Only the Sureo team can see these files.</p><input id="aMat" placeholder="Matric number, e.g. U2020/123456" autocomplete="off" maxlength="30"><button class="ubox" id="aIdBox" data-ac="pickid">📎 Tap to upload a clear photo of your student ID</button><input type="file" id="aIdF" accept="image/jpeg,image/png,image/webp,application/pdf" hidden><button class="ubox" id="aSfBox" data-ac="picksf">🤳 Tap to take a selfie holding your ID next to your face</button><input type="file" id="aSfF" accept="image/jpeg,image/png,image/webp" capture="user" hidden><p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="submitkyc" style="padding:12px">Submit for review</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>');
@@ -1455,7 +1462,7 @@ document.addEventListener('click',e=>{
   else if(a==='savename')aRun(b,saveName);
   else if(a==='saveemail')aRun(b,saveEmail);
   else if(a==='savepass')aRun(b,savePass);
-  else if(a==='confirmdelete')aRun(b,delAccount);
+  else if(a==='confirmdelete')aRun(b,delAccount).then(delGate);
   else if(a==='confirmlogout'){closeA();logout();}
   else if(a==='submitkyc')aRun(b,submitKyc);
   else if(a==='savepayout')aRun(b,savePayout);
@@ -1484,9 +1491,16 @@ async function savePass(){
   if(error)return aErr(error.message||'Could not update password. Try again.');
   closeA();toast('✓ Password updated.');
 }
+/* SECURITY FIX: delete button stays disabled until DELETE is typed exactly AND a password is entered */
+function delGate(){const b=document.querySelector('#abody [data-ac="confirmdelete"]');if(!b)return;const t=$('aDel'),p=$('aDelPw');b.disabled=!(t&&p&&t.value==='DELETE'&&p.value.length>0);}
+document.addEventListener('input',e=>{if(e.target&&(e.target.id==='aDel'||e.target.id==='aDelPw'))delGate();});
 async function delAccount(){
   if(!requireAuth())return; /* SECURITY FIX (P0-1) */
-  if($('aDel').value.trim()!=='DELETE')return aErr('Type DELETE in capital letters to confirm.');
+  /* SECURITY FIX: Type-DELETE and password re-auth enforced in JS, not just the UI */
+  const dt=$('aDel'),dp=$('aDelPw');
+  if(!dt||dt.value!=='DELETE'){aErr('You must type DELETE exactly');return;}
+  if(!dp||!dp.value)return aErr('Enter your password to confirm.');
+  {const {error:re}=await sb.auth.signInWithPassword({email:ME.email,password:dp.value});dp.value='';if(re){if(isRL(re))return rlMsg('delpw',re);return aErr('Incorrect password.');}}
   try{
     await rmFolder('kyc-private',ME.id);await rmFolder('listing-media',ME.id);
     const {error}=await sb.rpc('delete_my_account');if(error)throw error;
@@ -1876,10 +1890,23 @@ const markSrc=()=>$('sMark').src;
 const auLogo='<div class="auth-logo"><img src="'+markSrc()+'" alt="Sureo" width="44" height="44"></div>';
 const auLegal='<p class="auth-note">By continuing you agree to our <button type="button" class="legal-link" data-au="terms">Terms</button> &amp; <button type="button" class="legal-link" data-au="privacy">Privacy Policy</button>.</p>';
 const auPw=(id,ph,ac)=>'<div class="field"><label>Password</label><div class="pw-wrap"><input type="password" id="'+id+'" placeholder="'+ph+'" autocomplete="'+ac+'"></div></div>';
+/* SECURITY FIX: Rate-limit UI. Cooldowns live in memory only (CD), never localStorage, so editing storage cannot bypass them. This is UI feedback; the real limit must be enforced by Supabase/backend. */
+const CD={};let cdT=null,FL=0;
+const cdLeft=k=>Math.max(0,Math.ceil(((CD[k]||0)-Date.now())/1000));
+const cdStart=(k,sec)=>{CD[k]=Date.now()+(sec||60)*1000;cdTick();};
+const isRL=e=>!!e&&(e.status===429||/rate.?limit|too many/i.test((e.message||'')+' '+(e.code||'')));
+function rlSecs(e){let s=60;try{const h=e&&e.context&&e.context.headers&&e.context.headers.get&&e.context.headers.get('Retry-After');if(h&&+h>0)s=Math.min(+h,3600);}catch(x){}return s;}
+const rlMsg=(k,e)=>{cdStart(k,rlSecs(e));return aErr('Too many attempts. Please wait '+cdLeft(k)+' seconds.');};
+function cdTick(){
+  const r=document.querySelector('#abody [data-au="resend"]');
+  if(r){const n=cdLeft('resend');r.disabled=n>0;r.textContent=n>0?'Resend available in '+n+'s':'Resend code';}
+  const on=Object.keys(CD).some(k=>cdLeft(k)>0);
+  if(on&&!cdT)cdT=setInterval(cdTick,1000);else if(!on&&cdT){clearInterval(cdT);cdT=null;}
+}
 function authHtml(m){
   if(m==='up')return auLogo+'<h2>Create your account 🎉</h2><p class="auth-sub">Join Sureo, the verified campus marketplace.</p>'
     +'<div class="field"><label>Full name</label><input id="auN" placeholder="e.g. Chidera Okafor" autocomplete="name" maxlength="60"></div>'
-    +'<div class="field"><label>Email address</label><input id="auE" type="email" placeholder="you@gmail.com" autocomplete="username" autocapitalize="none" inputmode="email" value="'+esc(AU.email)+'"></div>'
+    +'<div class="field"><label>Email address</label><input id="auE" type="email" placeholder="you@gmail.com" autocomplete="email" autocapitalize="none" inputmode="email" value="'+esc(AU.email)+'"></div>'
     +auPw('auP','At least 8 characters','new-password')
     +'<p class="form-err" id="aErr" role="alert" aria-live="polite"></p>'
     +'<button class="btn-auth" id="auBtn" data-au="signup"><span class="spin"></span><span>Create account</span><span class="arr">→</span></button>'
@@ -1910,6 +1937,7 @@ function auMount(){
     inp.parentNode.appendChild(btn);
   });
   const f=$('abody').querySelector('input');if(f)setTimeout(()=>f.focus(),50);
+  cdTick();
 }
 function openAuth(m){openA(authHtml(m));auMount();}
 const auVal=id=>{const x=$(id);return x?x.value.trim():'';};
@@ -1934,11 +1962,14 @@ $('abody').addEventListener('click',async e=>{
     const em=auVal('auE'),pw=$('auP').value;
     if(!auMail(em))return aErr('Enter a valid email address.');
     if(!pw)return aErr('Enter your password.');
+    if(cdLeft('login')>0)return aErr('Too many attempts. Please wait '+cdLeft('login')+' seconds.');
     auLoading(b,true);
     setRemember($('auR').checked);
     const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
     auLoading(b,false);
-    if(error)return aErr('Invalid email or password.');
+    if(isRL(error))return rlMsg('login',error);
+    if(error){if(++FL>=5){FL=0;cdStart('login',60);return aErr('Too many attempts. Please wait 60 seconds.');}return aErr('Invalid email or password.');}
+    FL=0;
     await auDone(data.user);return;
   }
   if(a==='signup'){
@@ -1947,28 +1978,35 @@ $('abody').addEventListener('click',async e=>{
     if(!auMail(em))return aErr('Enter a valid email address.');
     {const me=auSignupMailErr(em);if(me)return aErr(me);}
     if(pw.length<8)return aErr('Password must be at least 8 characters.');
+    if(cdLeft('signup')>0)return aErr('Too many attempts. Please wait '+cdLeft('signup')+' seconds.');
     auLoading(b,true);
     setRemember(true);
     const {data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{full_name:nm}}});
     auLoading(b,false);
+    if(isRL(error))return rlMsg('signup',error);
     if(error)return aErr(error.message);
     try{localStorage.setItem('sureoConsent',JSON.stringify({t:TERMS_V,p:PRIV_V}));}catch(x){}
     if(data.session)return auDone(data.session.user);
-    AU.email=em;openAuth('code');return;
+    cdStart('resend',60);AU.email=em;openAuth('code');return;
   }
   if(a==='verify'){
     const c=auVal('auC').replace(/\s/g,'');
     if(!/^\d{6}$/.test(c))return aErr('Enter the 6-digit code from your email.');
+    if(cdLeft('verify')>0)return aErr('Too many attempts. Please wait '+cdLeft('verify')+' seconds.');
     auLoading(b,true);
     const {data,error}=await sb.auth.verifyOtp({email:AU.email,token:c,type:'signup'});
     auLoading(b,false);
+    if(isRL(error))return rlMsg('verify',error);
     if(error)return aErr('That code is wrong or expired. Check it or tap Resend code.');
     await auDone(data.user);return;
   }
-  if(a==='resend'){const {error}=await sb.auth.resend({type:'signup',email:AU.email});toast(error?error.message:'New code sent. Check your email.',4000);return;}
+  if(a==='resend'){if(cdLeft('resend')>0)return;cdStart('resend',60);const {error}=await sb.auth.resend({type:'signup',email:AU.email});if(isRL(error)){cdStart('resend',rlSecs(error));toast('Too many attempts. Please wait '+cdLeft('resend')+' seconds.',4000);return;}toast(error?error.message:'New code sent. Check your email.',4000);return;}
   if(a==='forgot'){
     const em=auVal('auE');if(!auMail(em))return aErr('Enter your email above, then tap Forgot password.');
+    if(cdLeft('forgot')>0)return aErr('Too many attempts. Please wait '+cdLeft('forgot')+' seconds.');
+    cdStart('forgot',60);
     const {error}=await sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+'/old.html'});
+    if(isRL(error)){cdStart('forgot',rlSecs(error));return aErr('Too many attempts. Please wait '+cdLeft('forgot')+' seconds.');}
     toast(error?error.message:'If an account exists, a reset link is on its way. Check your inbox.',5000);
   }
 });
