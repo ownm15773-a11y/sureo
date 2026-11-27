@@ -2168,29 +2168,40 @@ async function payOnline(oid){
     throw new Error('Could not start payment ['+ini.err+']. Try again.'); /* DEBUG */
   }
   if(!ini.data||!ini.data.checkout_url)throw new Error('Could not start payment. Try again.');
-  try{sessionStorage.setItem('sureoPend',JSON.stringify({oid:oid,id:CK.id,t:CK.t,s:CK.s,p:CK.p,q:CKQ}));}catch(e){}
+  try{localStorage.setItem('sureoPend',JSON.stringify({oid:oid,id:CK.id,t:CK.t,s:CK.s,p:CK.p,q:CKQ}));localStorage.setItem('sureoLast',String(Date.now()));}catch(e){}
   location.assign(ini.data.checkout_url);
   return new Promise(()=>{}); /* page is leaving for the payment page */
 }
-/* Back from the payment page (success_url = /?bachs_order=ID): confirm the payment, then show the result */
-(async()=>{
-  let oid=null;try{oid=new URLSearchParams(location.search).get('bachs_order');}catch(e){}
+/* Back from the payment page (success_url = /?bachs_order=ID). The order id is kept in localStorage until the payment is confirmed, so a logout or a new tab cannot lose it. */
+let finishing=false;
+async function finishPay(){
+  if(finishing)return;
+  let oid=null;try{oid=localStorage.getItem('sureoPayRet');}catch(e){}
   if(!oid||!/^[\w-]+$/.test(oid))return;
-  history.replaceState(null,'',location.pathname+location.hash);
-  await AUTHP;
-  if(!ME||!(await ensureSession())){toast('Sign in to confirm your payment.',4000);return;}
-  let pend=null;try{pend=JSON.parse(sessionStorage.getItem('sureoPend')||'null');sessionStorage.removeItem('sureoPend');}catch(e){}
-  if(pend&&pend.oid!==oid)pend=null;
-  toast('Confirming your payment…',6000);
-  let ok=false;
-  for(let i=0;i<5&&!ok;i++){const v=await callPaystack('verify',oid);if(v.data&&v.data.ok)ok=true;else await new Promise(r=>setTimeout(r,2000));}
-  if(!ok){openA('<div style="text-align:center;padding:8px 0"><h3>Payment not confirmed yet</h3><p class="ss" style="margin:6px 0 14px">If you were charged, email support@sureo.name.ng with your order. Otherwise open your orders and tap Pay to try again.</p><button class="obtn ghost" data-ckord="1" style="width:100%">View my orders</button></div>');return;}
-  let cid=null;
-  if(pend){try{
-    cid=await getConv(pend.id,pend.t,pend.s);
-    await sb.from('messages').insert({conversation_id:cid,sender_id:ME.id,body:"Hi! I'd like to order "+(pend.q>1?pend.q+' x ':'')+'"'+pend.t+'" ('+(pend.p?nmoney(pend.p*pend.q):'free')+'). Paid online via Bachs. When can we meet?'});
-  }catch(e){}}
-  openA('<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h3>Payment verified!</h3><p class="ss" style="margin:6px 0 14px">Bachs confirmed your payment. Chat with the seller to agree a meetup. Your handover code is in My Shop › Orders.</p>'+(cid?'<button class="btn" data-ckchat="'+esc(cid)+'">Open chat</button>':'')+'<button class="obtn ghost" data-ckord="1" style="width:100%;margin-top:8px">View my orders</button></div>');
+  finishing=true;
+  try{
+    await AUTHP;
+    if(!ME||!(await ensureSession())){toast('Payment received. Sign in to finish confirming your order.',6000);return;}
+    let pend=null;try{pend=JSON.parse(localStorage.getItem('sureoPend')||'null');}catch(e){}
+    if(pend&&pend.oid!==oid)pend=null;
+    toast('Confirming your payment…',6000);
+    let ok=false;
+    for(let i=0;i<5&&!ok;i++){const v=await callPaystack('verify',oid);if(v.data&&v.data.ok)ok=true;else await new Promise(r=>setTimeout(r,2000));}
+    if(!ok){openA('<div style="text-align:center;padding:8px 0"><h3>Payment not confirmed yet</h3><p class="ss" style="margin:6px 0 14px">If you were charged, email support@sureo.name.ng with your order. Otherwise open your orders and tap Pay to try again.</p><button class="obtn ghost" data-ckord="1" style="width:100%">View my orders</button></div>');return;}
+    try{localStorage.removeItem('sureoPayRet');localStorage.removeItem('sureoPend');}catch(e){}
+    let cid=null;
+    if(pend){try{
+      cid=await getConv(pend.id,pend.t,pend.s);
+      await sb.from('messages').insert({conversation_id:cid,sender_id:ME.id,body:"Hi! I'd like to order "+(pend.q>1?pend.q+' x ':'')+'"'+pend.t+'" ('+(pend.p?nmoney(pend.p*pend.q):'free')+'). Paid online via Bachs. When can we meet?'});
+    }catch(e){}}
+    openA('<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h3>Payment verified!</h3><p class="ss" style="margin:6px 0 14px">Bachs confirmed your payment. Chat with the seller to agree a meetup. Your handover code is in My Shop › Orders.</p>'+(cid?'<button class="btn" data-ckchat="'+esc(cid)+'">Open chat</button>':'')+'<button class="obtn ghost" data-ckord="1" style="width:100%;margin-top:8px">View my orders</button></div>');
+  }finally{finishing=false;}
+}
+(()=>{
+  let oid=null;try{oid=new URLSearchParams(location.search).get('bachs_order');}catch(e){}
+  if(oid&&/^[\w-]+$/.test(oid)){try{localStorage.setItem('sureoPayRet',oid);}catch(e){}history.replaceState(null,'',location.pathname+location.hash);}
+  finishPay();
+  try{sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_IN')setTimeout(finishPay,600);});}catch(e){}
 })();
 function openCheckout(b){
   if(!ME){toast('Sign in to order.');return;}
