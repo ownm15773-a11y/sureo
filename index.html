@@ -306,6 +306,85 @@ button:disabled:active{transform:none;opacity:.6}
 .abody label.rowchk{display:flex;justify-content:space-between;align-items:center;margin:-4px 0 12px;font-size:13px}
 .abody label.rowchk span{display:flex;gap:6px;align-items:center}
 </style>
+<!-- SECURITY FIX (P0-2): DOMPurify loaded in <head> so it is available before any render. Pinned to an exact version. -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.14/dist/purify.min.js"></script>
+<!-- SECURITY FIX (P0-2): XSS sanitization pipeline. safeRender / safeInsert / safeText are the ONLY approved ways to put dynamic content into the DOM. Every former `.innerHTML = ...` and `.insertAdjacentHTML(...)` now goes through DOMPurify. -->
+<script>
+(function(){
+  /* DOMPurify defaults would break this app in 3 places: <use> (SVG icons), target on links, and blob: previews. Each is re-allowed narrowly below. */
+  var CFG={
+    ADD_TAGS:['use'],
+    ADD_ATTR:['target'],
+    ALLOWED_URI_REGEXP:/^(?:(?:https?|mailto|tel|sms|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+  };
+  if(window.DOMPurify){
+    DOMPurify.addHook('afterSanitizeAttributes',function(n){
+      if(!n||!n.nodeName)return;
+      /* <use> may only reference an in-page symbol (#id), never an external file */
+      if(n.nodeName.toLowerCase()==='use'){
+        ['href','xlink:href'].forEach(function(a){var v=n.getAttribute(a);if(v!==null&&v.trim().charAt(0)!=='#')n.removeAttribute(a);});
+      }
+      /* links that open a new tab must not get access to window.opener */
+      if(n.getAttribute&&n.getAttribute('target')==='_blank')n.setAttribute('rel','noopener noreferrer');
+    });
+  }
+  /* Fail-safe if the CDN is blocked: strip dangerous nodes/attributes instead of falling back to raw innerHTML */
+  function fallback(html){
+    var d=new DOMParser().parseFromString('<body>'+html,'text/html');
+    d.querySelectorAll('script,iframe,object,embed,link,meta,base').forEach(function(x){x.remove();});
+    d.querySelectorAll('*').forEach(function(x){
+      Array.prototype.slice.call(x.attributes).forEach(function(a){
+        var n=a.name.toLowerCase();
+        if(n.indexOf('on')===0||(/^(href|src|xlink:href|action|formaction)$/.test(n)&&/^\s*(javascript|data|vbscript):/i.test(a.value)))x.removeAttribute(a.name);
+      });
+    });
+    return d.body.innerHTML;
+  }
+  function clean(h){var s=(h==null)?'':String(h);return window.DOMPurify?DOMPurify.sanitize(s,CFG):fallback(s);}
+  function el(t){return typeof t==='string'?document.getElementById(t):t;}
+  /* safeRender(elementId | element, htmlContent): sanitized replacement for `el.innerHTML = html` */
+  window.safeRender=function(t,h){var e=el(t);if(e)e.innerHTML=clean(h);};
+  /* safeInsert(elementId | element, position, htmlContent): sanitized replacement for insertAdjacentHTML */
+  window.safeInsert=function(t,pos,h){var e=el(t);if(e)e.insertAdjacentHTML(pos,clean(h));};
+  /* safeText(elementId | element, text): use wherever HTML formatting is NOT needed (no parsing at all) */
+  window.safeText=function(t,x){var e=el(t);if(e)e.textContent=(x==null)?'':String(x);};
+})();
+</script>
+<!-- SECURITY FIX (P0-4): client-side upload validation + image compression. validateFile() runs BEFORE any upload starts; compressImage() re-encodes every image via Canvas (max 800px wide, JPEG quality 0.7), which also strips EXIF/GPS metadata. NOTE: client checks are a UX/first-line defence only; enforce size and MIME limits on the storage buckets server-side as well. -->
+<script>
+(function(){
+  var IMG_TYPES=['image/jpeg','image/png','image/webp'];
+  var MAX_VIDEO_BYTES=20*1024*1024; /* existing app limit for MP4 listing videos (kept; not an image) */
+  var MAX_W=800,QUALITY=0.7;
+  function nm(f){var n=String(f&&f.name||'file');return n.length>40?n.slice(0,37)+'...':n;}
+  /* validateFile(file[, {allowVideo, allowPdf}]) -> {ok, error}. Images: <= 5MB and jpeg/png/webp only. allowVideo / allowPdf re-enable the app's existing MP4 (listings) and PDF (student ID) support. */
+  window.validateFile=function(file,opts){
+    opts=opts||{};
+    if(!file)return {ok:false,error:'No file selected.'};
+    var isImg=IMG_TYPES.indexOf(file.type)!==-1;
+    var isVid=!!opts.allowVideo&&file.type==='video/mp4';
+    var isPdf=!!opts.allowPdf&&file.type==='application/pdf';
+    if(!(isImg||isVid||isPdf))return {ok:false,error:'"'+nm(file)+'" is not allowed. Use a JPG, PNG or WebP image'+(opts.allowVideo?' or an MP4 video':'')+(opts.allowPdf?' or a PDF':'')+'.'};
+    if(!(file.size>0))return {ok:false,error:'"'+nm(file)+'" is empty.'};
+    if(isVid){if(!(file.size<=MAX_VIDEO_BYTES))return {ok:false,error:'"'+nm(file)+'" is too large. Videos must be 20 MB or less.'};}
+    else if(!(file.size<=5*1024*1024))return {ok:false,error:'"'+nm(file)+'" is too large ('+(Math.ceil(file.size/104857.6)/10).toFixed(1)+' MB). Maximum is 5 MB.'};
+    return {ok:true,error:''};
+  };
+  /* compressImage(file) -> Promise<File>. Images become JPEG (max 800px wide, quality 0.7). Video/PDF pass through. Rejects if an image cannot be decoded, so a disguised non-image never reaches storage. */
+  window.compressImage=async function(file){
+    if(IMG_TYPES.indexOf(file.type)===-1)return file;
+    var bm;
+    try{bm=await createImageBitmap(file);}catch(e){throw new Error('"'+nm(file)+'" could not be read as an image. Try a different photo.');}
+    var k=Math.min(1,MAX_W/bm.width),w=Math.max(1,Math.round(bm.width*k)),h=Math.max(1,Math.round(bm.height*k));
+    var c=document.createElement('canvas');c.width=w;c.height=h;
+    var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h); /* white backdrop so transparent PNG/WebP do not turn black in JPEG */
+    x.drawImage(bm,0,0,w,h);if(bm.close)bm.close();
+    var blob=await new Promise(function(r){c.toBlob(r,'image/jpeg',QUALITY);});
+    if(!blob)throw new Error('Could not process "'+nm(file)+'". Try again.');
+    return new File([blob],String(file.name||'photo').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
+  };
+})();
+</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -968,14 +1047,14 @@ function visible(){
   return ITEMS.filter(i=>(st.cat==='all'||i.cat===st.cat)&&(!q||(i.title+' '+i.seller+' '+(i.code||'')).toLowerCase().includes(q)));
 }
 function paint(){
-  $('cats').innerHTML=CATS.map(c=>'<button class="chip'+(st.cat===c[0]?' on':'')+'" data-cat="'+c[0]+'">'+c[1]+'</button>').join('');
+  safeRender($('cats'), CATS.map(c=>'<button class="chip'+(st.cat===c[0]?' on':'')+'" data-cat="'+c[0]+'">'+c[1]+'</button>').join(''));
   $('campName').textContent=campName(st.campus);
-  const g=$('grid'),mw=$('moreWrap');mw.innerHTML='';
-  if(loading&&!ITEMS.length){g.innerHTML=skeleton();return;}
-  if(failed){g.innerHTML='<div class="empty"><h3>Couldn’t load listings</h3>Check your connection and try again.<br><button class="btn" data-act="retry">Try again</button></div>';return;}
+  const g=$('grid'),mw=$('moreWrap');safeRender(mw, '');
+  if(loading&&!ITEMS.length){safeRender(g, skeleton());return;}
+  if(failed){safeRender(g, '<div class="empty"><h3>Couldn’t load listings</h3>Check your connection and try again.<br><button class="btn" data-act="retry">Try again</button></div>');return;}
   const list=visible();
-  g.innerHTML=list.length?list.map(card).join(''):'<div class="empty"><h3>No items found</h3>Try another category, or look on all campuses.<br><button class="btn" data-act="all">Show all campuses</button></div>';
-  if(MORE&&!loading)mw.innerHTML='<button class="more" data-act="more">Show more</button>';
+  safeRender(g, list.length?list.map(card).join(''):'<div class="empty"><h3>No items found</h3>Try another category, or look on all campuses.<br><button class="btn" data-act="all">Show all campuses</button></div>');
+  if(MORE&&!loading)safeRender(mw, '<button class="more" data-act="more">Show more</button>');
   trackViews();
 }
 
@@ -983,7 +1062,7 @@ function paint(){
 function paintCampuses(){
   const q=$('cq').value.trim().toLowerCase();
   const rows=[['all','All campuses','']].concat(CAMPUSES.filter(c=>!q||c.name.toLowerCase().includes(q)).slice(0,80).map(c=>[c.id,c.name,c.id===st.mine?'Your campus':'']));
-  $('clist').innerHTML=rows.map(r=>'<button data-cid="'+esc(r[0])+'" class="'+(st.campus===r[0]?'on':'')+'"><span>'+esc(r[1])+'</span><small>'+esc(r[2])+'</small></button>').join('');
+  safeRender($('clist'), rows.map(r=>'<button data-cid="'+esc(r[0])+'" class="'+(st.campus===r[0]?'on':'')+'"><span>'+esc(r[1])+'</span><small>'+esc(r[2])+'</small></button>').join(''));
 }
 function setTheme(){
   const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
@@ -1004,17 +1083,17 @@ const TYLAB={sell:['Buy now','Sale'],rent:['Rent this','Rent'],trade:['Propose a
 function dBack(){return '<div class="dbar"><button class="round" data-act="back" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>';}
 async function openDetail(id){
   const el=$('detail');el.classList.add('open');document.body.style.overflow='hidden';el.scrollTop=0;
-  el.innerHTML='<div class="dwrap"><div class="gwrap"><div class="gal sk"></div>'+dBack()+'</div></div><div class="dbody"><i class="sk" style="height:24px;width:70%;border-radius:8px"></i><i class="sk" style="height:28px;width:40%;border-radius:8px"></i></div></div>';
+  safeRender(el, '<div class="dwrap"><div class="gwrap"><div class="gal sk"></div>'+dBack()+'</div></div><div class="dbody"><i class="sk" style="height:24px;width:70%;border-radius:8px"></i><i class="sk" style="height:28px;width:40%;border-radius:8px"></i></div></div>');
   const {data:l,error}=await sb.from('listings').select('id,created_at,seller_id,campus_id,type,category,title,price_kobo,condition,course_code,whatsapp,status,profiles(full_name,is_seller_verified,rating_avg,rating_count),listing_media(url,kind,position)').eq('id',id).maybeSingle();
   if(idFromHash()!==id)return;
-  if(error||!l){el.innerHTML='<div class="dwrap"><div class="gwrap" style="height:70px">'+dBack()+'</div></div><div class="empty"><h3>'+(error?'Couldn’t load this listing':'Listing not found')+'</h3>'+(error?'Check your connection and try again.':'It may have been sold or removed.')+'</div></div>';return;}
+  if(error||!l){safeRender(el, '<div class="dwrap"><div class="gwrap" style="height:70px">'+dBack()+'</div></div><div class="empty"><h3>'+(error?'Couldn’t load this listing':'Listing not found')+'</h3>'+(error?'Check your connection and try again.':'It may have been sold or removed.')+'</div></div>');return;}
   await loadCampuses();
   const pr=l.profiles||{},ms=(l.listing_media||[]).slice().sort((a,b)=>a.position-b.position),ty=l.type||'sell',lab=TYLAB[ty]||TYLAB.sell;
   const price=ty==='free'?'Free':fmtNaira((l.price_kobo||0)/100,l.category,ty);
   const exp=Math.max(0,60-Math.floor((Date.now()-new Date(l.created_at))/864e5)),wa=waNum(l.whatsapp),old='/#l='+esc(l.id);
   const slides=ms.length?ms.map(m=>'<div class="slide">'+(m.kind==='video'?'<video src="'+esc(m.url)+'" controls playsinline preload="metadata"></video>':'<img src="'+esc(m.url)+'" alt="" decoding="async">')+'</div>').join(''):'<div class="slide">'+(EMO[l.category]||'🛍️')+'</div>';
   const f=FAV.has(String(l.id)),D='data-id="'+esc(l.id)+'" data-s="'+esc(l.seller_id)+'" data-t="'+esc(l.title)+'" data-p="'+Math.round((l.price_kobo||0)/100)+'"';
-  el.innerHTML='<div class="dwrap"><div class="gwrap"><div class="gal" id="gal">'+slides+'</div>'
+  safeRender(el, '<div class="dwrap"><div class="gwrap"><div class="gal" id="gal">'+slides+'</div>'
    +dBack()+'<div style="display:flex;gap:8px"><button class="round'+(f?' on':'')+'" data-fav="'+esc(l.id)+'" aria-label="Save"><svg class="ic"><use href="#i-heart"/></svg></button><button class="round" data-act="share" data-id="'+esc(l.id)+'" data-t="'+esc(l.title)+'" data-p="'+(l.price_kobo?Math.round(l.price_kobo/100):0)+'" aria-label="Share"><svg class="ic"><use href="#i-share"/></svg></button></div></div>'
    +(ms.length>1?'<span class="cnt" id="cnt">1/'+ms.length+'</span>':'')+'</div>'
    +'<div class="dbody"><div><div class="dttl">'+esc(l.title)+'</div><div class="dprice">'+price+'</div></div>'
@@ -1023,11 +1102,11 @@ async function openDetail(id){
    +'<div class="safe">Meet on campus in a public place and check the item before you pay. Posted '+ago(l.created_at)+', expires in '+exp+' day'+(exp==1?'':'s')+'.</div><button class="replink" data-rep="1" data-id="'+esc(l.id)+'" data-t="'+esc(l.title)+'">🚩 Report this listing</button></div></div>'
    +'<div class="dact"><div><button class="buy" data-buy="1" '+D+'>'+lab[0]+'</button>'+(ty==='sell'&&l.category!=='food'&&l.price_kobo>0?'<button class="alt" data-offer="1" '+D+'>Make offer</button>':'')
    +'<button class="alt" data-msg="1" data-id="'+esc(l.id)+'" data-s="'+esc(l.seller_id)+'" data-t="'+esc(l.title)+'">Chat</button>'
-   +(wa?'<a class="wa" target="_blank" rel="noopener" aria-label="Chat on WhatsApp" href="https://wa.me/'+wa+'?text='+encodeURIComponent('Hi! I saw "'+l.title+'" on Sureo.')+'"><svg class="ic" style="stroke:#fff"><use href="#i-chat"/></svg></a>':'')+'</div></div>';
+   +(wa?'<a class="wa" target="_blank" rel="noopener" aria-label="Chat on WhatsApp" href="https://wa.me/'+wa+'?text='+encodeURIComponent('Hi! I saw "'+l.title+'" on Sureo.')+'"><svg class="ic" style="stroke:#fff"><use href="#i-chat"/></svg></a>':'')+'</div></div>');
   const g=$('gal'),c=$('cnt');if(g&&c)g.addEventListener('scroll',()=>{c.textContent=(Math.round(g.scrollLeft/g.clientWidth)+1)+'/'+ms.length;},{passive:true});
   try{const t=await sb.from('seller_tiers').select('tier').eq('seller_id',l.seller_id).maybeSingle();const b=$('dtier');if(b&&t.data&&t.data.tier==='trusted')b.hidden=false;}catch(e){}
 }
-function closeDetail(){$('detail').classList.remove('open');$('detail').innerHTML='';document.body.style.overflow='';paint();}
+function closeDetail(){$('detail').classList.remove('open');safeRender($('detail'), '');document.body.style.overflow='';paint();}
 function route(){
   $('acct').classList.remove('cmode');
   const id=idFromHash();
@@ -1052,12 +1131,12 @@ async function shareListing(b){
 }
 
 /* ---------- Session: same 20-minute inactivity rule as the old app (they share one login) ---------- */
-const IDLE_MS=20*60*1000;let ME=null,lastAct=Date.now(),MY=[],MYPROF=null;
+const IDLE_MS=20*60*1000;let ME=null,SESS_TOKEN=null,lastAct=Date.now(),MY=[],MYPROF=null;
 function touchActive(){if(!ME)return;const n=Date.now();if(n-lastAct>5000){lastAct=n;try{localStorage.setItem('sureoLast',n);}catch(e){}}}
 ['click','touchstart','keydown','scroll'].forEach(ev=>window.addEventListener(ev,touchActive,{passive:true,capture:true}));
 async function logout(msg){
   try{await sb.auth.signOut();}catch(e){}
-  ME=null;MY=[];MYPROF=null;st.mine=null;try{localStorage.removeItem('sureoLast');localStorage.removeItem('sureoView');}catch(e){}
+  ME=null;SESS_TOKEN=null;MY=[];MYPROF=null;st.mine=null;try{localStorage.removeItem('sureoLast');localStorage.removeItem('sureoView');}catch(e){}
   closeA();toast(msg||'Logged out. See you soon!');if(location.hash==='#account')location.replace('#profile');else if(isProfileRoute())showProfile();
 }
 function checkIdle(){if(!ME)return;let l=lastAct;try{l=Math.max(l,+localStorage.getItem('sureoLast')||0);}catch(e){}if(Date.now()-l>=IDLE_MS)logout('You were logged out after 20 minutes of inactivity.');}
@@ -1067,10 +1146,20 @@ async function initAuth(){
     const {data}=await sb.auth.getSession();const s=data&&data.session;if(!s)return null;
     let l=0;try{l=+localStorage.getItem('sureoLast')||0;}catch(e){}
     if(l&&Date.now()-l>=IDLE_MS){await sb.auth.signOut();try{localStorage.removeItem('sureoLast');}catch(e){}return null;}
-    ME=s.user;touchActive();return ME;
+    ME=s.user;SESS_TOKEN=s.access_token||null;touchActive();return ME;
   }catch(e){return null;}
 }
 const AUTHP=initAuth();
+/* SECURITY FIX (P0-1): requireAuth() - central auth guard. Sensitive flows (payout, KYC, delete account) must pass this before any modal is rendered or opened. Mirrors `currentUser && currentUser.token` using ME (user) + SESS_TOKEN (Supabase access token). */
+try{sb.auth.onAuthStateChange((ev,sess)=>{if(sess&&sess.user){ME=sess.user;SESS_TOKEN=sess.access_token||null;}else if(ev==='SIGNED_OUT'){SESS_TOKEN=null;}});}catch(e){}
+function requireAuth(){
+  const currentUser=ME?{id:ME.id,token:SESS_TOKEN}:null;
+  if(currentUser&&currentUser.token)return true;
+  try{closeA();}catch(e){}
+  try{toast('Please sign in to continue.');}catch(e){}
+  try{openAuth('in');}catch(e){location.hash='#signin';}
+  return false;
+}
 /* ---------- Push notifications ---------- */
 const VAPID='BIcGhOAajf2Jv_7dyEIB7vnC4d9bQk3flamBIBhPaWdzQYi7eLlvOrXAkzObH2r0v-U5E1LaAb2eTsLw_E-SGHs';
 function b64u(s){const b=(s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b);return Uint8Array.from(Array.from(r).map(c=>c.charCodeAt(0)));}
@@ -1112,8 +1201,8 @@ const statusOf=l=>l.status==='active'&&Date.now()-new Date(l.created_at)>=60*864
 async function showProfile(){
   document.body.classList.add('pv');setNav(location.hash==='#items'?'items':'profile');window.scrollTo(0,0);
   const el=$('profileView');
-  if(!ME){el.innerHTML='<div class="ph1"><div class="pav">S</div><div><div class="pname">Your profile</div><div class="ss">Sign in to see your listings and rating.</div></div></div><a class="btn" href="#signin">Sign in</a>';await AUTHP;if(!ME)return;}
-  el.innerHTML='<div class="ph1"><div class="pav sk"></div><div class="sk" style="height:22px;width:50%;border-radius:8px"></div></div>';
+  if(!ME){safeRender(el, '<div class="ph1"><div class="pav">S</div><div><div class="pname">Your profile</div><div class="ss">Sign in to see your listings and rating.</div></div></div><a class="btn" href="#signin">Sign in</a>');await AUTHP;if(!ME)return;}
+  safeRender(el, '<div class="ph1"><div class="pav sk"></div><div class="sk" style="height:22px;width:50%;border-radius:8px"></div></div>');
   const [p,m]=await Promise.all([
     sb.from('profiles').select('full_name,is_seller_verified,rating_avg,rating_count,campus_id').eq('id',ME.id).maybeSingle(),
     sb.from('listings').select('id',{count:'exact',head:true}).eq('seller_id',ME.id)]);
@@ -1122,7 +1211,7 @@ async function showProfile(){
   MYPROF=p.data||{};const pr=MYPROF,rc=+pr.rating_count||0;
   const nm=pr.full_name||'Student';
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
-  el.innerHTML='<div class="ph1"><div class="pav">'+esc(nm.charAt(0).toUpperCase())+'</div><div style="min-width:0"><div class="pname">'+esc(nm)+'</div><div class="ss">'+esc(pr.campus_id?campName(pr.campus_id):'No campus set')+'</div>'+(pr.is_seller_verified?'<span class="vb"><svg class="ic"><use href="#i-tick"/></svg>Sureo Verified</span>':'')+'<span class="trust" id="ptier" hidden style="margin-left:6px">Trusted</span></div></div>'
+  safeRender(el, '<div class="ph1"><div class="pav">'+esc(nm.charAt(0).toUpperCase())+'</div><div style="min-width:0"><div class="pname">'+esc(nm)+'</div><div class="ss">'+esc(pr.campus_id?campName(pr.campus_id):'No campus set')+'</div>'+(pr.is_seller_verified?'<span class="vb"><svg class="ic"><use href="#i-tick"/></svg>Sureo Verified</span>':'')+'<span class="trust" id="ptier" hidden style="margin-left:6px">Trusted</span></div></div>'
    +'<div class="pstats"><div><b>'+(rc&&pr.rating_avg?'★ '+(+pr.rating_avg).toFixed(1):'–')+'</b><span>Rating</span></div><div><b id="nList">'+(m.count||0)+'</b><span>Listings</span></div><div><b>'+rc+'</b><span>Reviews</span></div></div>'
    +'<div class="ptl" id="mine">My listings</div><div class="vstick"><div class="seg" id="seg"><button class="on" data-vt="active">Active</button><button data-vt="sold">Sold</button><button data-vt="archived">Archived</button><button data-vt="draft">Drafts</button></div><div class="chips" id="vcats">'+VCATS.map(c=>'<button class="chip'+(c[0]==='all'?' on':'')+'" data-vc="'+c[0]+'">'+c[1]+'</button>').join('')+'</div></div><div class="ss" id="vcount" style="margin:2px 0 10px"></div><div id="vempty"></div><div class="vlist" id="vlist"></div>'
    +'<div class="pcar" id="pcar" aria-label="Your shop and wanted requests"><button class="pbanner" data-act="store"><span class="pbi"><svg class="ic"><use href="#i-share"/></svg></span><b>Share your shop</b><small>One link to all your listings.</small><span class="pbl"><i>'+esc(location.host+'/s/'+((nm.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g,''))||'shop')+'-'+String(ME.id).slice(0,8))+'</i><span class="pbs">Share link</span></span></button></div><div class="pdots" id="pdots"></div>'
@@ -1131,7 +1220,7 @@ async function showProfile(){
    +'<a class="lrow" href="#shop" style="color:inherit;text-decoration:none"><span><svg class="ic"><use href="#i-box"/></svg>My Shop</span><small>›</small></a>'
    +'<button class="lrow" data-act="push"><span><svg class="ic"><use href="#i-bell"/></svg>Notifications</span><small id="pushSub">'+pushLabel()+'</small></button>'
    +'<div class="lrow"><span><svg class="ic"><use href="#i-moon"/></svg>Dark mode</span><button class="sw" role="switch" aria-label="Dark mode" aria-checked="'+dark+'" data-act="theme"></button></div>'
-   +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>';
+   +'<button class="lrow out" data-act="logout"><span><svg class="ic"><use href="#i-logout"/></svg>Log out</span></button></div>');
   if(location.hash==='#items'){
     el.querySelectorAll('.ph1,.pstats,.lcard,.pcar,.pdots').forEach(x=>x.remove());
     el.querySelectorAll('.ptl').forEach(x=>{if(x.id!=='mine')x.remove();});
@@ -1167,10 +1256,10 @@ function vlRender(force){
   const key=[VL.tab,a,b,n,sk,VL.err].join('|');
   if(!force&&key===VL.key)return;VL.key=key;
   let out='';for(let i=a;i<b;i++)out+=i<n?vRow(VL.rows[i],i*P,c):'<div class="vr sk" style="top:'+(i*P)+'px;height:'+c.H+'px;border-radius:12px"></div>';
-  box.innerHTML=out;
+  safeRender(box, out);
   const vc=$('vcount');if(vc)vc.textContent=VL.total>15&&n?'Showing '+n+' of '+VL.total+' '+NOUN[VL.tab]+' listings':'';
   const catL=(VCATS.find(x=>x[0]===VL.cat)||[])[1];
-  $('vempty').innerHTML=VL.err?'<div class="mrow"><div class="t">Couldn’t load listings</div><div class="s">Check your connection.</div><div class="macts"><button class="fill" data-ma="retry">Try again</button></div></div>':(VL.done&&!n?'<div class="mrow"><div class="t">'+(VL.cat==='all'?VEMPTY[VL.tab][0]:'Nothing in '+catL)+'</div><div class="s" style="margin:2px 0 0">'+(VL.cat==='all'?VEMPTY[VL.tab][1]:'Try another category or tab.')+'</div></div>':'');
+  safeRender($('vempty'), VL.err?'<div class="mrow"><div class="t">Couldn’t load listings</div><div class="s">Check your connection.</div><div class="macts"><button class="fill" data-ma="retry">Try again</button></div></div>':(VL.done&&!n?'<div class="mrow"><div class="t">'+(VL.cat==='all'?VEMPTY[VL.tab][0]:'Nothing in '+catL)+'</div><div class="s" style="margin:2px 0 0">'+(VL.cat==='all'?VEMPTY[VL.tab][1]:'Try another category or tab.')+'</div></div>':''));
   if(!VL.done&&!VL.busy&&!VL.err&&b>=n-2)vlMore();
 }
 async function vlMore(){
@@ -1287,7 +1376,7 @@ const BANKS=[['044','Access Bank'],['050','Ecobank'],['070','Fidelity Bank'],['0
 const aBar=t=>'<div class="abar"><button class="round" data-ac="back" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button><h1>'+(t||'Identity &amp; account')+'</h1></div>';
 function closeA(){$('asheet').classList.remove('open');}
 function closeAcct(){const a=$('acct');if(a.classList.contains('open')){a.classList.remove('open');closeA();}}
-function openA(h){$('abody').innerHTML=h;$('abody').scrollTop=0;$('asheet').classList.add('open');}
+function openA(h){safeRender($('abody'), h);$('abody').scrollTop=0;$('asheet').classList.add('open');}
 const aErr=m=>{const e=$('aErr');if(e){e.textContent=m;e.classList.add('show');}};
 async function aRun(btn,fn){if(aBusy)return;aBusy=true;const t=btn.textContent;btn.disabled=true;btn.textContent='Please wait…';try{await fn();}finally{aBusy=false;if(btn.isConnected){btn.disabled=false;btn.textContent=t;}}}
 async function rmFolder(bucket,prefix){
@@ -1301,8 +1390,8 @@ async function rmFolder(bucket,prefix){
 }
 async function showAccount(){
   const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  a.innerHTML=aBar()+'<div class="acard"><div class="sk" style="height:150px;border-radius:10px;margin:10px 0"></div></div>';
-  if(!ME){await AUTHP;if(!ME){a.innerHTML=aBar()+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your account.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>';return;}}
+  safeRender(a, aBar()+'<div class="acard"><div class="sk" style="height:150px;border-radius:10px;margin:10px 0"></div></div>');
+  if(!ME){await AUTHP;if(!ME){safeRender(a, aBar()+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your account.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>');return;}}
   await loadAcc();if(location.hash!=='#account'||!ME)return;paintAcct();
 }
 async function loadAcc(){
@@ -1317,7 +1406,7 @@ const kOk=t=>'<span class="kst">'+t+'</span>',kOpt=t=>'<span class="kst opt">'+t
 function paintAcct(){
   const p=ACC.p,k=ACC.k,ver=!!p.is_seller_verified,pend=!ver&&!!k&&k.status==='pending',idOk=!!(k&&k.student_id_path),pay=!!p.paystack_subaccount;
   const row=(t,a)=>'<button class="lrow'+(a==='delete'?' out':'')+'" data-ac="'+a+'"><span>'+t+'</span><small>›</small></button>';
-  $('acct').innerHTML=aBar()
+  safeRender($('acct'), aBar()
   +'<div class="acard"><h3>Identity &amp; verification</h3><div class="ss">Fully verified members get the Sureo ✓ badge on every listing.</div>'
   +kRow('🏛️','Email address',esc(ME.email||''),kOk('✓ VERIFIED'))
   +kRow('🪪','Seller verification',ver?'Student ID and selfie reviewed by the Sureo team':pend?'Submitted · we’ll notify you once approved':'Only needed if you want to sell on Sureo',ver?kOk('✓ VERIFIED'):pend?kOpt('⏳ PENDING'):kBtn('Verify','verify'))
@@ -1327,13 +1416,20 @@ function paintAcct(){
   +'<div class="acard"><h3>Account actions</h3><div class="ss">Manage your presence on Sureo.</div><div class="lcard">'
   +row('Edit profile','editname')+row('Change email','email')+row('Change password','pass')+row('Log out','logout')+row('Delete account','delete')
   +'</div></div>'
-  +'<div class="alegal"><button data-ac="terms">Terms of Service</button><button data-ac="privacy">Privacy Policy</button></div>';
+  +'<div class="alegal"><button data-ac="terms">Terms of Service</button><button data-ac="privacy">Privacy Policy</button></div>');
 }
 const aForm=(title,sub,inputs,ac,label)=>'<h2>'+title+'</h2><p class="ss" style="margin-bottom:10px">'+sub+'</p>'+inputs+'<p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="'+ac+'" style="padding:12px">'+label+'</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>';
 const legalH=w=>'<h2>Legal</h2><div class="macts" style="margin-bottom:10px"><button class="'+(w==='terms'?'fill':'')+'" data-ac="terms">Terms of Service</button><button class="'+(w==='privacy'?'fill':'')+'" data-ac="privacy">Privacy Policy</button></div><div class="lg">'+$(w==='privacy'?'tplPrivacy':'tplTerms').innerHTML+'</div>';
 document.addEventListener('change',e=>{
   if(e.target.id!=='aIdF'&&e.target.id!=='aSfF')return;
   const f=e.target.files[0],bx=$(e.target.id==='aIdF'?'aIdBox':'aSfBox');
+  /* SECURITY FIX (P0-4): validate type/size as soon as a file is chosen, show the error inline, and clear the input so nothing invalid can be submitted */
+  if(bx&&!bx.dataset.t0)bx.dataset.t0=bx.textContent;
+  if(f){
+    const v=validateFile(f,{allowPdf:e.target.id==='aIdF'});
+    if(!v.ok){e.target.value='';if(bx){bx.textContent=bx.dataset.t0;bx.classList.remove('got');}aErr(v.error);return;}
+    const ae=$('aErr');if(ae){ae.textContent='';ae.classList.remove('show');}
+  }
   if(f&&bx){bx.textContent='✓ '+f.name;bx.classList.add('got');}
 });
 document.addEventListener('click',e=>{
@@ -1342,6 +1438,8 @@ document.addEventListener('click',e=>{
   const a=b.dataset.ac;
   if(a==='back'){location.replace('#profile');return;}
   if(a==='close'){closeA();return;}
+  /* SECURITY FIX (P0-1): block sensitive modals/actions unless authenticated; redirect to Sign In */
+  if(['delete','confirmdelete','verify','pickid','picksf','uploadid','submitkyc','payout','savepayout'].indexOf(a)!==-1&&!requireAuth())return;
   if(!ME)return;
   if(a==='editname')openA(aForm('Edit your profile','This is the name other students see on your listings.','<input id="aName" maxlength="60" placeholder="Full name" autocomplete="name" value="'+esc(ACC.p.full_name||'')+'">','savename','Save changes'));
   else if(a==='email')openA(aForm('Change your email','We’ll send a confirmation link to the new address.','<input id="aEmail" type="email" placeholder="New email address" autocomplete="email" autocapitalize="off">','saveemail','Send confirmation'));
@@ -1349,7 +1447,7 @@ document.addEventListener('click',e=>{
   else if(a==='delete')openA(aForm('Delete your account?','This permanently deletes your account, listings, chats and verification files. It cannot be undone.','<input id="aDel" placeholder="Type DELETE to confirm" autocomplete="off" autocapitalize="characters">','confirmdelete','Delete my account'));
   else if(a==='logout'){openA(aForm('Log out of Sureo?','You can sign back in anytime.','','confirmlogout','Log out'));}
   else if(a==='terms'||a==='privacy')openA(legalH(a));
-  else if(a==='verify')openA('<h2>Seller verification</h2><p class="ss" style="margin-bottom:10px">Needed once, to sell on Sureo. 🔒 Only the Sureo team can see these files.</p><input id="aMat" placeholder="Matric number, e.g. U2020/123456" autocomplete="off" maxlength="30"><button class="ubox" id="aIdBox" data-ac="pickid">📎 Tap to upload a clear photo of your student ID</button><input type="file" id="aIdF" accept="image/jpeg,image/png,application/pdf" hidden><button class="ubox" id="aSfBox" data-ac="picksf">🤳 Tap to take a selfie holding your ID next to your face</button><input type="file" id="aSfF" accept="image/*" capture="user" hidden><p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="submitkyc" style="padding:12px">Submit for review</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>');
+  else if(a==='verify')openA('<h2>Seller verification</h2><p class="ss" style="margin-bottom:10px">Needed once, to sell on Sureo. 🔒 Only the Sureo team can see these files.</p><input id="aMat" placeholder="Matric number, e.g. U2020/123456" autocomplete="off" maxlength="30"><button class="ubox" id="aIdBox" data-ac="pickid">📎 Tap to upload a clear photo of your student ID</button><input type="file" id="aIdF" accept="image/jpeg,image/png,image/webp,application/pdf" hidden><button class="ubox" id="aSfBox" data-ac="picksf">🤳 Tap to take a selfie holding your ID next to your face</button><input type="file" id="aSfF" accept="image/jpeg,image/png,image/webp" capture="user" hidden><p class="err" id="aErr"></p><div class="macts"><button class="fill" data-ac="submitkyc" style="padding:12px">Submit for review</button><button data-ac="close" style="padding:12px 18px">Cancel</button></div>');
   else if(a==='pickid')$('aIdF').click();
   else if(a==='picksf')$('aSfF').click();
   else if(a==='payout')openA(aForm('Payout account','Buyers who pay online are paid straight into this account through Paystack. Sureo never holds your money.','<select id="aBank"><option value="">Select your bank</option>'+BANKS.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select><input id="aAcct" inputmode="numeric" maxlength="10" placeholder="10-digit account number" autocomplete="off">','savepayout','Save payout account'));
@@ -1387,6 +1485,7 @@ async function savePass(){
   closeA();toast('✓ Password updated.');
 }
 async function delAccount(){
+  if(!requireAuth())return; /* SECURITY FIX (P0-1) */
   if($('aDel').value.trim()!=='DELETE')return aErr('Type DELETE in capital letters to confirm.');
   try{
     await rmFolder('kyc-private',ME.id);await rmFolder('listing-media',ME.id);
@@ -1395,17 +1494,18 @@ async function delAccount(){
   closeA();await logout('Your account has been deleted.');
 }
 async function submitKyc(){
+  if(!requireAuth())return; /* SECURITY FIX (P0-1) */
   const matric=$('aMat').value.trim(),idf=$('aIdF').files[0],sf=$('aSfF').files[0];
   if(!matric)return aErr('Enter your matric number.');
   if(!idf||!sf)return aErr('Add your student ID and a selfie holding it.');
-  const EXT={'image/jpeg':'jpg','image/png':'png','application/pdf':'pdf'};
-  if(!EXT[idf.type])return aErr('Student ID must be a JPG, PNG or PDF.');
-  if(!/^image\//.test(sf.type))return aErr('Selfie must be a photo.');
-  if(idf.size>5*1024*1024||sf.size>8*1024*1024)return aErr('Each photo must be under 5 MB.');
-  const t=Date.now(),idPath=ME.id+'/student-id-'+t+'.'+EXT[idf.type],sfPath=ME.id+'/selfie-'+t+'.'+(sf.type==='image/png'?'png':'jpg');
-  let up=await sb.storage.from('kyc-private').upload(idPath,idf,{contentType:idf.type});
+  /* SECURITY FIX (P0-4): re-validate + compress (800px, q0.7) BEFORE any upload starts */
+  const vi=validateFile(idf,{allowPdf:true});if(!vi.ok)return aErr(vi.error);
+  const vs=validateFile(sf);if(!vs.ok)return aErr(vs.error);
+  let idU,sfU;try{idU=await compressImage(idf);sfU=await compressImage(sf);}catch(err){return aErr(err.message||'Could not process your photos. Try again.');}
+  const t=Date.now(),idPath=ME.id+'/student-id-'+t+'.'+(idU.type==='application/pdf'?'pdf':'jpg'),sfPath=ME.id+'/selfie-'+t+'.jpg';
+  let up=await sb.storage.from('kyc-private').upload(idPath,idU,{contentType:idU.type});
   if(up.error)return aErr('Upload failed: '+up.error.message);
-  up=await sb.storage.from('kyc-private').upload(sfPath,sf,{contentType:sf.type==='image/png'?'image/png':'image/jpeg'});
+  up=await sb.storage.from('kyc-private').upload(sfPath,sfU,{contentType:'image/jpeg'});
   if(up.error)return aErr('Upload failed: '+up.error.message);
   const {error}=await sb.from('kyc').upsert({user_id:ME.id,id_type:null,id_last4:null,matric_no:matric,student_id_path:idPath,selfie_path:sfPath,status:'pending'});
   if(error)return aErr('Could not submit: '+error.message);
@@ -1413,16 +1513,18 @@ async function submitKyc(){
   toast('✓ Submitted! We’ll review your details and activate your Seller badge.');
 }
 function pickIdOnly(){
+  if(!requireAuth())return; /* SECURITY FIX (P0-1) */
   if(!ACC.k){toast('Complete seller verification first, then your Student ID can be added.');$('acct').querySelector('[data-ac="verify"]')&&$('acct').querySelector('[data-ac="verify"]').click();return;}
-  const inp=document.createElement('input');inp.type='file';inp.accept='image/jpeg,image/png,application/pdf';
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/jpeg,image/png,image/webp,application/pdf';
   inp.addEventListener('change',async()=>{
     const f=inp.files[0];if(!f)return;
-    const ext=({'image/jpeg':'jpg','image/png':'png','application/pdf':'pdf'})[f.type];
-    if(!ext)return toast('Student ID must be a JPG, PNG or PDF.');
-    if(f.size>5*1024*1024)return toast('Student ID file must be under 5 MB.');
+    /* SECURITY FIX (P0-4): validate + compress before upload; error shown to the user before anything is sent */
+    const v=validateFile(f,{allowPdf:true});if(!v.ok)return toast(v.error,4500);
+    let g;try{g=await compressImage(f);}catch(err){return toast(err.message||'Could not process that file.',4500);}
+    const ext=g.type==='application/pdf'?'pdf':'jpg';
     const path=ME.id+'/student-id-'+Date.now()+'.'+ext;
     toast('Uploading…');
-    const up=await sb.storage.from('kyc-private').upload(path,f,{contentType:f.type});
+    const up=await sb.storage.from('kyc-private').upload(path,g,{contentType:g.type});
     if(up.error)return toast('Upload failed: '+up.error.message);
     const {error}=await sb.from('kyc').update({student_id_path:path}).eq('user_id',ME.id);
     if(error)return toast('Could not save: '+error.message);
@@ -1431,6 +1533,7 @@ function pickIdOnly(){
   inp.click();
 }
 async function savePayout(){
+  if(!requireAuth())return; /* SECURITY FIX (P0-1) */
   const bank=$('aBank').value,acct=$('aAcct').value.trim();
   if(!bank||!/^\d{10}$/.test(acct))return aErr('Choose your bank and enter a 10-digit account number.');
   const {error}=await sb.functions.invoke('paystack',{body:{action:'subaccount',bank_code:bank,account_number:acct}});
@@ -1441,14 +1544,14 @@ async function savePayout(){
 /* ---------- My Shop (#shop) ---------- */
 async function showShop(){
   const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  if(!ME){a.innerHTML=aBar('My Shop')+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your shop.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>';await AUTHP;if(!ME)return;}
+  if(!ME){safeRender(a, aBar('My Shop')+'<div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to manage your shop.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>');await AUTHP;if(!ME)return;}
   if(location.hash!=='#shop')return;
   const lk='style="color:inherit;text-decoration:none"';
-  a.innerHTML=aBar('My Shop')+'<div class="acard"><div class="lcard">'
+  safeRender(a, aBar('My Shop')+'<div class="acard"><div class="lcard">'
   +'<button class="lrow" data-act="store"><span><svg class="ic"><use href="#i-share"/></svg>Share my shop link</span><small>›</small></button>'
   +'<a class="lrow" href="#orders" '+lk+'><span><svg class="ic"><use href="#i-box"/></svg>Orders &amp; Receipts</span><small>›</small></a>'
   +'<a class="lrow" href="#wanted" '+lk+'><span><svg class="ic"><use href="#i-search"/></svg>Wanted board</span><small>›</small></a>'
-  +'</div></div>';
+  +'</div></div>');
 }
 
 function leaveTo(){history.replaceState(null,'',location.pathname+location.search);route();} /* no page reload, so the header and logo stay put */
@@ -1468,20 +1571,12 @@ if(/whatsapp|telegram|call me|dm me|@gmail|@yahoo/.test(t))return 'Please remove
 if(/\b(weed|cocaine|heroin|tramadol|codeine|molly|loud|gun|pistol|rifle|ammo|exam\s*(leak|runz|expo)|leaked\s*(questions|exam)|fake\s*(id|certificate|result))\b/.test(t))return 'This kind of item is not allowed on Sureo.';
 return '';
 }
-async function squeeze(f){
-if(!/^image\/(jpeg|png|webp)$/.test(f.type)||f.size<250000)return f;
-try{
-const bm=await createImageBitmap(f),k=Math.min(1,1280/Math.max(bm.width,bm.height));
-const c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
-c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
-const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.8));
-return b&&b.size<f.size?new File([b],'p.jpg',{type:'image/jpeg'}):f;
-}catch(e){return f;}
-}
+/* SECURITY FIX (P0-4): listing photos now use the shared compressImage() (Canvas, max 800px wide, JPEG q0.7). Previously: 1280px, q0.8, skipped files under 250KB and silently uploaded the ORIGINAL if decoding failed. */
+async function squeeze(f){return compressImage(f);}
 
 async function showSell(){
   const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  a.innerHTML=aBar('Create Listing')+'<div class="acard"><div class="sk" style="height:200px;border-radius:10px;margin:10px 0"></div></div>';
+  safeRender(a, aBar('Create Listing')+'<div class="acard"><div class="sk" style="height:200px;border-radius:10px;margin:10px 0"></div></div>');
   if(!ME)await AUTHP;
   if(!ME){toast('Sign in to sell on Sureo.');location.href='/';return;}
   const [p,k]=await Promise.all([sb.from('profiles').select('is_seller_verified').eq('id',ME.id).maybeSingle(),sb.from('kyc').select('status').eq('user_id',ME.id).maybeSingle()]);
@@ -1494,7 +1589,7 @@ async function showSell(){
   SL={ty:'sell',cat:'books',cond:'Like New',files:[],busy:false};paintSell();
 }
 function paintSell(){
-  $('acct').innerHTML='<div class="abar" style="justify-content:space-between"><span style="width:40px"></span><h1>Create Listing</h1><button class="round" data-sl="close" aria-label="Close">✕</button></div>'
+  safeRender($('acct'), '<div class="abar" style="justify-content:space-between"><span style="width:40px"></span><h1>Create Listing</h1><button class="round" data-sl="close" aria-label="Close">✕</button></div>'
   +'<div class="stypes" id="sTypes">'+[['sell','Sell'],['rent','Rent'],['trade','Trade'],['free','Free']].map(t=>'<button class="stype'+(t[0]===SL.ty?' on':'')+'" data-sl="type" data-v="'+t[0]+'">'+svgi(SI[t[0]])+'<span>'+t[1]+'</span></button>').join('')+'</div>'
   +'<div class="acard sform">'
   +'<label>Category</label><select id="sCat"></select>'
@@ -1504,13 +1599,13 @@ function paintSell(){
   +'<div id="sCodeF"><label>Course code / ISBN <span style="color:var(--muted);font-weight:500">(for textbooks)</span></label><input id="sCode" autocomplete="off" placeholder="e.g. MTH211 or ISBN 978-..."></div>'
   +'<label>Photos</label><button class="ubox pbox" data-sl="pick">'+svgi(SI.cam)+'<span id="sPickT">Add Photos</span></button><input type="file" id="sFile" multiple accept="image/jpeg,image/png,image/webp,video/mp4" hidden><div class="prev" id="sPrev"></div>'
   +'<label>Your WhatsApp number</label><input id="sPhone" type="tel" placeholder="08012345678" autocomplete="tel">'
-  +'<p class="err" id="sErr" style="margin-top:12px"></p><button class="btn pbtn" data-sl="post">Post on Sureo ✓</button></div>';
+  +'<p class="err" id="sErr" style="margin-top:12px"></p><button class="btn pbtn" data-sl="post">Post on Sureo ✓</button></div>');
   applySell();
 }
 function applySell(){
   const al=CAT_BY_TYPE[SL.ty],sc=$('sCat');
   if(al.indexOf(SL.cat)<0)SL.cat=al[0];
-  sc.innerHTML=al.map(k=>'<option value="'+k+'"'+(k===SL.cat?' selected':'')+'>'+CAT_LBL[k]+'</option>').join('');
+  safeRender(sc, al.map(k=>'<option value="'+k+'"'+(k===SL.cat?' selected':'')+'>'+CAT_LBL[k]+'</option>').join(''));
   const c=SELL_CFG[SL.cat];
   $('sName').placeholder=c.title;
   $('sPriceF').style.display=SL.ty==='free'?'none':'';
@@ -1518,9 +1613,9 @@ function applySell(){
   $('sCodeF').style.display=c.code?'':'none';
   renderCond();
 }
-function renderCond(){$('sCond').innerHTML=CONDS.map(c=>'<button class="chip'+(c[0]===SL.cond?' on':'')+'" data-sl="cond" data-v="'+c[0]+'">'+c[1]+'</button>').join('');}
+function renderCond(){safeRender($('sCond'), CONDS.map(c=>'<button class="chip'+(c[0]===SL.cond?' on':'')+'" data-sl="cond" data-v="'+c[0]+'">'+c[1]+'</button>').join(''));}
 function renderPrev(){
-  $('sPrev').innerHTML=SL.files.map((f,i)=>'<div class="thumb">'+(f.type.startsWith('video')?'<video src="'+URL.createObjectURL(f)+'" muted playsinline></video>':'<img alt="" src="'+URL.createObjectURL(f)+'">')+'<button data-sl="rm" data-i="'+i+'" aria-label="Remove">✕</button></div>').join('');
+  safeRender($('sPrev'), SL.files.map((f,i)=>'<div class="thumb">'+(f.type.startsWith('video')?'<video src="'+URL.createObjectURL(f)+'" muted playsinline></video>':'<img alt="" src="'+URL.createObjectURL(f)+'">')+'<button data-sl="rm" data-i="'+i+'" aria-label="Remove">✕</button></div>').join(''));
   $('sPickT').textContent=SL.files.length?(SL.files.length+' of 5 added · tap to add more'):'Add Photos';
 }
 document.addEventListener('click',e=>{
@@ -1535,7 +1630,12 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='sCat'){SL.cat=e.target.value;applySell();}
-  else if(e.target.id==='sFile'){SL.files=SL.files.concat(Array.from(e.target.files)).slice(0,5);e.target.value='';renderPrev();}
+  else if(e.target.id==='sFile'){
+    /* SECURITY FIX (P0-4): validate each picked file immediately; invalid files are dropped and the reason is shown inline */
+    const okF=[],badM=[];Array.from(e.target.files).forEach(f=>{const v=validateFile(f,{allowVideo:true});if(v.ok)okF.push(f);else badM.push(v.error);});
+    const se=$('sErr');if(se){if(badM.length){se.textContent=badM[0]+(badM.length>1?' ('+(badM.length-1)+' more skipped)':'');se.style.display='block';}else se.style.display='none';}
+    SL.files=SL.files.concat(okF).slice(0,5);e.target.value='';renderPrev();
+  }
 });
 document.addEventListener('input',e=>{
   if(e.target.id!=='sPrice')return;
@@ -1552,17 +1652,17 @@ async function postListing(btn){
   const ty=SL.ty,cat=SL.cat,c=SELL_CFG[cat],p=ty==='free'?0:(parseInt($('sPrice').value.replace(/\D/g,''),10)||0);
   const ph=waNum($('sPhone').value);if(!ph)return er('Enter a valid WhatsApp number, e.g. 08012345678');
   const files=SL.files.slice(0,5);
-  for(const f of files){
-    if(!MIME_EXT[f.type])return er('Use JPG, PNG, WebP photos or MP4 video.');
-    if(f.size>20*1024*1024)return er('Each file must be under 20 MB.');
-  }
+  /* SECURITY FIX (P0-4): validate every file before posting; inline error, nothing is uploaded on failure */
+  for(const f of files){const v=validateFile(f,{allowVideo:true});if(!v.ok)return er(v.error);}
   SL.busy=true;btn.disabled=true;btn.textContent='Posting…';
   try{
+    /* compress up front so a bad image fails BEFORE the listing row is created */
+    const prepared=[];for(const f of files)prepared.push(await squeeze(f));
     const {data:l,error}=await sb.from('listings').insert({seller_id:ME.id,type:ty,category:cat,title:n,price_kobo:p*100,condition:c.cond?SL.cond:'N/A (Food / Service)',course_code:c.code?($('sCode').value.trim()||null):null,whatsapp:ph}).select('id').single();
     if(error)throw error;
     const rows=[];
     for(let i=0;i<files.length;i++){
-      const f=await squeeze(files[i]),path=ME.id+'/'+l.id+'/'+i+'.'+MIME_EXT[f.type];
+      const f=prepared[i],path=ME.id+'/'+l.id+'/'+i+'.'+MIME_EXT[f.type];
       const up=await sb.storage.from('listing-media').upload(path,f,{contentType:f.type});
       if(up.error)throw up.error;
       rows.push({listing_id:l.id,url:sb.storage.from('listing-media').getPublicUrl(path).data.publicUrl,kind:f.type.startsWith('video')?'video':'image',position:i});
@@ -1595,16 +1695,16 @@ let ORD={f:'action',n:20},OC=null;
 const fmtN=k=>'₦'+Math.round((k||0)/100).toLocaleString('en-NG');
 async function showOrders(){
   const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  a.innerHTML=aBar('Orders & Receipts')+'<div class="acard"><div class="sk" style="height:120px;border-radius:10px;margin:10px 0"></div></div>';
+  safeRender(a, aBar('Orders & Receipts')+'<div class="acard"><div class="sk" style="height:120px;border-radius:10px;margin:10px 0"></div></div>');
   if(!ME)await AUTHP;
-  if(!ME){a.innerHTML=signinCard('Orders & Receipts');return;}
+  if(!ME){safeRender(a, signinCard('Orders & Receipts'));return;}
   ORD={f:'action',n:20};await loadOrders();
 }
 async function loadOrders(){
   if(!ME)return;
   const {data,error}=await sb.from('orders').select('id,listing_title,amount_kobo,seller_id,buyer_id,handover_status,handover_at,receipt').or('buyer_id.eq.'+ME.id+',seller_id.eq.'+ME.id).order('created_at',{ascending:false}).limit(ORD.n);
   if(location.hash!=='#orders')return;
-  if(error||!data||!data.length){OC=null;$('acct').innerHTML=aBar('Orders & Receipts')+'<div class="acard"><p class="ss" style="padding:18px 0;text-align:center">No orders yet.</p></div>';return;}
+  if(error||!data||!data.length){OC=null;safeRender($('acct'), aBar('Orders & Receipts')+'<div class="acard"><p class="ss" style="padding:18px 0;text-align:center">No orders yet.</p></div>');return;}
   const codes={},dm={};
   const mine=data.filter(o=>o.buyer_id===ME.id).map(o=>String(o.id));
   if(mine.length){const r=await sb.from('handover_codes').select('order_id,code').in('order_id',mine);(r.data||[]).forEach(c=>codes[c.order_id]=c.code);}
@@ -1644,9 +1744,9 @@ function drawOrders(){
     body+='<button class="obtn ghost" data-prob="'+id+'" style="align-self:flex-start">⚠️ Report a problem</button>';
     return '<details class="ord"><summary><span class="ord-ic">'+(b?'🛍️':'🏷️')+'</span><span class="ord-t"><b>'+esc(o.listing_title)+'</b><small>'+(b?'Buying':'Selling')+' · '+fmtN(o.amount_kobo)+'</small></span><span class="ob'+(bd[1]?' act':'')+'">'+bd[0]+'</span></summary><div class="ord-body">'+body+'</div></details>';
   };
-  $('acct').innerHTML=aBar('Orders & Receipts')+'<div class="omax"><div class="oh">'+(nAct?nAct+' need'+(nAct===1?'s':'')+' your attention':'All up to date')+'</div><div class="seg" style="position:static">'+seg+'</div>'
+  safeRender($('acct'), aBar('Orders & Receipts')+'<div class="omax"><div class="oh">'+(nAct?nAct+' need'+(nAct===1?'s':'')+' your attention':'All up to date')+'</div><div class="seg" style="position:static">'+seg+'</div>'
   +(list.length?list.map(row).join(''):'<p class="ss" style="text-align:center;margin:26px 0">'+(ORD.f==='action'?'Nothing needs your attention 🎉':'No orders here.')+'</p>')
-  +(data.length>=ORD.n?'<button type="button" class="omore" data-omore="1">Load more orders</button>':'')+'</div>';
+  +(data.length>=ORD.n?'<button type="button" class="omore" data-omore="1">Load more orders</button>':'')+'</div>');
 }
 document.addEventListener('click',async e=>{
   if(!ME)return;
@@ -1679,19 +1779,19 @@ document.addEventListener('click',async e=>{
 let WANTED=[];
 async function showWanted(){
   const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  a.innerHTML=aBar('Wanted board')+'<div class="acard"><div class="sk" style="height:120px;border-radius:10px;margin:10px 0"></div></div>';
+  safeRender(a, aBar('Wanted board')+'<div class="acard"><div class="sk" style="height:120px;border-radius:10px;margin:10px 0"></div></div>');
   if(!ME)await AUTHP;
   if(location.hash!=='#wanted')return;
-  a.innerHTML=aBar('Wanted board')+'<div class="omax"><div class="acard"><h3>🙋 Post what you need</h3><div class="wf"><input id="wtT" maxlength="80" autocomplete="off" placeholder="e.g. Mini fridge, fairly used"><input id="wtB" inputmode="numeric" autocomplete="off" placeholder="Budget in ₦ (optional)"><button class="btn pbtn" data-wt="post" style="margin-top:4px">Post request</button></div></div><div id="wtList"></div></div>';
+  safeRender(a, aBar('Wanted board')+'<div class="omax"><div class="acard"><h3>🙋 Post what you need</h3><div class="wf"><input id="wtT" maxlength="80" autocomplete="off" placeholder="e.g. Mini fridge, fairly used"><input id="wtB" inputmode="numeric" autocomplete="off" placeholder="Budget in ₦ (optional)"><button class="btn pbtn" data-wt="post" style="margin-top:4px">Post request</button></div></div><div id="wtList"></div></div>');
   await paintWanted();
 }
 async function paintWanted(){
   const L=$('wtList');if(!L)return;
   const {data,error}=await sb.from('wanted').select('id,user_id,title,budget_kobo').order('created_at',{ascending:false}).limit(40);
   if(!$('wtList'))return;
-  if(error){L.innerHTML='<p class="ss" style="text-align:center;margin-top:14px">Wanted board is not set up yet.<br>'+esc(error.message||'')+'</p>';return;}
+  if(error){safeRender(L, '<p class="ss" style="text-align:center;margin-top:14px">Wanted board is not set up yet.<br>'+esc(error.message||'')+'</p>');return;}
   WANTED=data||[];
-  L.innerHTML=WANTED.length?WANTED.map(w=>'<div class="wcard"><i>🙋</i><div><b>'+esc(w.title)+'</b><small>'+(w.budget_kobo?'Budget ₦'+Math.round(w.budget_kobo/100).toLocaleString('en-NG'):'Open budget')+'</small></div>'+(ME&&ME.id===w.user_id?'<button class="obtn ghost" data-wt="del" data-id="'+esc(w.id)+'" style="color:#dc2626;border-color:#dc2626">Delete</button>':'<button class="obtn" data-wt="have" data-id="'+esc(w.id)+'">I have it</button>')+'</div>').join(''):'<p class="ss" style="text-align:center;margin-top:14px">No requests yet. Be the first!</p>';
+  safeRender(L, WANTED.length?WANTED.map(w=>'<div class="wcard"><i>🙋</i><div><b>'+esc(w.title)+'</b><small>'+(w.budget_kobo?'Budget ₦'+Math.round(w.budget_kobo/100).toLocaleString('en-NG'):'Open budget')+'</small></div>'+(ME&&ME.id===w.user_id?'<button class="obtn ghost" data-wt="del" data-id="'+esc(w.id)+'" style="color:#dc2626;border-color:#dc2626">Delete</button>':'<button class="obtn" data-wt="have" data-id="'+esc(w.id)+'">I have it</button>')+'</div>').join(''):'<p class="ss" style="text-align:center;margin-top:14px">No requests yet. Be the first!</p>');
 }
 document.addEventListener('input',e=>{
   if(e.target.id!=='wtB')return;
@@ -1756,11 +1856,11 @@ async function profileWanted(){
   if(error||!C.isConnected)return;
   const list=data||[];WANTED=list;
   const slide=(act,title,sub,note,cta)=>'<button class="pbanner pw" '+act+'><span class="pbi">🙋</span><b>'+title+'</b><small>'+sub+'</small><span class="pbl"><i>'+note+'</i><span class="pbs">'+cta+'</span></span></button>';
-  C.insertAdjacentHTML('beforeend',list.length?list.map(w=>{const own=ME&&ME.id===w.user_id;
+  safeInsert(C, 'beforeend',list.length?list.map(w=>{const own=ME&&ME.id===w.user_id;
     return slide(own?'data-go="wanted"':'data-wt="have" data-id="'+esc(w.id)+'"',esc(w.title),w.budget_kobo?'Budget ₦'+Math.round(w.budget_kobo/100).toLocaleString('en-NG'):'Open budget',own?'Your request':'Wanted on Sureo',own?'View':'I have it');}).join('')
     :slide('data-go="wanted"','Need something?','No wanted requests yet.','Wanted board','Post one'));
   C.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{location.hash='#wanted';}));
-  const D=$('pdots'),n=C.children.length;D.innerHTML='<i class="on"></i>'+'<i></i>'.repeat(n-1);
+  const D=$('pdots'),n=C.children.length;safeRender(D, '<i class="on"></i>'+'<i></i>'.repeat(n-1));
   C.addEventListener('scroll',()=>{const max=C.scrollWidth-C.clientWidth,k=max>0?Math.round(C.scrollLeft/max*(n-1)):0;[...D.children].forEach((d,x)=>d.classList.toggle('on',x===k));},{passive:true});
 }
 
@@ -1878,38 +1978,38 @@ AUTHP.then(bellDot);AUTHP.then(pushInit);setInterval(()=>{if(!document.hidden)be
 async function showMsgs(mode){
   MTAB=mode||'chats';const H='#'+(MTAB==='alerts'?'alerts':'messages'),TT=MTAB==='alerts'?'Alerts':'Messages';
   stopCh();const a=$('acct');a.classList.add('open');a.scrollTop=0;
-  a.innerHTML=hubBack()+TT+'</h1></div><div class="omax"><div class="sk" style="height:70px;border-radius:12px;margin-bottom:10px"></div></div>';
+  safeRender(a, hubBack()+TT+'</h1></div><div class="omax"><div class="sk" style="height:70px;border-radius:12px;margin-bottom:10px"></div></div>');
   if(!ME)await AUTHP;
   if(location.hash!==H)return;
-  if(!ME){a.innerHTML=hubBack()+TT+'</h1></div><div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to see your messages.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>';return;}
+  if(!ME){safeRender(a, hubBack()+TT+'</h1></div><div class="acard"><p class="ss" style="padding:14px 0 0">Sign in to see your messages.</p><a class="btn" href="#signin" style="margin-bottom:14px">Sign in</a></div>');return;}
   paintMsgs();bellDot();
 }
 async function paintMsgs(){
   const a=$('acct'),TT=MTAB==='alerts'?'Alerts':'Messages';
-  a.innerHTML=hubBack()+TT+'</h1></div><div class="omax" id="mlist"></div>';
-  const L=$('mlist');L.innerHTML=SKR;
+  safeRender(a, hubBack()+TT+'</h1></div><div class="omax" id="mlist"></div>');
+  const L=$('mlist');safeRender(L, SKR);
   if(MTAB==='alerts'){
     const {data,error}=await sb.from('notifications').select('id,title,body,read,created_at').neq('type','message').order('created_at',{ascending:false}).limit(40);
     if(!$('mlist'))return;
-    if(error||!(data&&data.length)){L.innerHTML='<p class="ss" style="text-align:center;margin-top:20px">No alerts yet.</p>';return;}
-    L.innerHTML=data.map(n=>'<div class="crow"><div><b>'+(n.read?'':'● ')+esc(n.title)+'</b><div class="ss">'+esc(n.body||'')+'</div><div class="ss">'+ago(n.created_at)+'</div></div></div>').join('');
+    if(error||!(data&&data.length)){safeRender(L, '<p class="ss" style="text-align:center;margin-top:20px">No alerts yet.</p>');return;}
+    safeRender(L, data.map(n=>'<div class="crow"><div><b>'+(n.read?'':'● ')+esc(n.title)+'</b><div class="ss">'+esc(n.body||'')+'</div><div class="ss">'+ago(n.created_at)+'</div></div></div>').join(''));
     if(data.some(n=>!n.read))sb.from('notifications').update({read:true}).eq('user_id',ME.id).eq('read',false).neq('type','message').then(bellDot);
     return;
   }
   const {data,error}=await sb.from('conversations').select('id,listing_title,buyer_id,seller_id,last_message,last_at').order('last_at',{ascending:false}).limit(50);
   if(!$('mlist'))return;
-  if(error){L.innerHTML='<p class="ss" style="text-align:center;margin-top:20px">Could not load chats.<br>'+esc(error.message)+'</p>';return;}
-  if(!data.length){L.innerHTML='<p class="ss" style="text-align:center;margin-top:20px">No chats yet. Open a listing and tap Chat.</p>';return;}
+  if(error){safeRender(L, '<p class="ss" style="text-align:center;margin-top:20px">Could not load chats.<br>'+esc(error.message)+'</p>');return;}
+  if(!data.length){safeRender(L, '<p class="ss" style="text-align:center;margin-top:20px">No chats yet. Open a listing and tap Chat.</p>');return;}
   const ids=[...new Set(data.map(c=>c.buyer_id===ME.id?c.seller_id:c.buyer_id))],nm={};
   const ps=await sb.from('profiles').select('id,full_name').in('id',ids);(ps.data||[]).forEach(p=>nm[p.id]=p.full_name);
   const un=await sb.from('messages').select('conversation_id').is('read_at',null).neq('sender_id',ME.id);
   const cn={};(un.data||[]).forEach(m=>cn[m.conversation_id]=(cn[m.conversation_id]||0)+1);
   if(!$('mlist'))return;
-  L.innerHTML=data.map(c=>{const o=c.buyer_id===ME.id?c.seller_id:c.buyer_id,n=nm[o]||'Student';return '<button class="crow" data-chat="'+esc(c.id)+'"><div class="cav">'+esc(n.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1"><b>'+esc(n)+'</b><div class="ss cl">'+esc(c.listing_title||'')+'</div><div class="ss cl">'+esc(c.last_message||'No messages yet')+'</div></div>'+(cn[c.id]?'<span class="cb">'+cn[c.id]+'</span>':'')+'</button>';}).join('');
+  safeRender(L, data.map(c=>{const o=c.buyer_id===ME.id?c.seller_id:c.buyer_id,n=nm[o]||'Student';return '<button class="crow" data-chat="'+esc(c.id)+'"><div class="cav">'+esc(n.charAt(0).toUpperCase())+'</div><div style="min-width:0;flex:1"><b>'+esc(n)+'</b><div class="ss cl">'+esc(c.listing_title||'')+'</div><div class="ss cl">'+esc(c.last_message||'No messages yet')+'</div></div>'+(cn[c.id]?'<span class="cb">'+cn[c.id]+'</span>':'')+'</button>';}).join(''));
 }
 async function showChat(id){
   stopCh();const a=$('acct');a.classList.add('open','cmode');a.scrollTop=0;
-  a.innerHTML=hubBack()+'Chat</h1></div><div class="omax">'+SKR+'</div>';
+  safeRender(a, hubBack()+'Chat</h1></div><div class="omax">'+SKR+'</div>');
   if(!ME)await AUTHP;
   if(location.hash!=='#chat='+id)return;
   if(!ME){toast('Sign in to chat.');location.replace('#messages');return;}
@@ -1920,13 +2020,13 @@ async function showChat(id){
   const ms=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',id).order('created_at',{ascending:true}).limit(200);
   if(location.hash!=='#chat='+id)return;
   const bub=m=>'<div class="msg '+(m.sender_id===ME.id?'out':'in')+'">'+esc(m.body)+'<time>'+ago(m.created_at)+'</time></div>';
-  a.innerHTML=hubBack()+esc((pr.data&&pr.data.full_name)||'Student')+'</h1></div><div class="chat"><div class="ss" style="text-align:center;margin-bottom:8px">'+(c.listing_title?'Re: '+esc(c.listing_title):'')+'</div><div id="cmsgs" class="cmsgs">'+((ms.data||[]).map(bub).join('')||'<p class="ss" style="text-align:center">Say hello 👋</p>')+'</div><div class="cin"><input id="cinp" maxlength="2000" placeholder="Type a message" autocomplete="off"><button class="obtn" data-send="'+esc(id)+'">Send</button></div></div>';
+  safeRender(a, hubBack()+esc((pr.data&&pr.data.full_name)||'Student')+'</h1></div><div class="chat"><div class="ss" style="text-align:center;margin-bottom:8px">'+(c.listing_title?'Re: '+esc(c.listing_title):'')+'</div><div id="cmsgs" class="cmsgs">'+((ms.data||[]).map(bub).join('')||'<p class="ss" style="text-align:center">Say hello 👋</p>')+'</div><div class="cin"><input id="cinp" maxlength="2000" placeholder="Type a message" autocomplete="off"><button class="obtn" data-send="'+esc(id)+'">Send</button></div></div>');
   chatBottom();
   sb.from('messages').update({read_at:new Date().toISOString()}).eq('conversation_id',id).neq('sender_id',ME.id).is('read_at',null).then(bellDot);
   CH=sb.channel('c-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conversation_id=eq.'+id},p=>{
     const m=p.new,w=$('cmsgs');if(!w||m.sender_id===ME.id)return;
     const e=w.querySelector('p.ss');if(e)e.remove();
-    w.insertAdjacentHTML('beforeend',bub(m));chatBottom();
+    safeInsert(w, 'beforeend',bub(m));chatBottom();
     sb.from('messages').update({read_at:new Date().toISOString()}).eq('id',m.id).then(()=>{});
   }).subscribe();
 }
@@ -1936,7 +2036,7 @@ async function sendChat(id){
   const {error}=await sb.from('messages').insert({conversation_id:id,sender_id:ME.id,body:v});
   SENDING=false;
   if(error){i.value=v;toast('Could not send: '+error.message);return;}
-  const w=$('cmsgs');if(w){const e=w.querySelector('p.ss');if(e)e.remove();w.insertAdjacentHTML('beforeend','<div class="msg out">'+esc(v)+'<time>just now</time></div>');chatBottom();}
+  const w=$('cmsgs');if(w){const e=w.querySelector('p.ss');if(e)e.remove();safeInsert(w, 'beforeend','<div class="msg out">'+esc(v)+'<time>just now</time></div>');chatBottom();}
 }
 async function msgSeller(b){
   if(!ME){toast('Sign in to message the seller.');return;}
