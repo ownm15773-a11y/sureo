@@ -2157,7 +2157,7 @@ const isAuthErr=e=>!!e&&(e.status===401||e.code==='42501'||/row-level security|j
 function sessionExpired(){toast('Your session expired. Please sign in again.',4000);ME=null;SESS_TOKEN=null;try{closeA();}catch(x){}setTimeout(()=>{try{openAuth('in');}catch(x){location.hash='#signin';}},300);}
 async function callPaystack(action,orderId){
   const {data,error}=await sb.functions.invoke('bachs',{body:{action:action,order_id:orderId}});
-  if(error){let code='';try{const j=await error.context.json();code=j.error||'';}catch(_){}return {err:code||'failed'};}
+  if(error){let code='',st='';try{st=error.context&&error.context.status;}catch(_){}try{const j=await error.context.json();code=j.error||'';}catch(_){}return {err:code||('http_'+(st||'unknown')+'_'+(error.name||'error'))};} /* DEBUG: shows real error code */
   return {data:data};
 }
 async function payOnline(oid){
@@ -2165,7 +2165,7 @@ async function payOnline(oid){
   if(ini.err){
     if(ini.err==='already_paid')return true;
     if(!(await ensureSession()))throw new Error('SESSION_EXPIRED');
-    throw new Error('Could not start payment. Try again.');
+    throw new Error('Could not start payment ['+ini.err+']. Try again.'); /* DEBUG */
   }
   if(!ini.data||!ini.data.checkout_url)throw new Error('Could not start payment. Try again.');
   try{sessionStorage.setItem('sureoPend',JSON.stringify({oid:oid,id:CK.id,t:CK.t,s:CK.s,p:CK.p,q:CKQ}));}catch(e){}
@@ -2226,7 +2226,7 @@ async function ckGo(btn){
     }catch(e){}
     openA('<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h3>'+(paid?'Payment verified!':'Order sent!')+'</h3><p class="ss" style="margin:6px 0 14px">'+(paid?'Bachs confirmed your payment. ':'')+'Chat with the seller to agree a meetup. Your handover code is in My Shop › Orders.</p>'+(cid?'<button class="btn" data-ckchat="'+esc(cid)+'">Open chat</button>':'')+'<button class="obtn ghost" data-ckord="1" style="width:100%;margin-top:8px">View my orders</button></div>');
     CK=null;
-  }catch(e){if(isAuthErr(e)){sessionExpired();return;}toast(e.message||'Could not place order, try again.');btn.disabled=false;btn.textContent=lab;}
+  }catch(e){if(isAuthErr(e)){sessionExpired();return;}toast(e.message||'Could not place order, try again.',8000);btn.disabled=false;btn.textContent=lab;}
 }
 function openOffer(b){
   if(!ME){toast('Sign in to make an offer.');return;}
