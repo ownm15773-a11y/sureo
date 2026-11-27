@@ -16,7 +16,7 @@
 <script>
 (function(){var t=null;try{t=localStorage.getItem('sureoTheme');}catch(e){}
 if(t!=='light'&&t!=='dark')t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
-document.documentElement.setAttribute('data-theme',t);})();
+document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#0b1210';})();
 </script>
 <style>
 :root{--bg:#f9fafb;--card:#fff;--text:#111827;--muted:#6b7280;--line:#f1f2f4;--line2:#e5e7eb;--field:#f3f4f6;--g:#0d4a3a;--gtext:#0d4a3a;--g2:#e8f4f0;--onG:#fff;--ok:#059669;--glass:rgba(255,255,255,.9);--sh:0 1px 2px rgba(0,0,0,.05);--pvbg:#F5F5F7;--navg:rgba(255,255,255,.45);--navtint:linear-gradient(100deg,rgba(13,74,58,.14),rgba(31,143,109,.08) 50%,rgba(13,74,58,.14));--navedge:rgba(255,255,255,.85);--navink:#4b5563;--navon:#0d4a3a;color-scheme:light}
@@ -988,6 +988,7 @@ function paintCampuses(){
 function setTheme(){
   const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
   document.documentElement.setAttribute('data-theme',t);
+  try{document.querySelectorAll('meta[name=theme-color]').forEach(m=>m.setAttribute('content',t==='dark'?'#0b1210':'#0d4a3a'));document.documentElement.style.colorScheme=t;document.documentElement.style.backgroundColor=t==='dark'?'#0b1210':'';}catch(e){}
   try{localStorage.setItem('sureoTheme',t);}catch(e){}
   document.querySelectorAll('.sw').forEach(s=>s.setAttribute('aria-checked',t==='dark'));
 }
