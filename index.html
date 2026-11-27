@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- SECURITY FIX: Content-Security-Policy. Blocks scripts/requests to any site not listed, so a stolen login token cannot be sent to an attacker server. 'unsafe-inline' is needed because this app uses inline scripts/styles; tighten later with hashes. frame-ancestors cannot be set in a meta tag; set it as a response header on your host. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.paystack.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://dgzltdkaumkprxijuoqv.supabase.co; media-src 'self' blob: https://dgzltdkaumkprxijuoqv.supabase.co; connect-src 'self' https://dgzltdkaumkprxijuoqv.supabase.co wss://dgzltdkaumkprxijuoqv.supabase.co https://api.paystack.co https://*.paystack.co https://*.paystack.com; frame-src https://checkout.paystack.com https://*.paystack.co https://*.paystack.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- SECURITY FIX: CSRF token added. Placeholder; a backend/edge function injects the real value. -->
 <meta name="csrf-token" content="{{CSRF_TOKEN}}">
