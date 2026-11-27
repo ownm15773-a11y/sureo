@@ -1405,10 +1405,13 @@ async function showAccount(){
 }
 async function loadAcc(){
   let [p,k]=await Promise.all([
-    sb.from('profiles').select('full_name,is_seller_verified,paystack_subaccount').eq('id',ME.id).maybeSingle(),
+    sb.from('profiles').select('full_name,is_seller_verified').eq('id',ME.id).maybeSingle(),
     sb.from('kyc').select('matric_no,status,student_id_path').eq('user_id',ME.id).maybeSingle()]);
   if(k.error)k=await sb.from('kyc').select('matric_no,status').eq('user_id',ME.id).maybeSingle();
-  ACC.p=p.data||{};ACC.k=k.error?null:(k.data||null);
+  ACC.p=p.data||{};
+  /* privacy: the payout code is no longer read directly; only ask whether one is set */
+  const hp=await sb.rpc('has_payout');ACC.p.paystack_subaccount=hp.data===true?'set':null;
+  ACC.k=k.error?null:(k.data||null);
 }
 const kRow=(ic,t,m,r)=>'<div class="krow"><i>'+ic+'</i><div><b>'+t+'</b><span class="m">'+m+'</span></div>'+r+'</div>';
 const kOk=t=>'<span class="kst">'+t+'</span>',kOpt=t=>'<span class="kst opt">'+t+'</span>',kBtn=(t,a)=>'<button class="kbtn" data-ac="'+a+'">'+t+'</button>';
