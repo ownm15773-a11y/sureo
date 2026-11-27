@@ -2156,29 +2156,42 @@ async function ensureSession(){
 const isAuthErr=e=>!!e&&(e.status===401||e.code==='42501'||/row-level security|jwt|not authenticated|SESSION_EXPIRED/i.test(e.message||''));
 function sessionExpired(){toast('Your session expired. Please sign in again.',4000);ME=null;SESS_TOKEN=null;try{closeA();}catch(x){}setTimeout(()=>{try{openAuth('in');}catch(x){location.hash='#signin';}},300);}
 async function callPaystack(action,orderId){
-  const {data,error}=await sb.functions.invoke('paystack',{body:{action:action,order_id:orderId}});
+  const {data,error}=await sb.functions.invoke('bachs',{body:{action:action,order_id:orderId}});
   if(error){let code='';try{const j=await error.context.json();code=j.error||'';}catch(_){}return {err:code||'failed'};}
   return {data:data};
 }
-function popupPay(code){
-  return new Promise((res,rej)=>{
-    try{new PaystackPop().resumeTransaction(code,{onSuccess:()=>res(true),onCancel:()=>res(false),onError:e=>rej(new Error((e&&e.message)||'Payment failed'))});}
-    catch(e){rej(new Error('Payment window could not open. Check your connection.'));}
-  });
-}
 async function payOnline(oid){
-  if(typeof PaystackPop==='undefined')throw new Error('Paystack failed to load. Check your connection.');
   const ini=await callPaystack('init',oid);
   if(ini.err){
-    if(ini.err==='seller_not_ready')throw new Error('This seller cannot take online payments yet. Choose pay on delivery.');
     if(ini.err==='already_paid')return true;
     if(!(await ensureSession()))throw new Error('SESSION_EXPIRED');
     throw new Error('Could not start payment. Try again.');
   }
-  if(!(await popupPay(ini.data.access_code)))return false;
-  for(let i=0;i<4;i++){const v=await callPaystack('verify',oid);if(v.data&&v.data.ok)return true;await new Promise(r=>setTimeout(r,2000));}
-  throw new Error('We could not confirm your payment yet. If you were charged, email support@sureo.name.ng with your order.');
+  if(!ini.data||!ini.data.checkout_url)throw new Error('Could not start payment. Try again.');
+  try{sessionStorage.setItem('sureoPend',JSON.stringify({oid:oid,id:CK.id,t:CK.t,s:CK.s,p:CK.p,q:CKQ}));}catch(e){}
+  location.assign(ini.data.checkout_url);
+  return new Promise(()=>{}); /* page is leaving for the payment page */
 }
+/* Back from the payment page (success_url = /?bachs_order=ID): confirm the payment, then show the result */
+(async()=>{
+  let oid=null;try{oid=new URLSearchParams(location.search).get('bachs_order');}catch(e){}
+  if(!oid||!/^[\w-]+$/.test(oid))return;
+  history.replaceState(null,'',location.pathname+location.hash);
+  await AUTHP;
+  if(!ME||!(await ensureSession())){toast('Sign in to confirm your payment.',4000);return;}
+  let pend=null;try{pend=JSON.parse(sessionStorage.getItem('sureoPend')||'null');sessionStorage.removeItem('sureoPend');}catch(e){}
+  if(pend&&pend.oid!==oid)pend=null;
+  toast('Confirming your payment…',6000);
+  let ok=false;
+  for(let i=0;i<5&&!ok;i++){const v=await callPaystack('verify',oid);if(v.data&&v.data.ok)ok=true;else await new Promise(r=>setTimeout(r,2000));}
+  if(!ok){openA('<div style="text-align:center;padding:8px 0"><h3>Payment not confirmed yet</h3><p class="ss" style="margin:6px 0 14px">If you were charged, email support@sureo.name.ng with your order. Otherwise open your orders and tap Pay to try again.</p><button class="obtn ghost" data-ckord="1" style="width:100%">View my orders</button></div>');return;}
+  let cid=null;
+  if(pend){try{
+    cid=await getConv(pend.id,pend.t,pend.s);
+    await sb.from('messages').insert({conversation_id:cid,sender_id:ME.id,body:"Hi! I'd like to order "+(pend.q>1?pend.q+' x ':'')+'"'+pend.t+'" ('+(pend.p?nmoney(pend.p*pend.q):'free')+'). Paid online via Bachs. When can we meet?'});
+  }catch(e){}}
+  openA('<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h3>Payment verified!</h3><p class="ss" style="margin:6px 0 14px">Bachs confirmed your payment. Chat with the seller to agree a meetup. Your handover code is in My Shop › Orders.</p>'+(cid?'<button class="btn" data-ckchat="'+esc(cid)+'">Open chat</button>':'')+'<button class="obtn ghost" data-ckord="1" style="width:100%;margin-top:8px">View my orders</button></div>');
+})();
 function openCheckout(b){
   if(!ME){toast('Sign in to order.');return;}
   const d=b.dataset;if(d.s===ME.id){toast("That's your own listing.");return;}
@@ -2188,8 +2201,8 @@ function paintCk(){
   const free=CK.p===0,tot=CK.p*CKQ;
   openA('<h3 style="margin-bottom:10px">Checkout</h3><div class="ord-box"><b>'+esc(CK.t)+'</b><br><span class="ss">Total: <b>'+(free?'FREE':nmoney(tot))+'</b></span></div>'
    +'<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0"><b>Quantity</b><div style="display:flex;align-items:center;gap:14px"><button class="round" data-q="-1" aria-label="Less">−</button><b>'+CKQ+'</b><button class="round" data-q="1" aria-label="More">+</button></div></div>'
-   +(free?'':'<button class="lrow'+(CKM==='paystack'?' picked':'')+'" data-pm="paystack">💳 Pay online with Paystack<br><span class="ss">Card, bank transfer or USSD. Paid straight to the seller.</span></button><button class="lrow'+(CKM==='offline'?' picked':'')+'" data-pm="offline">🤝 Pay on delivery<br><span class="ss">Cash or POS when you meet on campus.</span></button>')
-   +'<button class="btn" data-ckgo="1">'+(free?'Confirm reservation':(CKM==='paystack'?'Pay securely with Paystack':'Place order (pay on delivery)'))+'</button>');
+   +(free?'':'<button class="lrow'+(CKM==='paystack'?' picked':'')+'" data-pm="paystack">💳 Pay online with Bachs<br><span class="ss">Card, bank transfer or USSD. Paid straight to the seller.</span></button><button class="lrow'+(CKM==='offline'?' picked':'')+'" data-pm="offline">🤝 Pay on delivery<br><span class="ss">Cash or POS when you meet on campus.</span></button>')
+   +'<button class="btn" data-ckgo="1">'+(free?'Confirm reservation':(CKM==='paystack'?'Pay securely with Bachs':'Place order (pay on delivery)'))+'</button>');
 }
 async function ckGo(btn){
   if(btn.disabled||!CK)return;btn.disabled=true;const lab=btn.textContent;btn.textContent='Please wait…';
@@ -2209,9 +2222,9 @@ async function ckGo(btn){
     let cid=null;
     try{
       cid=await getConv(CK.id,CK.t,CK.s);
-      await sb.from('messages').insert({conversation_id:cid,sender_id:ME.id,body:"Hi! I'd like to order "+(CKQ>1?CKQ+' x ':'')+'"'+CK.t+'" ('+(CK.p?nmoney(CK.p*CKQ):'free')+'). '+(paid?'Paid online via Paystack. ':'Payment: pay on delivery. ')+'When can we meet?'});
+      await sb.from('messages').insert({conversation_id:cid,sender_id:ME.id,body:"Hi! I'd like to order "+(CKQ>1?CKQ+' x ':'')+'"'+CK.t+'" ('+(CK.p?nmoney(CK.p*CKQ):'free')+'). '+(paid?'Paid online via Bachs. ':'Payment: pay on delivery. ')+'When can we meet?'});
     }catch(e){}
-    openA('<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h3>'+(paid?'Payment verified!':'Order sent!')+'</h3><p class="ss" style="margin:6px 0 14px">'+(paid?'Paystack confirmed your payment. ':'')+'Chat with the seller to agree a meetup. Your handover code is in My Shop › Orders.</p>'+(cid?'<button class="btn" data-ckchat="'+esc(cid)+'">Open chat</button>':'')+'<button class="obtn ghost" data-ckord="1" style="width:100%;margin-top:8px">View my orders</button></div>');
+    openA('<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h3>'+(paid?'Payment verified!':'Order sent!')+'</h3><p class="ss" style="margin:6px 0 14px">'+(paid?'Bachs confirmed your payment. ':'')+'Chat with the seller to agree a meetup. Your handover code is in My Shop › Orders.</p>'+(cid?'<button class="btn" data-ckchat="'+esc(cid)+'">Open chat</button>':'')+'<button class="obtn ghost" data-ckord="1" style="width:100%;margin-top:8px">View my orders</button></div>');
     CK=null;
   }catch(e){if(isAuthErr(e)){sessionExpired();return;}toast(e.message||'Could not place order, try again.');btn.disabled=false;btn.textContent=lab;}
 }
@@ -2326,6 +2339,5 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
   document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('a[href="#signin"]'))close();},true);
 })();
 </script>
-<script src="https://js.paystack.co/v2/inline.js"></script>
 </body>
 </html>
