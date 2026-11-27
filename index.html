@@ -1718,7 +1718,7 @@ async function showOrders(){
 }
 async function loadOrders(){
   if(!ME)return;
-  const {data,error}=await sb.from('orders').select('id,listing_title,amount_kobo,seller_id,buyer_id,handover_status,handover_at,receipt').or('buyer_id.eq.'+ME.id+',seller_id.eq.'+ME.id).order('created_at',{ascending:false}).limit(ORD.n);
+  const {data,error}=await sb.from('orders').select('id,listing_title,amount_kobo,seller_id,buyer_id,handover_status,handover_at,receipt,status').or('buyer_id.eq.'+ME.id+',seller_id.eq.'+ME.id).order('created_at',{ascending:false}).limit(ORD.n);
   if(location.hash!=='#orders')return;
   if(error||!data||!data.length){OC=null;safeRender($('acct'), aBar('Orders & Receipts')+'<div class="acard"><p class="ss" style="padding:18px 0;text-align:center">No orders yet.</p></div>');return;}
   const codes={},dm={};
@@ -1726,12 +1726,15 @@ async function loadOrders(){
   if(mine.length){const r=await sb.from('handover_codes').select('order_id,code').in('order_id',mine);(r.data||[]).forEach(c=>codes[c.order_id]=c.code);}
   const sIds=data.filter(o=>o.seller_id===ME.id).map(o=>String(o.id));
   if(sIds.length){const r=await sb.from('disputes').select('id,order_id,reason,seller_reply').in('order_id',sIds);(r.data||[]).forEach(d=>{(dm[d.order_id]=dm[d.order_id]||[]).push(d);});}
+  /* reviews: which completed orders have I already rated? (rv stays null if this fails, so no stars are shown) */
+  let rv={};const cIds=data.filter(o=>o.status==='completed').map(o=>o.id);
+  if(cIds.length){const r=await sb.from('reviews').select('order_id,stars,comment').eq('reviewer_id',ME.id).in('order_id',cIds);if(r.error)rv=null;else r.data.forEach(x=>rv[x.order_id]=x);}
   if(location.hash!=='#orders')return;
-  OC={data,codes,dm};drawOrders();
+  OC={data,codes,dm,rv};drawOrders();
 }
 function drawOrders(){
   if(!OC)return;
-  const {data,codes,dm}=OC,uid=ME.id;
+  const {data,codes,dm,rv}=OC,uid=ME.id;
   const conf=o=>o.handover_status==='confirmed';
   const autoClosed=o=>o.receipt==='assumed'||(o.receipt==null&&conf(o)&&o.handover_at&&Date.now()-new Date(o.handover_at)>7*864e5);
   const isDone=o=>o.buyer_id===uid?(conf(o)&&(o.receipt!=null||autoClosed(o))):conf(o);
@@ -1757,6 +1760,10 @@ function drawOrders(){
     }
     if(!b&&conf(o))body+='<div class="ord-box">✅ Handover confirmed.</div>';
     body+=(dm[String(o.id)]||[]).map(d=>'<div class="ord-box">⚠️ <b>Buyer reported:</b> '+esc(d.reason)+'<br>'+(d.seller_reply?'<small>Your reply: '+esc(d.seller_reply)+'</small>':'<button class="obtn ghost" data-srep="'+esc(d.id)+'" style="margin-top:8px">Reply with your side</button>')+'</div>').join('');
+    if(o.status==='completed'&&rv){
+      if(rv[o.id])body+='<div class="ord-box">Your review: '+'★'.repeat(rv[o.id].stars)+'☆'.repeat(5-rv[o.id].stars)+(rv[o.id].comment?'<br><small>'+esc(rv[o.id].comment)+'</small>':'')+'</div>';
+      else body+='<div class="ord-box"><b>Rate the '+(b?'seller':'buyer')+'</b><div class="hrow" style="margin-top:8px">'+[1,2,3,4,5].map(n=>'<button type="button" data-rv="'+id+'" data-st="'+n+'" aria-label="'+n+' out of 5 stars" style="flex:1;padding:11px 0">'+n+'★</button>').join('')+'</div></div>';
+    }
     body+='<button class="obtn ghost" data-prob="'+id+'" style="align-self:flex-start">⚠️ Report a problem</button>';
     return '<details class="ord"><summary><span class="ord-ic">'+(b?'🛍️':'🏷️')+'</span><span class="ord-t"><b>'+esc(o.listing_title)+'</b><small>'+(b?'Buying':'Selling')+' · '+fmtN(o.amount_kobo)+'</small></span><span class="ob'+(bd[1]?' act':'')+'">'+bd[0]+'</span></summary><div class="ord-body">'+body+'</div></details>';
   };
@@ -1766,7 +1773,7 @@ function drawOrders(){
 }
 document.addEventListener('click',async e=>{
   if(!ME)return;
-  const t=e.target.closest('[data-of],[data-omore],[data-hcb],[data-prob],[data-rcy],[data-rcn],[data-srep]');if(!t)return;
+  const t=e.target.closest('[data-of],[data-omore],[data-hcb],[data-prob],[data-rcy],[data-rcn],[data-srep],[data-rv]');if(!t)return;
   if(t.dataset.of){ORD.f=t.dataset.of;drawOrders();return;}
   if(t.dataset.omore){ORD.n+=20;loadOrders();return;}
   if(t.dataset.hcb){
@@ -1784,6 +1791,13 @@ document.addEventListener('click',async e=>{
   if(t.dataset.rcn){
     const note=await askText({title:'Item not received?',help:'This opens a dispute that we will review. Tell us what happened.',placeholder:'Optional: add details…',ok:'Report not received',danger:true});if(note===null)return;
     const {data,error}=await sb.rpc('buyer_receipt',{p_order:t.dataset.rcn,p_ok:false,p_note:note});toast(error?('Could not send: '+error.message):(data==='ok'?'Reported. We will review it.':'Could not send.'));loadOrders();return;
+  }
+  if(t.dataset.rv){
+    const o=OC&&OC.data.find(x=>String(x.id)===t.dataset.rv),n=+t.dataset.st;if(!o)return;
+    const c=await askText({title:'Send '+n+'-star review?',help:'Add a comment if you like. Keep it honest and about this order.',placeholder:'Optional comment (up to 500 characters)',ok:'Send review'});if(c===null)return;
+    if(c.length>500){toast('Comment is too long. Keep it under 500 characters.');return;}
+    const {error}=await sb.from('reviews').insert({order_id:o.id,reviewer_id:ME.id,reviewee_id:o.buyer_id===ME.id?o.seller_id:o.buyer_id,stars:n,rating:n,comment:c||null});
+    toast(error?('Could not send review: '+error.message):'✓ Review sent. Thank you.');loadOrders();return;
   }
   if(t.dataset.srep){
     const x=await askText({title:'Your side of the story',help:'Say where and when you handed over the item. We read both sides before deciding.',placeholder:'e.g. I handed it over at the library on Tuesday…',min:5,ok:'Send reply'});if(x===null)return;
